@@ -1,4 +1,17 @@
+# Lake / build artifacts
 .lake/
+lake-packages/
+build/
 
+# compiled artifacts (extra safety)
+**/*.olean
+**/*.ilean
+**/*.c
+**/*.o
+**/*.so
+**/*.dll
+**/*.dylib
+
+# OS junk
 .DS_Store
 Thumbs.db
