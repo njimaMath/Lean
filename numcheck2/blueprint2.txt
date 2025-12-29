@@ -1,0 +1,39 @@
+\begin{lemma}
+For any $r\in(0,1)$, 
+\[    \frac{r(4-r)(1-r)^2}{(r^2-6r+6)^2}\le \frac{1}{18}.
+\]
+\end{lemma}
+\begin{proof}
+This is equivalent to
+\[
+(r^2-6r+6)^2 - 18\,r(4-r)(1-r)^2 \ge 0.
+\]
+Expanding gives the quartic polynomial
+\[
+P(r)\coloneqq 19r^4-120r^3+210r^2-144r+36.
+\]
+A useful factorization is
+\[
+P(r)-1=(r-1)\,C(r),
+\qquad
+C(r)\coloneqq 19r^3-101r^2+109r-35.
+\]
+On $[0,1]$ the cubic $C$ is strictly concave because
+\[
+C''(r)=114r-202<0\qquad\text{for all }r\in[0,1].
+\]
+The derivative $C'(r)=57r^2-202r+109$ is strictly decreasing, and $C'(0)=109>0$ while $C'(1)=-36<0$,
+so there is a unique $r_0\in(0,1)$ with $C'(r_0)=0$, and $C$ attains its maximum at $r_0$.
+Using $C'(r_0)=0$ (i.e.\ $57r_0^2=202r_0-109$) gives
+\[
+C(r_0)=\frac{5024-7976r_0}{171}.
+\]
+The quadratic formula yields
+\[
+r_0=\frac{202-\sqrt{202^2-4\cdot 57\cdot 109}}{2\cdot 57}
+\]
+and $202^2-4\cdot 57\cdot 109=15952<127^2$, hence $r_0>(202-127)/114=25/38$.
+Therefore $7976r_0>7976\cdot(25/38)=99700/19>5024$, so $C(r_0)<0$.
+Thus $C(r)<0$ for all $r\in[0,1]$. Since $r-1<0$ for $r\in(0,1)$, we obtain $(r-1)C(r)>0$ on $(0,1)$,
+and thus $P(r)>1$ on $(0,1)$. In particular $P(r)>0$ on $(0,1)$, proving the desired inequality.
+\end{proof}

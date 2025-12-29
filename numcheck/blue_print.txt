@@ -1,0 +1,87 @@
+We aim to prove the following: Let $(x,y)\in\mathbb R^2$ satisfy $x\ge 0$, $0<y<\frac{2}{3}$, and
+\begin{equation}\label{eq:consFneg_lemma}
+x+2y\ge 1,\qquad
+x^2+xy-3x-3y+2\ge 0,\qquad
+x+y<1.
+\end{equation}
+Then, it holds
+\begin{equation}\label{eq:FdefFneg_lemma}
+F(x,y):=x^2+6xy+6y^2-x-4y<0.
+\end{equation}
+\begin{proof}
+Fix $y\in(0,2/3)$.
+Consider the quadratic constraint
+\[
+q_y(x):=x^2+xy-3x-3y+2\ge 0.
+\]
+Its roots are
+\begin{equation}\label{eq:rootsFneg_lemma}
+r_\pm(y)=\frac{3-y\pm\sqrt{y^2+6y+1}}{2}.
+\end{equation}
+Since
+\[
+y^2+6y+1-(y+1)^2=4y>0\quad (y>0),
+\]
+we have $\sqrt{y^2+6y+1}>y+1$, hence
+\[
+r_+(y)=\frac{3-y+\sqrt{y^2+6y+1}}{2}>\frac{3-y+(y+1)}{2}=2>1.
+\]
+Because $q_y$ has leading coefficient $1$, the inequality $q_y(x)\ge 0$ implies
+\[
+x\in(-\infty,r_-(y)]\cup[r_+(y),\infty).
+\]
+From $x+y<1$ in \eqref{eq:consFneg_lemma} we get $x<1-y\le 1<r_+(y)$, so the second branch
+is impossible and therefore
+\[
+x\le r_-(y).
+\]
+Moreover, $r_-(y)+y<1$ holds for $y>0$, because it is equivalent to
+$\sqrt{y^2+6y+1}>y+1$, which was shown above.
+
+Combining $x\ge 0$ and $x+2y\ge 1$ from \eqref{eq:consFneg_lemma} with $x\le r_-(y)$, the feasible
+set of $x$ for this fixed $y$ is the interval
+\begin{equation}\label{eq:IyFneg_lemma}
+I_y:=\Bigl[\max\{0,1-2y\},\,r_-(y)\Bigr],
+\end{equation}
+whenever it is nonempty (otherwise there is nothing to prove for that $y$).
+
+For fixed $y$, the function $x\mapsto F(x,y)$ is a convex quadratic since
+\[
+F(x,y)=x^2+(6y-1)x+(6y^2-4y),\qquad \frac{\partial^2}{\partial x^2}F(x,y)=2>0.
+\]
+Hence the maximum of $F(\cdot,y)$ over the interval $I_y$ is attained at an endpoint since $I_y$ is a closed interval and 
+ $F$ is continuous and convex in x.
+
+For the left endpoint, there are two cases.
+If $y\le \tfrac12$, then $\max\{0,1-2y\}=1-2y$ and
+\begin{equation}\label{eq:leftEndpoint1Fneg_lemma}
+F(1-2y,y)=-2y^2<0.
+\end{equation}
+If $y\ge \tfrac12$, then $\max\{0,1-2y\}=0$ and, using $y<\tfrac23$,
+\begin{equation}\label{eq:leftEndpoint2Fneg_lemma}
+F(0,y)=6y^2-4y=2y(3y-2)<0.
+\end{equation}
+
+For the right endpoint $x=r_-(y)$, use the identity $q_y(x)=0$ to eliminate $x^2$:
+\[
+F(x,y)=(x^2+xy-3x-3y+2) + (5xy+2x+6y^2-y-2)=5xy+2x+6y^2-y-2.
+\]
+Substituting $x=r_-(y)$ gives
+\begin{equation}\label{eq:rightEndpointFneg_lemma}
+F(r_-(y),y)=\frac{7y^2+11y+2-(5y+2)\sqrt{y^2+6y+1}}{2}.
+\end{equation}
+Both $7y^2+11y+2$ and $(5y+2)\sqrt{y^2+6y+1}$ are strictly positive for $y>0$,
+so \eqref{eq:rightEndpointFneg_lemma} is negative if and only if
+\[
+(5y+2)\sqrt{y^2+6y+1}>7y^2+11y+2.
+\]
+Squaring and simplifying yields
+\begin{equation}\label{eq:squareDiffFneg_lemma}
+(5y+2)^2(y^2+6y+1)-(7y^2+11y+2)^2
+=8y^3(2-3y),
+\end{equation}
+which is strictly positive for $y\in(0,2/3)$. Hence $F(r_-(y),y)<0$.
+
+Therefore $F$ is negative at both endpoints of $I_y$, so $\max_{x\in I_y}F(x,y)<0$ and
+$F(x,y)<0$ for every feasible $x$ at this $y$. Since $y$ was arbitrary in $(0,2/3)$, the conclusion follows.
+\end{proof}
