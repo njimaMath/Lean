@@ -1,0 +1,4 @@
+import Mathlib
+
+#check strictAntiOn_of_deriv_neg
+#check strictMonoOn_of_deriv_pos

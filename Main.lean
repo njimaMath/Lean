@@ -227,3 +227,5 @@ theorem F_neg_of_constraints {x y : ℝ}
 
 end
 end Numcheck
+
+def main : IO Unit := pure ()

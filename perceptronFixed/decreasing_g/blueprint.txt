@@ -1,0 +1,144 @@
+Blueprint: proof that g is strictly decreasing on [0, ∞)
+
+Settings
+--------
+Let X ~ N(0,1). For u ∈ ℝ, write 𝔼[·] for expectation with respect to X.
+
+
+Definitions (matching main.tex)
+-------------------------------
+1) Standard normal quantities:
+   - φ(u) := (1/√(2π)) exp(-u^2/2)
+   - Φ(u) := ∫_{-∞}^u φ(s) ds
+   - Φ̄(u) := 1 - Φ(u) = ∫_u^∞ φ(s) ds
+
+2) Inverse Mills ratio:
+   - E(u) := φ(u) / Φ̄(u).
+
+3) Auxiliary functions:
+   - d(u) := E(u) - u = 𝔼[X - u | X ≥ u].
+   - g(u)=E(u)^2\bigl(3E(u)^2-4u\,E(u)+u^2-2\bigr).
+
+4) Conditional shift random variable:
+   Under the conditional law P(· | X ≥ u), define
+     Y_u := X - u  (so Y_u ≥ 0 a.s.).
+   Define conditional moments
+     μ_k(u) := 𝔼[ (Y_u)^k | X ≥ u ].
+   Then d(u) = μ_1(u).
+
+
+Statement
+---------
+Lemma (main.tex Lemma “g-decreasing-positive”):
+  The function g is strictly decreasing on [0, ∞).
+  In particular g(u) ≤ g(0) for all u ≥ 0, and
+    g(0) = 12/π^2 - 4/π = -4(π - 3)/π^2.
+
+
+Dependencies / facts used
+-------------------------
+A) Derivatives of the inverse Mills ratio:
+   - E'(u) = E(u)^2 - u E(u).
+   - The “variance identity”:
+       1 - E'(u) = Var(X | X ≥ u) > 0,
+     hence d'(u) = E'(u) - 1 = -Var(X | X ≥ u) < 0.
+     In particular d(u) > 0 and d is strictly decreasing on ℝ.
+
+B) Truncated normal moments (from conditionalGaussianMoments):
+   μ_0(u) = 1
+   μ_1(u) = d(u)
+   μ_2(u) = 1 - u d(u)
+   μ_3(u) = (u^2 + 2) d(u) - u
+   μ_4(u) = u^2 + 3 - u(u^2 + 5) d(u)
+
+C) Hankel (moment) matrix positivity:
+   For any polynomial P, 𝔼[ P(Y_u)^2 | X ≥ u ] ≥ 0, so the Hankel matrices
+     (μ_{i+j}(u))_{i,j}  are positive semidefinite.
+   Since Y_u ≥ 0, also 𝔼[ Y_u P(Y_u)^2 | X ≥ u ] ≥ 0, so the shifted Hankel
+   matrices (μ_{i+j+1}(u))_{i,j} are positive semidefinite.
+   In particular, the following determinants are nonnegative:
+     det [[μ_1, μ_2], [μ_2, μ_3]] ≥ 0
+     det [[μ_0, μ_1, μ_2], [μ_1, μ_2, μ_3], [μ_2, μ_3, μ_4]] ≥ 0
+   and Var(Y_u) = μ_2 - μ_1^2 > 0.
+
+D) Polynomial negativity lemma (from negative_F_bound):
+   If (x,y) satisfy
+     x ≥ 0, 0 < y < 2/3,
+     x + 2y ≥ 1,
+     x^2 + x y - 3x - 3y + 2 ≥ 0,
+     x + y < 1,
+   then
+     F(x,y) := x^2 + 6xy + 6y^2 - x - 4y < 0.
+
+
+Goal
+----
+For every u ≥ 0, show g'(u) < 0. This implies g is strictly decreasing on
+[0, ∞).
+
+
+Proof steps (outline)
+---------------------
+Step 1: Differentiate g and isolate a “sign polynomial”.
+  Differentiate the defining expression
+    g(u) = E(u)^2 (3E(u)^2 - 4uE(u) + u^2 - 2).
+  Using E'(u) = E(u)^2 - uE(u) and d'(u) = E'(u) - 1, one obtains
+
+    g'(u) = 2 E(u)^2 H(u),
+
+  where
+    H(u) := u^2 d(u) + 6u d(u)^2 + 6 d(u)^3 - u - 4 d(u).
+
+  Since E(u) > 0 for all u, the sign of g'(u) is the sign of H(u).
+
+Step 2: Express H(u) as a polynomial in x := u d(u) and y := d(u)^2.
+  Because d(u) > 0, multiply by d(u) and set
+    x := u d(u),  y := d(u)^2.
+  Then
+    d(u) H(u) = u^2 d(u)^2 + 6u d(u)^3 + 6 d(u)^4 - u d(u) - 4 d(u)^2
+              = x^2 + 6xy + 6y^2 - x - 4y
+              =: F(x,y).
+
+  Therefore H(u) < 0 is equivalent to F(x,y) < 0 (since d(u) > 0).
+
+Step 3: Derive constraints on (x,y) from moment positivity.
+  Fix u ≥ 0. Under P(· | X ≥ u), Y_u := X - u is a nonnegative random variable.
+  Use Facts B and C to compute inequalities in terms of d(u), hence (x,y):
+
+  (i) From det [[μ_1, μ_2], [μ_2, μ_3]] ≥ 0 and the formulas for μ_1,μ_2,μ_3:
+        μ_1 μ_3 - μ_2^2 = u d(u) + 2 d(u)^2 - 1 ≥ 0
+      which becomes
+        x + 2y ≥ 1.
+
+  (ii) From det [[μ_0, μ_1, μ_2], [μ_1, μ_2, μ_3], [μ_2, μ_3, μ_4]] ≥ 0 and
+       the formulas for μ_0,…,μ_4:
+        u^2 d(u)^2 + u d(u)^3 - 3 d(u)^2 - 3u d(u) + 2 ≥ 0
+      which becomes
+        x^2 + x y - 3x - 3y + 2 ≥ 0.
+
+  (iii) From Var(Y_u) = μ_2 - μ_1^2 > 0:
+        1 - u d(u) - d(u)^2 > 0
+      which becomes
+        x + y < 1.
+
+  (iv) Basic bounds:
+       - Since u ≥ 0 and d(u) > 0, we have x ≥ 0 and y > 0.
+       - Since d is decreasing and d(0) = E(0) = √(2/π), we have
+           0 < y = d(u)^2 ≤ 2/π < 2/3.
+
+  Thus (x,y) satisfy exactly the hypotheses of Fact D.
+
+Step 4: Apply the polynomial negativity lemma.
+  By Fact D, F(x,y) < 0. Since d(u) > 0, this implies H(u) = F(x,y)/d(u) < 0.
+  Hence g'(u) = 2E(u)^2 H(u) < 0 for all u ≥ 0, so g is strictly decreasing on
+  [0, ∞).
+
+Step 5: Compute g(0).
+  Use E(0) = φ(0)/Φ̄(0) = √(2/π), hence E(0)^2 = 2/π. From the definition,
+    g(0) = E(0)^2 (3E(0)^2 - 2)
+         = (2/π) (6/π - 2)
+         = 12/π^2 - 4/π
+         = -4(π - 3)/π^2.
+
+
+End of blueprint.

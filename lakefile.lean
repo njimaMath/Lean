@@ -9,6 +9,11 @@ require mathlib from git
 @[default_target]
 lean_lib NjimaLean
 
+-- Auxiliary library so that files under `perceptronFixed/` can `import` each other.
+lean_lib PerceptronFixed where
+  srcDir := "."
+  globs := #[.submodules `perceptronFixed]
+
 @[default_target]
 lean_exe njimaLean where
   root := `Main

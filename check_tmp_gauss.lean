@@ -1,0 +1,2 @@
+import Mathlib
+#check ProbabilityTheory.gaussianReal_map_const_mul
