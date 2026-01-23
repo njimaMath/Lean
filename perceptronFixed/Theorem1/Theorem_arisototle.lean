@@ -153,9 +153,8 @@ import perceptronFixed.rational_function_bound.RatioBound
 import perceptronFixed.uniform_bound_of_g.uniform_bound_of_g
 
 
-import Batteries.Tactic.GeneralizeProofs
+import Mathlib.Tactic.GeneralizeProofs
 
-/- (disabled) Harmonic-local `generalize_proofs` shim; use Batteries' version instead.
 namespace Harmonic.GeneralizeProofs
 -- Harmonic `generalize_proofs` tactic
 
@@ -359,19 +358,19 @@ elab (name := generalizeProofsElab'') "generalize_proofs" config?:(Parser.Tactic
         return g'.mvarId!
 
 end Harmonic
--/
 
 /-!
 # Theorem 1 and Theorem 2 (fixed point system)
 
-This file is a detailed Lean development following:
+This file is a detailed Lean scaffold (with `sorry`) following:
 `perceptronFixed/Theorem1/blueprint.txt`.
 
 It formalizes the fixed point system from `main.tex` and states:
 - Theorem 1 (`thm:main`): existence/uniqueness for `α < αc(κ)` and no solution for `α ≥ αc(κ)`.
 - Theorem 2 (`thm:2ndmain`): as `α ↑ αc(κ)`, the solution satisfies `q_α → 1` and `r_α → +∞`.
 
-All proofs are provided; some steps still use `exact?` automation (which can emit `Try this:` messages).
+All proofs are left as `sorry`; this file is intended to be a blueprint-to-Lean skeleton
+with many intermediate lemmas (so later work can replace `sorry` incrementally).
 -/
 
 open scoped BigOperators Topology NNReal Real ENNReal Interval
@@ -2006,9 +2005,7 @@ lemma Theorem1.E_le_max_u_zero_add_two (u : ℝ) : Theorem1.E u ≤ max u 0 + 2 
   · have h_E_le_u_plus_d0 : DecreasingG.E u ≤ u + DecreasingG.d 0 := by
       have h_E_le_u_plus_d0 : DecreasingG.E u = u + DecreasingG.d u := by
         unfold DecreasingG.d; ring;
-      refine h_E_le_u_plus_d0 ▸ ?_
-      simpa [add_comm, add_left_comm, add_assoc] using
-        (add_le_add_left (DecreasingG.d_le_d0_of_nonneg hu) u)
+      exact h_E_le_u_plus_d0 ▸ add_le_add_left ( DecreasingG.d_le_d0_of_nonneg hu ) _;
     have h_d0_le_2 : DecreasingG.d 0 ≤ 1 := by
       have h_d0_le_1 : DecreasingG.d 0 = Real.sqrt (2 / Real.pi) := by
         exact?;
@@ -2510,7 +2507,6 @@ lemma integrable_g_U (κ : ℝ) (q : ℝ) (hq : q ∈ Set.Ioo 0 1) :
 /-
 The function |a + bz|^n is integrable with respect to the standard Gaussian measure.
 -/
-/-(legacy proof; disabled due to timeouts in Lean 4.26)
 lemma integrable_abs_pow_linear (n : ℕ) (a b : ℝ) :
     MeasureTheory.Integrable (fun z => |a + b * z| ^ n) Theorem1.γ := by
   -- The function |a + b * z|^n is a polynomial in z of degree n, which is integrable with respect to the standard Gaussian measure.
@@ -2580,30 +2576,6 @@ lemma integrable_abs_pow_linear (n : ℕ) (a b : ℝ) :
     simpa only [ mul_pow, abs_mul, mul_assoc ] using h_bound;
   refine' MeasureTheory.Integrable.mono' _ _ _;
   exacts [ fun z => ∑ k ∈ Finset.range ( n + 1 ), ( n.choose k : ℝ ) * |a| ^ ( n - k ) * |b| ^ k * |z| ^ k, by exact MeasureTheory.integrable_finset_sum _ fun k hk => by exact MeasureTheory.Integrable.const_mul ( h_poly_integrable k ) _, by exact Continuous.aestronglyMeasurable ( by continuity ), Filter.Eventually.of_forall fun z => by simpa using h_bound z ]
--/
-
-lemma integrable_abs_pow_linear (n : ℕ) (a b : ℝ) :
-    MeasureTheory.Integrable (fun z => |a + b * z| ^ n) Theorem1.γ := by
-  by_cases hn : n = 0
-  · subst hn
-    simpa using (integrable_const (μ := Theorem1.γ) (c := (1 : ℝ)))
-  · have hid : MeasureTheory.MemLp (fun z : ℝ => z) (p := (n : ℝ≥0)) Theorem1.γ := by
-      simpa [Theorem1.γ] using
-        ProbabilityTheory.memLp_id_gaussianReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0)) (p := (n : ℝ≥0))
-    have hmul : MeasureTheory.MemLp (fun z : ℝ => b * z) (p := (n : ℝ≥0)) Theorem1.γ :=
-      hid.const_mul b
-    have hconst : MeasureTheory.MemLp (fun _z : ℝ => a) (p := (n : ℝ≥0)) Theorem1.γ := by
-      simpa using (MeasureTheory.memLp_const (μ := Theorem1.γ) (p := (n : ℝ≥0∞)) (c := a))
-    have hlin : MeasureTheory.MemLp (fun z : ℝ => a + b * z) (p := (n : ℝ≥0)) Theorem1.γ := by
-      simpa using (hconst.add hmul)
-    have hnorm : MeasureTheory.Integrable (fun z : ℝ => ‖a + b * z‖ ^ ((n : ℝ≥0∞)).toReal) Theorem1.γ := by
-      have hmem1 :
-          MeasureTheory.MemLp (fun z : ℝ => ‖a + b * z‖ ^ ((n : ℝ≥0∞)).toReal) 1 Theorem1.γ := by
-        refine hlin.norm_rpow ?_ ?_
-        · simpa [hn]
-        · simp
-      exact (MeasureTheory.memLp_one_iff_integrable).1 hmem1
-    simpa [Real.norm_eq_abs, Real.rpow_natCast] using hnorm
 
 /-
 The integral of g(U) over the set where U is non-negative is bounded by g(0) times the measure of that set.
@@ -2611,28 +2583,13 @@ The integral of g(U) over the set where U is non-negative is bounded by g(0) tim
 lemma integral_g_U_pos_le (κ : ℝ) (hκ : 0 ≤ κ) (q : ℝ) (hq : q ∈ Set.Ioo 0 1) :
     ∫ z in {z | Theorem1.U κ q z ≥ 0}, DecreasingG.g (Theorem1.U κ q z) ∂Theorem1.γ ≤
     DecreasingG.g 0 * (Theorem1.γ {z | Theorem1.U κ q z ≥ 0}).toReal := by
-  have hs : MeasurableSet {z : ℝ | Theorem1.U κ q z ≥ 0} := by
-    have hU : Measurable (fun z : ℝ => Theorem1.U κ q z) := by
-      simpa [Theorem1.U] using
-        (by
-          fun_prop :
-            Measurable (fun z : ℝ => (κ - Real.sqrt q * z) / Real.sqrt (1 - q)))
-    simpa [Set.preimage, ge_iff_le] using (measurableSet_Ici.preimage hU)
-  have hf :
-      MeasureTheory.IntegrableOn (fun z => DecreasingG.g (Theorem1.U κ q z))
-        {z | Theorem1.U κ q z ≥ 0} Theorem1.γ :=
-    (integrable_g_U κ q hq).integrableOn
-  have hg :
-      MeasureTheory.IntegrableOn (fun _z : ℝ => DecreasingG.g 0)
-        {z | Theorem1.U κ q z ≥ 0} Theorem1.γ :=
-    (integrable_const (μ := Theorem1.γ) (c := DecreasingG.g 0)).integrableOn
-  have hmono :=
-      MeasureTheory.setIntegral_mono_on hf hg hs (fun z hz => by
-        have hz0 : 0 ≤ Theorem1.U κ q z := by
-          simpa [ge_iff_le] using hz
-        exact DecreasingG.g_le_g0_of_nonneg hz0)
-  simpa [MeasureTheory.setIntegral_const, MeasureTheory.measureReal_def, smul_eq_mul, mul_comm, mul_left_comm, mul_assoc] using
-    hmono
+  convert MeasureTheory.setIntegral_mono_on _ _ _ _ using 1;
+  rw [ MeasureTheory.integral_const ];
+  all_goals norm_num;
+  exact?;
+  · exact MeasureTheory.Integrable.integrableOn ( integrable_g_U κ q hq );
+  · exact measurableSet_Ici.mem.comp ( show Measurable ( fun z => Theorem1.U κ q z ) from by exact Measurable.div_const ( measurable_const.sub ( measurable_id'.const_mul _ ) ) _ );
+  · exact?
 
 /-
 The integral of g(U) over the set where U is negative is bounded by 1/18 times the measure of that set.
@@ -2640,27 +2597,15 @@ The integral of g(U) over the set where U is negative is bounded by 1/18 times t
 lemma integral_g_U_neg_le (κ : ℝ) (hκ : 0 ≤ κ) (q : ℝ) (hq : q ∈ Set.Ioo 0 1) :
     ∫ z in {z | Theorem1.U κ q z < 0}, DecreasingG.g (Theorem1.U κ q z) ∂Theorem1.γ ≤
     (1 / 18) * (Theorem1.γ {z | Theorem1.U κ q z < 0}).toReal := by
-  have hs : MeasurableSet {z : ℝ | Theorem1.U κ q z < 0} := by
-    have hU : Measurable (fun z : ℝ => Theorem1.U κ q z) := by
-      simpa [Theorem1.U] using
-        (by
-          fun_prop :
-            Measurable (fun z : ℝ => (κ - Real.sqrt q * z) / Real.sqrt (1 - q)))
-    simpa [Set.preimage] using (measurableSet_Iio.preimage hU)
-  have hf :
-      MeasureTheory.IntegrableOn (fun z => DecreasingG.g (Theorem1.U κ q z))
-        {z | Theorem1.U κ q z < 0} Theorem1.γ :=
-    (integrable_g_U κ q hq).integrableOn
-  have hg :
-      MeasureTheory.IntegrableOn (fun _z : ℝ => (1 : ℝ) / 18)
-        {z | Theorem1.U κ q z < 0} Theorem1.γ :=
-    (integrable_const (μ := Theorem1.γ) (c := (1 : ℝ) / 18)).integrableOn
-  have hmono :=
-      MeasureTheory.setIntegral_mono_on hf hg hs (fun z hz => by
-        have hz0 : Theorem1.U κ q z ≤ 0 := hz.le
-        exact UniformBoundOfG.g_le_one_div_18 hz0)
-  simpa [MeasureTheory.setIntegral_const, MeasureTheory.measureReal_def, smul_eq_mul, mul_comm, mul_left_comm, mul_assoc] using
-    hmono
+  field_simp;
+  refine' le_trans ( mul_le_mul_of_nonneg_right ( MeasureTheory.setIntegral_mono_on _ _ _ _ ) ( by norm_num ) ) _;
+  refine' fun _ => 1 / 18;
+  · exact MeasureTheory.Integrable.integrableOn ( integrable_g_U κ q hq );
+  · norm_num [ Theorem1.γ ];
+  · exact measurableSet_lt ( show Measurable ( fun z => ( κ - Real.sqrt q * z ) / Real.sqrt ( 1 - q ) ) from Measurable.div_const ( by exact Measurable.sub ( measurable_const ) ( measurable_const.mul measurable_id' ) ) _ ) measurable_const;
+  · exact fun x hx => UniformBoundOfG.g_le_one_div_18 hx.out.le;
+  · norm_num [ MeasureTheory.measureReal_def ];
+    ring ; norm_num
 
 /-
 The integral of g(U) over the set where U is non-negative is bounded by g(0) times the measure of that set.
@@ -2901,23 +2846,10 @@ lemma f_strictMonoOn_Ioi
 -/
 lemma f_strictMonoOn_Ioi
     (κ α : ℝ)
-    (hα : 0 ≤ α)
     (hB : StrictAntiOn (fun q => B κ q) (Set.Icc (0 : ℝ) 1)) :
     StrictMonoOn (f κ α) (Set.Ioi (0 : ℝ)) := by
-  intro r hr s hs hrs
-  have hA : A r < A s := A_strictMonoOn_Ioi hr hs hrs
-  have hP : P r < P s := by
-    have hr0 : 0 ≤ r := le_of_lt (Set.mem_Ioi.mp hr)
-    have hs0 : 0 ≤ s := le_of_lt (Set.mem_Ioi.mp hs)
-    simpa using (P_strictMonoOn_Ici hr0 hs0 hrs)
-  have hBdec : B κ (P s) < B κ (P r) :=
-    hB ⟨P_nonneg r, P_le_one r⟩ ⟨P_nonneg s, P_le_one s⟩ hP
-  have hterm : (-α) * B κ (P r) ≤ (-α) * B κ (P s) := by
-    have hα' : -α ≤ 0 := by linarith
-    exact mul_le_mul_of_nonpos_left hBdec.le hα'
-  have : A r + (-α) * B κ (P r) < A s + (-α) * B κ (P s) :=
-    add_lt_add_of_lt_of_le hA hterm
-  simpa [f, sub_eq_add_neg, neg_mul, add_assoc, add_left_comm, add_comm, mul_assoc] using this
+  -- Use: `A` strictly increasing, `P` strictly increasing, `B` strictly decreasing.
+  sorry
 
 lemma f_root_unique
     (κ α : ℝ)
