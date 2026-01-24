@@ -569,3 +569,267 @@ using first-countability of `ℝ`.
 ===============================================================================================
 End of Theorem 2 blueprint.
 ===============================================================================================
+
+
+Blueprint: Theorem 3 (RS* → -∞ as α ↑ αc)
+==========================================
+
+Target statement in `main.tex`
+------------------------------
+
+This is Theorem `\label{thm: bound for threshold}` in `perceptronFixed/main.tex`
+(around lines 103–118). The proof is in the section
+`Proof of Theorem~\ref{thm:main},\,\ref{thm:2ndmain},\,\ref{thm: bound for threshold}`
+starting at `main.tex` line ~1028.
+
+In paper notation (fix κ ≥ 0):
+
+  RS*(α,κ) := 𝓕κ(α; qα, rα),
+
+where (qα,rα) is the unique solution to the fixed point system for α < αc(κ),
+and the theorem states:
+
+  lim_{α ↑ αc(κ)} RS*(α,κ) = -∞.
+
+In your notation this is the desired “fRS(α) → -∞ as α → αc from below”.
+
+--------------------------------------------------------------------------------
+
+0. Definitions to have in Lean (match main.tex)
+-----------------------------------------------
+
+Fix κ : ℝ with κ ≥ 0.
+
+1) Standard Gaussian Z:
+   Work with either
+     (a) a random variable Z : Ω → ℝ with law N(0,1), or
+     (b) directly the Gaussian measure γ on ℝ.
+   (The project already uses both styles in different files.)
+
+2) Fixed point system (already defined in `perceptronFixed/Theorem1/Theorem.lean`):
+   P(r) := 𝔼[tanh(√r Z)^2]
+   U(κ,q,Z) := (κ - √q Z) / √(1-q)
+   B(κ,q) := (1-q) 𝔼[ E(U(κ,q,Z))^2 ]   (E is inverse Mills ratio)
+   r = α * B(κ,q) / (1-q)^2
+   q = P(r)
+   (Paper writes this as `q = P(r)`, `r = Rκ(q,α)` and then rewrites R using B.)
+
+3) RS functional 𝓕κ (paper equation (RSfunctional), `main.tex` line ~106):
+   𝓕κ(α;q,r) :=
+       - r(1-q)/2
+       + 𝔼[ log(2 cosh(√r Z)) ]
+       + α 𝔼[ log Φ̄( (κ - √q Z)/√(1-q) ) ].
+
+4) RS*(α,κ) := 𝓕κ(α; qα, rα) for the (unique) solution (qα,rα).
+
+Lean note: In the proof we will use the split
+  log(2 cosh x) = log 2 + log(cosh x),
+so RS* = log 2 - r(1-q)/2 + 𝔼[log(cosh(√r Z))] + α⋯
+as in `main.tex` lines 1045–1050.
+
+--------------------------------------------------------------------------------
+
+1. Dependencies already available (and where)
+---------------------------------------------
+
+(A) Hyperbolic identities / P,S:
+  - `PropAP.tanh_sq_add_sech_sq` and `PropAP.sech_sq_eq_one_sub_tanh_sq`
+  - `PropAP.S_eq_one_sub_P`
+  File: `perceptronFixed/Prop_A_P/Prop_A_P.lean`
+
+(B) Mills ratio / tail bounds infrastructure:
+  - `MillsBlueprint.Proof.Φbar_eq_phi_div_sub_integral` (gives Φ̄(u) ≤ φ(u)/u for u>0)
+  - `MillsBlueprint.Proof.E_le_add_inv` (u>0 ⇒ E(u) ≤ u + 1/u)
+  - `MillsBlueprint.Proof.E_le_inv_Φbar_one_of_le_one` (u ≤ 1 ⇒ E(u) bounded by constant)
+  File: `perceptronFixed/derivative_of_B/derivative_B.lean`
+
+(C) Chernoff/MGF for Gaussian (Mathlib):
+  - `ProbabilityTheory.mgf_id_gaussianReal` / `ProbabilityTheory.mgf_fun_id_gaussianReal`
+    File: `Mathlib/Probability/Distributions/Gaussian/Real.lean`
+  - Chernoff bound lemma `MomentGeneratingFunction.measure_ge_le_exp_mul_mgf`
+    File: `Mathlib/Probability/Moments/Basic.lean`
+
+(D) Integration by parts on ℝ (Mathlib):
+  - `MeasureTheory.integral_mul_deriv_eq_deriv_mul` (improper IBP on (-∞,∞))
+  File: `Mathlib/MeasureTheory/Integral/IntegralEqImproper.lean`
+
+(D) Theorem 1 and Theorem 2 inputs (paper prerequisites):
+  - Existence/uniqueness of (qα,rα) for α < αc(κ)
+  - As α ↑ αc(κ): qα → 1 and rα → +∞
+  File (scaffold): `perceptronFixed/Theorem1/Theorem.lean`
+  These correspond to `main.tex` Theorem `\ref{thm:main}` and `\ref{thm:2ndmain}`.
+
+--------------------------------------------------------------------------------
+
+2. Proof outline (Lean-friendly, follows `main.tex` proof)
+----------------------------------------------------------
+
+We follow `main.tex` lines ~1028–1192.
+
+Step 2.1 (Sequence reduction).
+  Let αₙ be any sequence with αₙ ↑ αc(κ) and αₙ < αc(κ).
+  Define (qₙ,rₙ) := (q_{αₙ}, r_{αₙ}) and εₙ := 1 - qₙ.
+
+  From Theorem 2 (`thm:2ndmain`):
+    εₙ → 0,   rₙ → +∞.
+
+  From the fixed point equations (Theorem 1, `thm:main`):
+    (FP1) qₙ = 𝔼[tanh(√rₙ Z)^2]
+    (FP2) rₙ = αₙ * B(κ,qₙ) / εₙ^2.
+
+  Define also:
+    Uₙ := (κ - √qₙ Z) / √εₙ
+    Aₙ := 𝔼[(κ - √qₙ Z)_+^2].
+
+Step 2.2 (Rewrite RS* at (qₙ,rₙ)).
+  Expand 𝓕κ and split the `log(2cosh)` term:
+    RS*(αₙ,κ)
+      = log 2
+        - (rₙ εₙ)/2
+        + 𝔼[log(cosh(√rₙ Z))]
+        + αₙ 𝔼[ log Φ̄(Uₙ) ].
+
+Step 2.3 (Bound the “spin” term).
+  Goal: bound
+      - (rₙ εₙ)/2 + 𝔼[log(cosh(√rₙ Z))]
+  from above by  (αₙ/(2εₙ)) * B(κ,qₙ).
+
+  Substep (S1): pointwise inequality on ℝ:
+    log(cosh x) ≤ x * tanh x.
+    (This is the lemma used at `main.tex` line 1052.)
+    Lean proof idea:
+      define f(x) := x*tanh x - log(cosh x),
+      show f(0)=0 and f'(x)= x*sech(x)^2 ≥ 0, and note f is even.
+
+  Substep (S2): Gaussian integration by parts (Stein identity) for Z~N(0,1):
+    𝔼[ Z * tanh(√r Z) ] = √r * 𝔼[ sech(√r Z)^2 ].
+    Lean:
+      use `φ'(z) = -z φ(z)` and integrate by parts on ℝ, e.g. via
+      `MeasureTheory.integral_mul_deriv_eq_deriv_mul` from
+      `Mathlib/MeasureTheory/Integral/IntegralEqImproper.lean`.
+
+  Substep (S3): identify 𝔼[sech(√rₙ Z)^2].
+    Using `PropAP.S_eq_one_sub_P` and (FP1),
+      𝔼[sech(√rₙ Z)^2] = 1 - 𝔼[tanh(√rₙ Z)^2] = 1 - qₙ = εₙ.
+
+  Combine:
+    𝔼[log(cosh(√rₙ Z))]
+      ≤ √rₙ 𝔼[ Z * tanh(√rₙ Z) ]
+      = rₙ 𝔼[sech(√rₙ Z)^2]
+      = rₙ εₙ,
+  hence
+    - (rₙ εₙ)/2 + 𝔼[log(cosh(√rₙ Z))] ≤ (rₙ εₙ)/2.
+
+  Substitute (FP2): rₙ εₙ / 2 = (αₙ/(2εₙ)) * B(κ,qₙ).
+
+Step 2.4 (Constraint term: upper bound on 𝔼[log Φ̄(Uₙ)]).
+  Fix any δ ∈ (0,1).
+
+  Substep (C1): event where Uₙ is large positive.
+    Since qₙ → 1, for all large n, √qₙ ≥ 1/2.
+    On the event {Z ≤ κ - δ}:
+      κ - √qₙ Z ≥ κ - √qₙ(κ-δ) = κ(1-√qₙ) + √qₙ δ ≥ δ/2,
+    so Uₙ ≥ δ/(2√εₙ) > 0 on {Z ≤ κ-δ}.
+
+  Substep (C2): two tail bounds for Φ̄(u) for u>0.
+    (i) Chernoff bound:
+        Φ̄(u) = P(Z ≥ u) ≤ exp(-u^2/2).
+        (Use Mathlib: mgf for gaussian + Chernoff lemma.)
+        Hence log Φ̄(u) ≤ -u^2/2.
+
+    (ii) One-sided Mills bound:
+        Φ̄(u) ≤ φ(u)/u  (u>0),
+        where φ(u) = exp(-u^2/2)/sqrt(2π).
+        (Derive from `MillsBlueprint.Proof.Φbar_eq_phi_div_sub_integral`.)
+        Then Φ̄(u) ≤ u^{-1} exp(-u^2/2), hence
+          log Φ̄(u) ≤ -u^2/2 - log u.
+
+    Also always log Φ̄(u) ≤ 0.
+
+  Substep (C3): pointwise bound for log Φ̄(Uₙ).
+    For large n, using (C1) to know Uₙ>0 on {Z≤κ-δ}:
+      log Φ̄(Uₙ)
+        ≤ -(Uₙ^2)/2 * 1_{Uₙ>0}
+          - (log Uₙ) * 1_{Z ≤ κ-δ}.
+    (This matches `main.tex` lines 1097–1103.)
+
+  Substep (C4): take expectations.
+    Note: Uₙ^2 * 1_{Uₙ>0} = εₙ^{-1} (κ - √qₙ Z)_+^2, so
+      𝔼[ -(Uₙ^2)/2 * 1_{Uₙ>0} ] = - Aₙ/(2εₙ).
+
+    On {Z≤κ-δ}:
+      log Uₙ = log(κ - √qₙ Z) - (1/2) log εₙ,
+    hence
+      -𝔼[(log Uₙ) 1_{Z≤κ-δ}]
+        = (Φ(κ-δ)/2) * log εₙ
+          - 𝔼[ log(κ - √qₙ Z) * 1_{Z≤κ-δ} ].
+
+    Since κ - √qₙ Z ≥ δ/2 on this event for large n,
+      log(κ - √qₙ Z) ≥ log(δ/2),
+    so the negative expectation term is bounded above by the constant
+      C(δ) := -log(δ/2).
+
+    Conclusion (paper eq. (constraint_bd...)):
+      𝔼[log Φ̄(Uₙ)]
+        ≤ -Aₙ/(2εₙ) + (Φ(κ-δ)/2) log εₙ + C(δ).
+
+Step 2.5 (Compare B(κ,qₙ) and Aₙ, and bound B-A).
+  Recall
+    B(κ,qₙ) = εₙ * 𝔼[ E(Uₙ)^2 ],
+    Aₙ      = εₙ * 𝔼[ (Uₙ)_+^2 ].
+
+  Substep (BA1): pointwise inequality E(u)^2 ≥ (u_+)^2.
+    - For u>0: from Φ̄(u) ≤ φ(u)/u we get E(u)=φ/Φ̄ ≥ u, hence E(u)^2 ≥ u^2 = (u_+)^2.
+    - For u≤0: (u_+)^2 = 0 ≤ E(u)^2 since squares are nonnegative.
+    Therefore B(κ,qₙ) ≥ Aₙ, hence B(κ,qₙ) - Aₙ ≥ 0.
+
+  Substep (BA2): uniform bound on the gap.
+    Show: ∃ C0, ∀ u, 0 ≤ E(u)^2 - (u_+)^2 ≤ C0.
+    (This is `main.tex` lines 1143–1156; it is a pure 1D inequality.)
+    Proof by cases:
+      • u ≤ 0:
+        Φ̄(u) ≥ 1/2, φ(u) ≤ φ(0) ⇒ E(u) ≤ 2φ(0) = √(2/π),
+        so E(u)^2 - (u_+)^2 = E(u)^2 ≤ 2/π.
+      • u ≥ 1:
+        use `E(u) ≤ u + 1/u` (Lemma `MillsBlueprint.Proof.E_le_add_inv`),
+        so 0 ≤ E(u)^2 - u^2 ≤ (u+1/u)^2 - u^2 = 2 + 1/u^2 ≤ 3.
+      • u ∈ [0,1]:
+        continuity of u ↦ (E(u)^2 - u^2) gives boundedness on compact.
+    Let C0 be a max of the three bounds.
+
+    Then
+      0 ≤ B(κ,qₙ) - Aₙ
+        = εₙ * 𝔼[ E(Uₙ)^2 - (Uₙ)_+^2 ]
+        ≤ εₙ * C0
+    so (B(κ,qₙ)-Aₙ)/εₙ ≤ C0.
+
+Step 2.6 (Combine all bounds into RS* ≤ (const)*log εₙ + O(1)).
+  Use Step 2.3 and Step 2.4:
+
+    RS*(αₙ,κ)
+      ≤ log 2
+        + (αₙ/(2εₙ)) B(κ,qₙ)
+        + αₙ[ -Aₙ/(2εₙ) + (Φ(κ-δ)/2) log εₙ + C(δ) ].
+
+  Rearrange:
+    RS*(αₙ,κ)
+      ≤ (αₙ Φ(κ-δ)/2) log εₙ
+        + log 2
+        + (αₙ/(2εₙ)) (B(κ,qₙ) - Aₙ)
+        + αₙ C(δ).
+
+  Apply Step 2.5 (BA2) and αₙ ≤ αc(κ) for large n:
+    (αₙ/(2εₙ))(B-A) ≤ (C0 αc(κ))/2,
+    αₙ C(δ) ≤ αc(κ) C(δ).
+
+  Therefore
+    RS*(αₙ,κ) ≤ (αₙ Φ(κ-δ)/2) log εₙ + CONST(κ,δ),
+  where the constant does not depend on n.
+
+Step 2.7 (Conclude divergence to -∞).
+  Since εₙ → 0, we have log εₙ → -∞.
+  Also αₙ → αc(κ) and αc(κ) > 0; and Φ(κ-δ) > 0.
+  Hence the right-hand side tends to -∞, so RS*(αₙ,κ) → -∞.
+
+  Since the sequence αₙ ↑ αc(κ) was arbitrary, this proves
+    lim_{α ↑ αc(κ)} RS*(α,κ) = -∞.

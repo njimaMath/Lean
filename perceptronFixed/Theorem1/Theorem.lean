@@ -1,154 +1,11 @@
-/-
-This file was edited by Aristotle.
 
-Lean version: leanprover/lean4:v4.24.0
-Mathlib version: f897ebcf72cd16f89ab4577d0c826cd14afaafc7
-This project request had uuid: dc3bebd7-d001-4964-b6b8-e128bf944ee5
-
-To cite Aristotle, tag @Aristotle-Harmonic on GitHub PRs/issues, and add as co-author to commits:
-Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
-
-The following was proved by Aristotle:
-
-- lemma B_continuousOn (κ : ℝ) : ContinuousOn (fun q => B κ q) (Set.Iio (1 : ℝ))
-
-- lemma tendsto_B_atOne_left (κ : ℝ) :
-    Tendsto (fun q => B κ q) (𝓝[<] (1 : ℝ)) (𝓝 (Cκ κ))
-
-- theorem B_strictAntiOn_Icc (κ : ℝ) (hκ : 0 ≤ κ) :
-    StrictAntiOn (fun q => B κ q) (Set.Icc (0 : ℝ) 1)
-
-- lemma f_continuousOn_Ici (κ α : ℝ) : ContinuousOn (f κ α) (Set.Ici (0 : ℝ))
-
-- lemma f_zero (κ α : ℝ) : f κ α 0 = -α * (B κ 0)
-
-- lemma f_zero_neg (κ α : ℝ) (hα : 0 < α) : f κ α 0 < 0
-
-- lemma tendsto_B_comp_P_atTop (κ : ℝ) :
-    Tendsto (fun r => B κ (P r)) atTop (𝓝 (Cκ κ))
-
-- lemma tendsto_f_atTop (κ α : ℝ) :
-    Tendsto (f κ α) atTop (𝓝 ((2 : ℝ) / Real.pi - α * Cκ κ))
-
-- lemma f_root_unique
-    (κ α : ℝ)
-    (hB : StrictAntiOn (fun q => B κ q) (Set.Icc (0 : ℝ) 1)) :
-    ∀ {r₁ r₂ : ℝ}, r₁ ∈ Set.Ioi 0 → r₂ ∈ Set.Ioi 0 → f κ α r₁ = 0 → f κ α r₂ = 0 → r₁ = r₂
-
-- lemma exists_root_of_alpha_lt_alpha_c
-    (κ α : ℝ)
-    (hα0 : 0 < α)
-    (hα : α < αc κ)
-    (hB : StrictAntiOn (fun q => B κ q) (Set.Icc (0 : ℝ) 1)) :
-    ∃ r : ℝ, r ∈ Set.Ioi (0 : ℝ) ∧ f κ α r = 0
-
-- lemma existsUnique_r_of_alpha_lt_alpha_c
-    (κ α : ℝ)
-    (hα0 : 0 < α)
-    (hα : α < αc κ)
-    (hB : StrictAntiOn (fun q => B κ q) (Set.Icc (0 : ℝ) 1)) :
-    ∃! r : ℝ, r ∈ Set.Ioi (0 : ℝ) ∧ f κ α r = 0
-
-- lemma existsUnique_solution_of_alpha_lt_alpha_c
-    (κ α : ℝ)
-    (hκ : 0 ≤ κ)
-    (hα0 : 0 < α)
-    (hα : α < αc κ)
-    (hB : StrictAntiOn (fun q => B κ q) (Set.Icc (0 : ℝ) 1)) :
-    ∃! qr : ℝ × ℝ, IsSolution κ α qr.1 qr.2
-
-- lemma no_solution_of_alpha_ge_alpha_c
-    (κ α : ℝ)
-    (hκ : 0 ≤ κ)
-    (hα : αc κ ≤ α)
-    (hB : StrictAntiOn (fun q => B κ q) (Set.Icc (0 : ℝ) 1)) :
-    ¬ ∃ q r : ℝ, IsSolution κ α q r
-
-- lemma qSol_spec (κ α : ℝ) (hκ : 0 ≤ κ) (hα0 : 0 < α) (hα : α < αc κ) :
-    0 ≤ qSol κ α hκ hα0 hα ∧
-      qSol κ α hκ hα0 hα < 1 ∧
-      0 ≤ rSol κ α hκ hα0 hα ∧
-      qSol κ α hκ hα0 hα = P (rSol κ α hκ hα0 hα) ∧
-      rSol κ α hκ hα0 hα = R κ (qSol κ α hκ hα0 hα) α
-
-- lemma tendsto_q_of_tendsto_r
-    {κ : ℝ} {α : ℕ → ℝ}
-    (r : ℕ → ℝ)
-    (q : ℕ → ℝ)
-    (hq : ∀ n, q n = P (r n))
-    (hr : Tendsto r atTop atTop) :
-    Tendsto q atTop (𝓝 (1 : ℝ))
-
-- lemma exists_frequently_le_of_not_tendsto_atTop
-    (r : ℕ → ℝ)
-    (hnot : ¬ Tendsto r atTop atTop) :
-    ∃ R : ℝ, (∃ᶠ n in atTop, r n ≤ R)
-
-- lemma exists_subseq_tendsto_of_frequently_bounded
-    {r : ℕ → ℝ} {R : ℝ}
-    (hfreq : ∃ᶠ n in atTop, r n ∈ Set.Icc (0 : ℝ) R) :
-    ∃ rStar ∈ Set.Icc (0 : ℝ) R, ∃ φ : ℕ → ℕ,
-      StrictMono φ ∧ Tendsto (r ∘ φ) atTop (𝓝 rStar)
-
-- lemma solution_at_alpha_c_of_bounded_subseq
-    (κ : ℝ) (hκ : 0 ≤ κ)
-    (α : ℕ → ℝ)
-    (hα : ∀ n, 0 < α n ∧ α n < αc κ)
-    (hlim : Tendsto α atTop (𝓝 (αc κ)))
-    (R : ℝ)
-    (hfreq : ∃ᶠ n in atTop, rSol κ (α n) hκ (hα n).1 (hα n).2 ∈ Set.Icc (0 : ℝ) R) :
-    ∃ qStar rStar : ℝ, IsSolution κ (αc κ) qStar rStar
-
-- theorem theorem_second_main_seq
-    (κ : ℝ) (hκ : 0 ≤ κ)
-    (α : ℕ → ℝ)
-    (hα : ∀ n, 0 < α n ∧ α n < αc κ)
-    (hlim : Tendsto α atTop (𝓝 (αc κ))) :
-    (Tendsto (fun n => rSol κ (α n) hκ (hα n).1 (hα n).2) atTop atTop) ∧
-      Tendsto (fun n => qSol κ (α n) hκ (hα n).1 (hα n).2) atTop (𝓝 (1 : ℝ))
-
-The following was negated by Aristotle:
-
-- lemma f_strictMonoOn_Ioi
-    (κ α : ℝ)
-    (hB : StrictAntiOn (fun q => B κ q) (Set.Icc (0 : ℝ) 1)) :
-    StrictMonoOn (f κ α) (Set.Ioi (0 : ℝ))
-
-Here is the code for the `negate_state` tactic, used within these negations:
-
-```lean
-import Mathlib
-open Lean Meta Elab Tactic in
-elab "revert_all" : tactic => do
-  let goals ← getGoals
-  let mut newGoals : List MVarId := []
-  for mvarId in goals do
-    newGoals := newGoals.append [(← mvarId.revertAll)]
-  setGoals newGoals
-
-open Lean.Elab.Tactic in
-macro "negate_state" : tactic => `(tactic|
-  (
-    guard_goal_nums 1
-    revert_all
-    refine @(((by admit) : ∀ {p : Prop}, ¬p → p) ?_)
-    try (push_neg; guard_goal_nums 1)
-  )
-)
-```
-
-
-
-At Harmonic, we use a modified version of the `generalize_proofs` tactic.
-For compatibility, we include this tactic at the start of the file.
-If you add the comment "-- Harmonic `generalize_proofs` tactic" to your file, we will not do this.
--/
 
 import Mathlib
 
 import perceptronFixed.conditionalGaussianMoments.CGM
 import perceptronFixed.decreasing_g.decreasing_g
 import perceptronFixed.derivative_of_B.derivative_B
+import perceptronFixed.Prop_A_P.Prop_A_P
 import perceptronFixed.rational_function_bound.RatioBound
 import perceptronFixed.uniform_bound_of_g.uniform_bound_of_g
 
@@ -1868,7 +1725,7 @@ lemma E_sq_le_poly (u : ℝ) : (Theorem1.E u)^2 ≤ 2 * u^2 + 4 := by
             rw [ MeasureTheory.integral_div, MeasureTheory.integral_Ici_eq_integral_Ioi ];
             rw [ div_eq_iff ( by positivity ) ] ; have := integral_gaussian_Ioi ( 1 / 2 ) ; norm_num [ div_eq_inv_mul ] at * ; linarith;
           convert h_Φbar_zero using 1;
-        exact div_le_div_of_nonneg_left ( by exact le_of_lt ( by exact? ) ) ( by positivity ) ( by linarith );
+        exact div_le_div_of_nonneg_left (by exact le_of_lt (by positivity)) (by positivity) (by linarith);
       convert h_E_le_2phi using 1 ; ring;
     -- Since $\varphi(u) \leq \frac{1}{\sqrt{2\pi}}$, we have $2\varphi(u) \leq \frac{2}{\sqrt{2\pi}} < 1$.
     have h_phi_le_one : φ u ≤ 1 / Real.sqrt (2 * Real.pi) := by
@@ -1931,7 +1788,7 @@ lemma integral_E_sq_continuousAt (κ : ℝ) (q₀ : ℝ) (hq₀ : q₀ < 1) :
           · refine' abs_le.mpr ⟨ _, _ ⟩ <;> cases abs_cases κ <;> cases abs_cases z <;> nlinarith [ hq.1, hq.2, show Real.sqrt q ≥ 0 by positivity, show Real.sqrt q ≤ 1 by rw [ Real.sqrt_le_left ] <;> linarith [ hq.1, hq.2 ] ];
           · linarith [ hq.1, hq.2 ];
         have h_E_bound : ∀ u : ℝ, (Theorem1.E u)^2 ≤ 2 * u^2 + 4 := by
-          exact?;
+          exact E_sq_le_poly;
         exact le_trans ( by rw [ Real.norm_of_nonneg ( sq_nonneg _ ) ] ) ( le_trans ( h_E_bound _ ) ( add_le_add ( mul_le_mul_of_nonneg_left ( by simpa using pow_le_pow_left₀ ( abs_nonneg _ ) h_U_bound 2 ) zero_le_two ) le_rfl ) );
       · -- The function $2 * (1 / \sqrt{1 - (q₀ + (1 - q₀) / 2)} * (|κ| + |z|))^2 + 4$ is integrable because it is a polynomial in $|z|$.
         have h_integrable : MeasureTheory.Integrable (fun z => |z|^2) Theorem1.γ := by
@@ -1963,7 +1820,7 @@ lemma integral_E_sq_continuousAt (κ : ℝ) (q₀ : ℝ) (hq₀ : q₀ < 1) :
                   · norm_num [ ProbabilityTheory.gaussianPDF, mul_comm ];
                     congr! 2;
                     ext; rw [ ← ENNReal.ofReal_mul ( by positivity ) ] ; norm_num [ ProbabilityTheory.gaussianPDFReal ] ; ring;
-                  · exact?;
+                  · exact ProbabilityTheory.measurable_gaussianPDF (μ := (0 : ℝ)) (v := (1 : ℝ≥0));
                   · exact Measurable.ennreal_ofReal ( measurable_id.pow_const 2 );
                 · exact Filter.Eventually.of_forall fun x => by positivity;
                 · exact Continuous.aestronglyMeasurable ( by continuity );
@@ -1983,8 +1840,9 @@ lemma integral_E_sq_continuousAt (κ : ℝ) (q₀ : ℝ) (hq₀ : q₀ < 1) :
         refine' Filter.Tendsto.comp ( _ : Filter.Tendsto ( fun u => Theorem1.E u ) _ _ ) _;
         exact nhds ( Theorem1.U κ q₀ z );
         · -- The inverse Mills ratio $E(u)$ is continuous.
-          have h_E_cont : Continuous E := by
-            exact?;
+        have h_E_cont : Continuous E := by
+            simpa [Theorem1.E, UniformBoundOfG.E] using
+              (UniformBoundOfG.E_continuous : Continuous UniformBoundOfG.E);
           exact h_E_cont.tendsto _;
         · refine' Filter.Tendsto.div _ _ _ <;> norm_num [ Theorem1.U ];
           · exact Filter.Tendsto.sub tendsto_const_nhds ( Filter.Tendsto.mul ( Real.continuous_sqrt.tendsto q₀ ) tendsto_const_nhds );
@@ -2011,7 +1869,7 @@ lemma Theorem1.E_le_max_u_zero_add_two (u : ℝ) : Theorem1.E u ≤ max u 0 + 2 
         (add_le_add_left (DecreasingG.d_le_d0_of_nonneg hu) u)
     have h_d0_le_2 : DecreasingG.d 0 ≤ 1 := by
       have h_d0_le_1 : DecreasingG.d 0 = Real.sqrt (2 / Real.pi) := by
-        exact?;
+        exact DecreasingG.d0_eq_sqrt_two_div_pi;
       exact h_d0_le_1 ▸ Real.sqrt_le_iff.mpr ⟨ by positivity, by rw [ div_le_iff₀ ( by positivity ) ] ; linarith [ Real.pi_gt_three ] ⟩;
     linarith [ le_max_left u 0, le_max_right u 0 ];
   · -- For $u < 0$, we have $E(u) = \frac{\varphi(u)}{\bar{\Phi}(u)} \leq \frac{\varphi(u)}{\bar{\Phi}(0)} = \frac{\varphi(u)}{1/2} = 2\varphi(u)$.
@@ -2051,7 +1909,7 @@ lemma Theorem1.E_asymp_atTop : Filter.Tendsto (fun u => Theorem1.E u / u) Filter
     have h_bound : ∀ u ≥ 0, |DecreasingG.d u / u| ≤ DecreasingG.d 0 / u := by
       intros u hu
       have h_d_le_d0 : DecreasingG.d u ≤ DecreasingG.d 0 := by
-        exact?;
+        exact DecreasingG.d_le_d0_of_nonneg hu;
       rw [ abs_of_nonneg ( div_nonneg ( le_of_lt ( DecreasingG.d_pos u ) ) hu ) ] ; gcongr;
     -- Since $d(0) / u \to 0$ as $u \to \infty$, we can apply the squeeze theorem.
     have h_squeeze : Filter.Tendsto (fun u => DecreasingG.d 0 / u) Filter.atTop (nhds 0) := by
@@ -2122,13 +1980,13 @@ lemma Theorem1.tendsto_U_atBot (κ z : ℝ) (h : κ < z) :
 lemma Theorem1.integrand_limit_of_gt (κ z : ℝ) (h : z < κ) :
     Filter.Tendsto (fun q => (1 - q) * (Theorem1.E (Theorem1.U κ q z))^2) (nhdsWithin 1 (Set.Iio 1)) (nhds ((κ - z)^2)) := by
       have h_U_atTop : Filter.Tendsto (fun q => (1 - q) * (Theorem1.U κ q z) ^ 2) (𝓝[<] 1) (nhds ((κ - z) ^ 2)) := by
-        exact?;
+        exact Theorem1.limit_one_sub_q_mul_U_sq κ z;
       -- By Lemma `tendsto_E_over_u_atTop`, `E (U κ q z) / U κ q z` tends to `1` as `q` approaches `1` from the left.
       have h_E_over_u_atTop : Filter.Tendsto (fun q => Theorem1.E (Theorem1.U κ q z) / Theorem1.U κ q z) (𝓝[<] 1) (nhds 1) := by
         have h_E_over_u_atTop : Filter.Tendsto (fun u => Theorem1.E u / u) Filter.atTop (nhds 1) := by
-          exact?;
+          exact Theorem1.E_asymp_atTop;
         refine h_E_over_u_atTop.comp ?_;
-        exact?;
+        exact Theorem1.tendsto_U_atTop κ z h;
       -- By combining the results from `h_U_atTop` and `h_E_over_u_atTop`, we get the desired limit.
       have h_combined : Filter.Tendsto (fun q => ((1 - q) * (Theorem1.U κ q z) ^ 2) * ((Theorem1.E (Theorem1.U κ q z) / Theorem1.U κ q z) ^ 2)) (𝓝[<] 1) (nhds ((κ - z) ^ 2 * 1 ^ 2)) := by
         simpa using h_U_atTop.mul ( h_E_over_u_atTop.pow 2 );
@@ -2143,7 +2001,7 @@ lemma Theorem1.integrand_limit_of_lt (κ z : ℝ) (h : κ < z) :
         have h_E_zero : Filter.Tendsto (fun q => Theorem1.E (Theorem1.U κ q z)) (nhdsWithin 1 (Set.Iio 1)) (nhds 0) := by
           have h_E_zero : Filter.Tendsto (fun q => Theorem1.E (Theorem1.U κ q z)) (nhdsWithin 1 (Set.Iio 1)) (nhds 0) := by
             have h_U_neg_inf : Filter.Tendsto (fun q => Theorem1.U κ q z) (nhdsWithin 1 (Set.Iio 1)) Filter.atBot := by
-              exact?
+              exact Theorem1.tendsto_U_atBot κ z h
             convert Theorem1.tendsto_E_atBot.comp h_U_neg_inf using 1;
           convert h_E_zero using 1
         convert Filter.Tendsto.mul ( tendsto_const_nhds.sub ( Filter.tendsto_id.mono_left inf_le_left ) ) ( h_E_zero.pow 2 ) using 2 ; norm_num;
@@ -2162,7 +2020,10 @@ lemma Theorem1.integrand_limit_of_eq (κ z : ℝ) (h : κ = z) :
               filter_upwards [ Ioo_mem_nhdsLT zero_lt_one ] with q hq using by rw [ div_eq_div_iff ] <;> nlinarith [ Real.sqrt_nonneg q, Real.sq_sqrt ( show 0 ≤ q by linarith [ hq.1 ] ), Real.sqrt_nonneg ( 1 - q ), Real.sq_sqrt ( show 0 ≤ 1 - q by linarith [ hq.2 ] ), hq.1, hq.2 ] ;
             exact tendsto_nhdsWithin_of_tendsto_nhds ( by simpa using Filter.Tendsto.div ( Continuous.tendsto ( show Continuous fun q => Real.sqrt ( 1 - q ) from Real.continuous_sqrt.comp <| continuous_const.sub continuous_id' ) 1 ) ( Continuous.tendsto ( show Continuous fun q => 1 + Real.sqrt q from continuous_const.add <| Real.continuous_sqrt ) 1 ) <| by norm_num );
           convert h_U_zero.const_mul κ using 2 <;> push_cast [ h, Theorem1.U ] <;> ring;
-        exact Filter.Tendsto.comp ( show Filter.Tendsto ( fun u => Theorem1.E u ) ( nhds 0 ) ( nhds ( Theorem1.E 0 ) ) from by exact ContinuousAt.tendsto ( show ContinuousAt ( fun u => Theorem1.E u ) 0 from by exact Continuous.continuousAt ( by exact Continuous.div ( by exact? ) ( by exact? ) fun u => by exact ne_of_gt <| by exact? ) ) ) h_E_lim;
+        have h_E_cont : Continuous E := by
+          simpa [Theorem1.E, UniformBoundOfG.E] using
+            (UniformBoundOfG.E_continuous : Continuous UniformBoundOfG.E);
+        exact h_E_cont.continuousAt.tendsto.comp h_E_lim;
       convert Filter.Tendsto.mul ( tendsto_const_nhds.sub ( Filter.tendsto_id.mono_left inf_le_left ) ) ( h_E_lim.pow 2 ) using 2 ; norm_num
 
 lemma Theorem1.tendsto_U_zero_of_eq (κ z : ℝ) (h : κ = z) :
@@ -2178,7 +2039,7 @@ lemma Theorem1.tendsto_U_zero_of_eq (κ z : ℝ) (h : κ = z) :
         convert h_subst.const_mul ( z : ℝ ) using 2 ; ring!;
         · unfold Theorem1.U; ring;
           rw [ h ] ; ring;
-        · exact?;
+        · ring;
       -- Rationalize the denominator: $\frac{1 - y}{\sqrt{1 - y^2}} = \frac{(1 - y)\sqrt{1 - y^2}}{1 - y^2} = \frac{\sqrt{1 - y^2}}{1 + y}$.
       suffices h_rationalize : Filter.Tendsto (fun y => Real.sqrt (1 - y^2) / (1 + y)) (𝓝[<] 1) (𝓝 0) by
         grind;
@@ -2197,7 +2058,15 @@ lemma Theorem1.integrand_bound (κ : ℝ) : Filter.Eventually (fun q => ∀ z, (
   refine' Filter.eventually_of_mem ( Ioo_mem_nhdsLT zero_lt_one ) fun q hq z => _;
   -- Applying the bound $E(u) \leq |u| + 2$ to $u = U(\kappa, q, z)$, we get $E(U(\kappa, q, z))^2 \leq (|U(\kappa, q, z)| + 2)^2$.
   have h_E_bound : Theorem1.E (Theorem1.U κ q z) ^ 2 ≤ (|Theorem1.U κ q z| + 2) ^ 2 := by
-    exact pow_le_pow_left₀ ( le_of_lt ( by exact? ) ) ( le_trans ( this _ ) ( by cases max_cases ( Theorem1.U κ q z ) 0 <;> cases abs_cases ( Theorem1.U κ q z ) <;> linarith ) ) _;
+    exact
+      pow_le_pow_left₀
+        (le_of_lt (by
+          simpa [Theorem1.E] using (DecreasingG.E_pos (Theorem1.U κ q z))))
+        (le_trans (this _) (by
+          cases max_cases (Theorem1.U κ q z) 0 <;>
+            cases abs_cases (Theorem1.U κ q z) <;>
+            linarith))
+        _;
   -- Expanding the right-hand side, we get $(|U(\kappa, q, z)| + 2)^2 \leq 2U(\kappa, q, z)^2 + 8$.
   have h_expand : (|Theorem1.U κ q z| + 2) ^ 2 ≤ 2 * (Theorem1.U κ q z) ^ 2 + 8 := by
     nlinarith only [ sq_nonneg ( |Theorem1.U κ q z| - 2 ), abs_mul_abs_self ( Theorem1.U κ q z ) ];
@@ -2216,7 +2085,7 @@ lemma tendsto_B_atOne_left (κ : ℝ) :
   -- `q → 1-` limit gives `Cκ` (main.tex Lemma `B_endpoints`).
   convert MeasureTheory.tendsto_integral_filter_of_dominated_convergence _ _ _ _ _ using 1;
   rotate_left;
-  exact?;
+  exact Filter.eventually_of_forall (fun z => Theorem1.integrand_limit κ z);
   use fun q z => ( 1 - q ) * ( Theorem1.E ( Theorem1.U κ q z ) ) ^ 2;
   use fun z => 4 * ( κ^2 + z^2 ) + 100;
   · refine' Filter.eventually_of_mem self_mem_nhdsWithin fun n hn => Measurable.aestronglyMeasurable _;
@@ -2230,14 +2099,15 @@ lemma tendsto_B_atOne_left (κ : ℝ) :
     · -- The function Φbar is continuous, and the composition of continuous functions is continuous.
       have h_cont : Continuous (fun z => DecreasingG.Φbar (Theorem1.U κ n z)) := by
         have h_cont : Continuous (fun u => DecreasingG.Φbar u) := by
-          exact?;
+          simpa [UniformBoundOfG.Φbar] using
+            (UniformBoundOfG.Φbar_continuous : Continuous UniformBoundOfG.Φbar);
         refine' h_cont.comp _;
         exact Continuous.div ( continuous_const.sub ( continuous_const.mul continuous_id' ) ) ( continuous_const ) fun x => ne_of_gt ( Real.sqrt_pos.mpr ( by linarith [ hn.out ] ) );
       exact h_cont.measurable;
   · filter_upwards [ Ioo_mem_nhdsLT zero_lt_one ] with q hq using Filter.Eventually.of_forall fun z => by rw [ Real.norm_of_nonneg ( mul_nonneg ( sub_nonneg.2 hq.2.le ) ( sq_nonneg _ ) ) ] ; exact (by
     -- By definition of $E$, we know that $E(u) \leq \max(u, 0) + 2$.
     have h_E_bound : ∀ u : ℝ, Theorem1.E u ≤ max u 0 + 2 := by
-      exact?;
+      exact Theorem1.E_le_max_u_zero_add_two;
     -- Substitute the bound for $E(U)$ into the inequality.
     have h_subst : (1 - q) * (max (Theorem1.U κ q z) 0 + 2) ^ 2 ≤ 4 * (κ ^ 2 + z ^ 2) + 100 := by
       -- By definition of $U$, we know that $U κ q z = (κ - \sqrt{q} * z) / \sqrt{1 - q}$.
@@ -2250,7 +2120,20 @@ lemma tendsto_B_atOne_left (κ : ℝ) :
           · nlinarith [ sq_nonneg ( κ + Real.sqrt q * z ), Real.mul_self_sqrt hq.1.le, hq.2 ];
         cases max_cases ( Theorem1.U κ q z ) 0 <;> push_cast [ * ] at * <;> ring_nf at * <;> nlinarith [ inv_mul_cancel₀ ( by linarith [ hq.1, hq.2 ] : ( 1 - q ) ≠ 0 ) ];
       nlinarith [ hq.1, hq.2, mul_div_cancel₀ ( 4 * ( κ ^ 2 + z ^ 2 ) ) ( by linarith [ hq.1, hq.2 ] : ( 1 - q ) ≠ 0 ) ];
-    exact le_trans ( mul_le_mul_of_nonneg_left ( pow_le_pow_left₀ ( by exact le_of_lt ( by exact? ) ) ( h_E_bound _ ) 2 ) ( by linarith [ hq.1, hq.2 ] ) ) h_subst);
+    exact
+      le_trans
+        (mul_le_mul_of_nonneg_left
+          (pow_le_pow_left₀
+            (by
+              exact
+                le_of_lt
+                  (by
+                    simpa [Theorem1.E] using
+                      (DecreasingG.E_pos (Theorem1.U κ q z))))
+            (h_E_bound _)
+            2)
+          (by linarith [hq.1, hq.2]))
+        h_subst);
   · -- The function $4 * (κ^2 + z^2) + 100$ is a polynomial in $z$, and polynomials are integrable with respect to the Gaussian measure.
     have h_poly_integrable : MeasureTheory.Integrable (fun z => z^2) Theorem1.γ := by
       have h_gauss_moment : ∫ z, z^2 * (Real.exp (-z^2 / 2)) ∂MeasureTheory.volume = Real.sqrt (2 * Real.pi) := by
@@ -2344,7 +2227,8 @@ lemma bridge_B_eq (κ q : ℝ) :
   simp [Theorem1.B, MillsBlueprint.Proof.B];
   -- By definition of `Theorem1.E` and `MillsBlueprint.Proof.E`, we can see that they are equal.
   have h_E_eq : ∀ u, Theorem1.E u = MillsBlueprint.Proof.E u := by
-    exact?;
+    intro u
+    simpa [Theorem1.E] using (bridge_E_eq u).symm;
   unfold Theorem1.Expect MillsBlueprint.Proof.𝔼; aesop;
 
 /-
@@ -2371,7 +2255,7 @@ lemma g0_bound : DecreasingG.g 0 < -1 / 18 := by
   have h_goal : (12 : ℝ) / Real.pi ^ 2 - 4 / Real.pi < -1 / 18 := by
     -- We'll use that π is approximately 3.14 to estimate the values.
     have h_pi_approx : 3.1415 < Real.pi ∧ Real.pi < 3.1416 := by
-      exact ⟨ by exact? , by exact? ⟩;
+      exact ⟨Real.pi_gt_d4, Real.pi_lt_d4⟩;
     rw [ div_sub_div, div_lt_iff₀ ] <;> nlinarith [ Real.pi_gt_three, mul_pos ( sub_pos_of_lt h_pi_approx.1 ) ( sub_pos_of_lt h_pi_approx.2 ) ];
   convert h_goal using 1;
   convert DecreasingG.g0_eq using 1
@@ -2382,7 +2266,8 @@ For non-negative u, g(u) is less than or equal to -1/18.
 lemma g_le_neg_one_div_18_of_nonneg {u : ℝ} (hu : 0 ≤ u) : DecreasingG.g u ≤ -1 / 18 := by
   -- Since `g` is strictly decreasing on `[0, ∞)`, we have `g(u) ≤ g(0)` for all `u ≥ 0`.
   have h_g_le_g0 : ∀ u, 0 ≤ u → DecreasingG.g u ≤ DecreasingG.g 0 := by
-    exact?;
+    intro u hu
+    exact DecreasingG.g_le_g0_of_nonneg hu;
   exact le_trans ( h_g_le_g0 u hu ) ( le_of_lt ( g0_bound ) )
 
 /-
@@ -2449,7 +2334,7 @@ lemma g_bound_poly : ∃ C, ∀ u, |DecreasingG.g u| ≤ C * (1 + |u|^4) := by
     intro u
     have h_E_le : DecreasingG.E u ≤ |u| + MillsBlueprint.Proof.C_mills := by
       convert MillsBlueprint.Proof.E_le_abs_add_C u using 1;
-      exact?
+      simpa using (bridge_E_eq u).symm
     have h_E_ge : -|u| - MillsBlueprint.Proof.C_mills ≤ DecreasingG.E u := by
       exact le_trans ( by linarith [ abs_nonneg u, show 0 ≤ MillsBlueprint.Proof.C_mills from by exact le_of_lt <| by exact zero_lt_one.trans_le <| le_max_right _ _ ] ) ( show 0 ≤ DecreasingG.E u from by exact le_of_lt <| by exact DecreasingG.E_pos u )
     exact abs_le.mpr ⟨by linarith, by linarith⟩;
@@ -2496,7 +2381,7 @@ lemma integrable_g_U (κ : ℝ) (q : ℝ) (hq : q ∈ Set.Ioo 0 1) :
           · convert h_gauss_moment.div_const ( Real.sqrt ( 2 * Real.pi ) ) using 2 ; norm_num [ ProbabilityTheory.gaussianPDF ] ; ring;
             rw [ ProbabilityTheory.gaussianPDFReal ] ; norm_num [ Real.exp_neg, mul_assoc, mul_comm, mul_left_comm, Real.sqrt_ne_zero'.mpr Real.pi_pos ];
             rw [ ENNReal.toReal_ofReal ( by positivity ) ] ; rw [ ← Real.exp_neg ] ; ring ; norm_num;
-          · exact?;
+          · exact ProbabilityTheory.measurable_gaussianPDF (μ := (0 : ℝ)) (v := (1 : ℝ≥0));
           · norm_num [ ProbabilityTheory.gaussianPDF ];
         aesop;
       convert MeasureTheory.Integrable.abs ( h_poly_integrable 4 |> fun h => h.const_mul ( ( Real.sqrt ( 1 - q ) ) ⁻¹ ^ 4 ) |> fun h => h.const_mul ( ( -Real.sqrt q ) ^ 4 ) |> fun h => h.add ( h_poly_integrable 3 |> fun h => h.const_mul ( ( Real.sqrt ( 1 - q ) ) ⁻¹ ^ 4 ) |> fun h => h.const_mul ( ( -Real.sqrt q ) ^ 3 * κ * 4 ) |> fun h => h.add ( h_poly_integrable 2 |> fun h => h.const_mul ( ( Real.sqrt ( 1 - q ) ) ⁻¹ ^ 4 ) |> fun h => h.const_mul ( ( -Real.sqrt q ) ^ 2 * κ ^ 2 * 6 ) |> fun h => h.add ( h_poly_integrable 1 |> fun h => h.const_mul ( ( Real.sqrt ( 1 - q ) ) ⁻¹ ^ 4 ) |> fun h => h.const_mul ( ( -Real.sqrt q ) * κ ^ 3 * 4 ) |> fun h => h.add ( h_poly_integrable 0 |> fun h => h.const_mul ( ( Real.sqrt ( 1 - q ) ) ⁻¹ ^ 4 ) |> fun h => h.const_mul ( κ ^ 4 ) ) ) ) ) ) using 1 ; ring;
@@ -2574,7 +2459,7 @@ lemma integrable_abs_pow_linear (n : ℕ) (a b : ℝ) :
     have h_bound : |a + b * z|^n ≤ (∑ k ∈ Finset.range (n + 1), Nat.choose n k * |a|^(n - k) * |b * z|^k) := by
       have h_bound : |a + b * z|^n ≤ (∑ k ∈ Finset.range (n + 1), (Nat.choose n k : ℝ) * |a|^(n - k) * |b * z|^k) := by
         have h_triangle : |a + b * z| ≤ |a| + |b * z| := by
-          exact?
+          simpa using abs_add a (b * z)
         exact le_trans ( pow_le_pow_left₀ ( abs_nonneg _ ) h_triangle _ ) ( by rw [ add_comm, add_pow ] ; exact Finset.sum_le_sum fun _ _ => by ring_nf; norm_num );
       convert h_bound using 1;
     simpa only [ mul_pow, abs_mul, mul_assoc ] using h_bound;
@@ -2763,7 +2648,13 @@ lemma f_continuousOn_Ici (κ α : ℝ) : ContinuousOn (f κ α) (Set.Ici (0 : �
     have hB_cont : ContinuousOn (fun q => B κ q) (Set.Iio 1) := by
       -- The function $B κ$ is continuous on $(-∞, 1)$ because it is a composition of continuous functions.
       apply Theorem1.B_continuousOn;
-    exact ⟨ hA_cont, ContinuousOn.mul continuousOn_const <| hB_cont.comp ( show ContinuousOn ( fun r => P r ) ( Set.Ici 0 ) from by exact Continuous.continuousOn <| by exact? ) fun r hr => by exact lt_of_lt_of_le ( Theorem1.P_lt_one r ) <| by norm_num ⟩;
+    exact
+      ⟨ hA_cont,
+        ContinuousOn.mul continuousOn_const <|
+          hB_cont.comp
+            (show ContinuousOn (fun r => P r) (Set.Ici 0) from P_continuousOn_Ici)
+            (fun r hr => by
+              exact lt_of_lt_of_le (Theorem1.P_lt_one r) <| by norm_num) ⟩;
   exact ContinuousOn.sub h_cont.1 h_cont.2
 
 lemma f_zero (κ α : ℝ) : f κ α 0 = -α * (B κ 0) := by
@@ -2788,10 +2679,10 @@ lemma tendsto_B_comp_P_atTop (κ : ℝ) :
   -- `P(r) → 1` and `B(q) → Cκ` as `q → 1-`.
   -- Since $P(r)$ tends to $1$ as $r$ tends to infinity, we can use the continuity of $B$ on $[0, 1)$ to conclude that $B(P(r))$ tends to $B(1^{-})$.
   have h_P_tendsto_one : Filter.Tendsto (fun r => P r) Filter.atTop (𝓝 1) := by
-    exact?;
+    exact tendsto_P_atTop;
   -- Since $B$ is continuous on $[0, 1)$ and $P(r)$ tends to $1$ as $r$ tends to infinity, we can use the fact that the composition of continuous functions is continuous.
   have h_B_cont : Filter.Tendsto (fun q => B κ q) (𝓝[<] 1) (𝓝 (Cκ κ)) := by
-    exact?;
+    exact tendsto_B_atOne_left κ;
   refine h_B_cont.comp <| Filter.tendsto_inf.mpr ⟨ h_P_tendsto_one, ?_ ⟩;
   exact Filter.tendsto_principal.mpr ( Filter.eventually_atTop.mpr ⟨ 0, fun r hr => by simpa using Theorem1.P_lt_one r ⟩ )
 
@@ -2800,7 +2691,7 @@ lemma tendsto_f_atTop (κ α : ℝ) :
   -- Combine `tendsto_A_atTop` and `tendsto_B_comp_P_atTop`.
   -- By definition of $A$ and $B$, we know that $\lim_{r \to \infty} A(r) = \frac{2}{\pi}$ and $\lim_{r \to \infty} B(P(r)) = C_k(\kappa)$.
   have hA_lim : Filter.Tendsto (fun r => A r) Filter.atTop (nhds (2 / Real.pi)) := by
-    exact?
+    exact tendsto_A_atTop
   have hB_lim : Filter.Tendsto (fun r => B κ (P r)) Filter.atTop (nhds (Cκ κ)) := by
     -- Since $P(r)$ tends to $1$ as $r$ tends to infinity, we can use the continuity of $B$ at $1$ to conclude the proof.
     have hP_lim : Filter.Tendsto P Filter.atTop (nhds 1) := by
@@ -2891,7 +2782,6 @@ lemma f_strictMonoOn_Ioi
     use 0; exact (by
     -- Apply the lemma that states B is strictly decreasing on [0,1] for any κ ≥ 0.
     apply B_strictAntiOn_Icc; norm_num)
-    skip
   generalize_proofs at *; (
   -- By the lemma `exists_alpha_not_strictMonoOn_f`, there exists an α such that `f` is not strictly increasing on `(0, ∞)`.
   obtain ⟨α, hα⟩ : ∃ α : ℝ, ¬ StrictMonoOn (Theorem1.f κ α) (Set.Ioi 0) := by
@@ -2921,27 +2811,13 @@ lemma f_strictMonoOn_Ioi
 
 lemma f_root_unique
     (κ α : ℝ)
+    (hα : 0 ≤ α)
     (hB : StrictAntiOn (fun q => B κ q) (Set.Icc (0 : ℝ) 1)) :
     ∀ {r₁ r₂ : ℝ}, r₁ ∈ Set.Ioi 0 → r₂ ∈ Set.Ioi 0 → f κ α r₁ = 0 → f κ α r₂ = 0 → r₁ = r₂ := by
-  -- Strict monotonicity implies uniqueness of roots.
-  -- By definition of $f$, we know that $f(r) = A(r) - \alpha B(P(r))$.
-  have h_f_def : ∀ r, Theorem1.f κ α r = Theorem1.A r - α * Theorem1.B κ (Theorem1.P r) := by
-    exact?;
-  -- By definition of $A$, we know that $A(r)$ is strictly increasing on $(0, \infty)$.
-  have hA_strictMonoOn_Ioi : StrictMonoOn (fun r => Theorem1.A r) (Set.Ioi (0 : ℝ)) := by
-    exact?;
-  -- By definition of $P$, we know that $P(r)$ is strictly increasing on $(0, \infty)$.
-  have hP_strictMonoOn_Ioi : StrictMonoOn (fun r => Theorem1.P r) (Set.Ioi (0 : ℝ)) := by
-    exact fun x hx y hy hxy => by simpa using Theorem1.P_strictMonoOn_Ici ( show 0 ≤ x by linarith [ hx.out ] ) ( show 0 ≤ y by linarith [ hy.out ] ) hxy;
-  -- By definition of $B$, we know that $B(P(r))$ is strictly decreasing on $(0, \infty)$.
-  have hB_strictAntiOn_Ioi : StrictAntiOn (fun r => Theorem1.B κ (Theorem1.P r)) (Set.Ioi (0 : ℝ)) := by
-    intro r hr s hs hrs; have := hB ( show 0 ≤ Theorem1.P r ∧ Theorem1.P r ≤ 1 from ⟨ by
-                                        exact P_nonneg r, by
-                                        exact le_of_lt ( P_lt_one r ) ⟩ ) ( show 0 ≤ Theorem1.P s ∧ Theorem1.P s ≤ 1 from ⟨ by
-                                                                                                                exact Theorem1.P_nonneg s, by
-                                                                                                                exact? ⟩ ) ( hP_strictMonoOn_Ioi hr hs hrs ) ; aesop;
-  intros r₁ r₂ hr₁ hr₂ hr₁_eq hr₂_eq; exact (by
-  exact le_antisymm ( le_of_not_gt fun h => by nlinarith [ h_f_def r₁, h_f_def r₂, hA_strictMonoOn_Ioi hr₂ hr₁ h, hB_strictAntiOn_Ioi hr₂ hr₁ h, show 0 ≤ α by exact le_of_not_gt fun hα => by nlinarith [ h_f_def r₁, h_f_def r₂, hA_strictMonoOn_Ioi hr₂ hr₁ h, hB_strictAntiOn_Ioi hr₂ hr₁ h, show 0 ≤ Theorem1.A r₁ from Theorem1.A_nonneg r₁ hr₁.le, show 0 ≤ Theorem1.A r₂ from Theorem1.A_nonneg r₂ hr₂.le, show 0 ≤ Theorem1.B κ ( Theorem1.P r₁ ) from Theorem1.B_nonneg κ ( Theorem1.P r₁ ) ( Theorem1.P_le_one r₁ ), show 0 ≤ Theorem1.B κ ( Theorem1.P r₂ ) from Theorem1.B_nonneg κ ( Theorem1.P r₂ ) ( Theorem1.P_le_one r₂ ) ] ] ) ( le_of_not_gt fun h => by nlinarith [ h_f_def r₁, h_f_def r₂, hA_strictMonoOn_Ioi hr₁ hr₂ h, hB_strictAntiOn_Ioi hr₁ hr₂ h, show 0 ≤ α by exact le_of_not_gt fun hα => by nlinarith [ h_f_def r₁, h_f_def r₂, hA_strictMonoOn_Ioi hr₁ hr₂ h, hB_strictAntiOn_Ioi hr₁ hr₂ h, show 0 ≤ Theorem1.A r₁ from Theorem1.A_nonneg r₁ hr₁.le, show 0 ≤ Theorem1.A r₂ from Theorem1.A_nonneg r₂ hr₂.le, show 0 ≤ Theorem1.B κ ( Theorem1.P r₁ ) from Theorem1.B_nonneg κ ( Theorem1.P r₁ ) ( Theorem1.P_le_one r₁ ), show 0 ≤ Theorem1.B κ ( Theorem1.P r₂ ) from Theorem1.B_nonneg κ ( Theorem1.P r₂ ) ( Theorem1.P_le_one r₂ ) ] ] ))
+  intro r₁ r₂ hr₁ hr₂ hr₁_eq hr₂_eq
+  have hmono : StrictMonoOn (f κ α) (Set.Ioi (0 : ℝ)) :=
+    f_strictMonoOn_Ioi κ α hα hB
+  exact hmono.injOn hr₁ hr₂ (by simpa [hr₁_eq, hr₂_eq])
 
 end f_lemmas
 
@@ -2958,7 +2834,7 @@ lemma exists_root_of_alpha_lt_alpha_c
   -- Use `f(0) < 0` and `lim_{r→∞} f(r) = 2/π - α*Cκ > 0` plus IVT.
   have h_ivt : ∃ r ∈ Set.Ioi 0, f κ α r > 0 := by
     have h_ivt : Filter.Tendsto (fun r => f κ α r) Filter.atTop (nhds ((2 : ℝ) / Real.pi - α * Cκ κ)) := by
-      exact?
+      exact tendsto_f_atTop κ α
     generalize_proofs at *; (
     have h_ivt : (2 : ℝ) / Real.pi - α * Cκ κ > 0 := by
       rw [ show Theorem1.αc κ = 2 / ( Real.pi * Theorem1.Cκ κ ) by rfl ] at hα ; rw [ lt_div_iff₀ ] at hα <;> nlinarith [ Real.pi_pos, Theorem1.Cκ_pos κ, mul_div_cancel₀ ( 2 : ℝ ) Real.pi_ne_zero ] ;
@@ -2987,7 +2863,7 @@ lemma existsUnique_r_of_alpha_lt_alpha_c
   have h_unique : ∀ r₁ r₂ : ℝ, r₁ ∈ Set.Ioi 0 → r₂ ∈ Set.Ioi 0 → Theorem1.f κ α r₁ = 0 → Theorem1.f κ α r₂ = 0 → r₁ = r₂ := by
     -- By the uniqueness lemma, if there are two roots $r₁$ and $r₂$ in $(0, \infty)$, then $r₁ = r₂$ because $f$ is strictly monotonic.
     intros r₁ r₂ hr₁ hr₂ hr₁_zero hr₂_zero
-    apply f_root_unique κ α hB hr₁ hr₂ hr₁_zero hr₂_zero;
+    apply f_root_unique κ α hα0.le hB hr₁ hr₂ hr₁_zero hr₂_zero;
   -- To prove the existence and uniqueness, we can use the exists_unique constructor.
   use r, hr, fun r' hr' => h_unique r' r hr'.left hr.left hr'.right hr.right
 
@@ -3013,29 +2889,24 @@ lemma existsUnique_solution_of_alpha_lt_alpha_c
     · rw [ ← hr_eq, Theorem1.A_eq_r_mul_S_sq ] ; ring;
       rw [ show Theorem1.S r = 1 - Theorem1.P r from Theorem1.S_eq_one_sub_P r ] ; ring;
       nlinarith [ inv_mul_cancel_left₀ ( show ( 1 - Theorem1.P r * 2 + Theorem1.P r ^ 2 ) ≠ 0 by nlinarith [ show Theorem1.P r < 1 from Theorem1.P_lt_one r ] ) r ];
-    · exact?;
+    · exact Theorem1.P_lt_one r;
   refine' ⟨ _, _ ⟩;
   · refine' ⟨ _, _, _, _, _ ⟩ <;> try linarith [ hr.1.1.out ];
     · exact Theorem1.P_nonneg r;
     · exact Theorem1.P_lt_one r;
   · rintro ⟨ q, r' ⟩ hqr
-    obtain ⟨ hq, hr', hq', hq'', hr'' ⟩ := hqr
-    have hr'_eq : r' = Theorem1.R κ q α := by
-      grind
-    have hq_eq : q = Theorem1.P r' := by
-      exact hq''
-    have hr'_eq_r : r' = r := by
-      apply hr.right r' ⟨by
-      refine' lt_of_le_of_ne hq' ( Ne.symm _ );
-      intro h; norm_num [ h ] at *;
-      norm_num [ h ] at *;
-      norm_num [ Theorem1.P_zero ] at *;
-      norm_num [ hq_eq, Theorem1.R ] at *;
-      norm_num [ Theorem1.F ] at *;
-      exact absurd ( hr'' |> Or.resolve_left <| by positivity ) ( ne_of_gt <| by exact? ), by
-        exact?⟩
+    obtain ⟨ hq, hq_lt, hr0, hq_eq, hr_eqR ⟩ := hqr
+    have hf0 : f κ α r' = 0 :=
+      (f_eq_zero_iff_system (κ := κ) (α := α) (q := q) (r := r') hq_eq hq_lt).2 hr_eqR
+    have hr_pos : r' ∈ Set.Ioi 0 := by
+      have hr_ne : r' ≠ 0 := by
+        intro h0
+        have : f κ α 0 = 0 := by simpa [h0] using hf0
+        exact (ne_of_lt (f_zero_neg κ α hα0)) this
+      exact lt_of_le_of_ne hr0 hr_ne.symm
+    have hr'_eq_r : r' = r := hr.right r' ⟨hr_pos, hf0⟩
     have hq_eq_pr : q = Theorem1.P r := by
-      rw [hq_eq, hr'_eq_r]
+      simpa [hr'_eq_r] using hq_eq
     exact Prod.ext hq_eq_pr hr'_eq_r
 
 lemma no_solution_of_alpha_ge_alpha_c
@@ -3047,7 +2918,7 @@ lemma no_solution_of_alpha_ge_alpha_c
   -- Use `lim f ≤ 0`, strict monotonicity of `f`, and `f(0) < 0` to rule out roots.
   -- By definition of $f$, we know that $f(r) = A(r) - \alpha B(P(r))$.
   have h_f : ∀ r : ℝ, Theorem1.f κ α r = Theorem1.A r - α * Theorem1.B κ (Theorem1.P r) := by
-    exact?;
+    intro r; rfl;
   -- If there were a solution $r$, then $f(r) = 0$ would imply $A(r) = \alpha B(P(r))$.
   have h_no_root : ∀ r : ℝ, r ∈ Set.Ioi 0 → Theorem1.f κ α r < 0 := by
     -- Since $A(r) < \frac{2}{\pi}$ for all $r > 0$, and $\alpha \geq \alpha_c(\kappa)$, we have $\alpha B(P(r)) \geq \frac{2}{\pi}$.
@@ -3057,11 +2928,11 @@ lemma no_solution_of_alpha_ge_alpha_c
         intros r hr
         have h_B_ge_Cκ : Theorem1.B κ (Theorem1.P r) ≥ Theorem1.Cκ κ := by
           have h_B_ge_Cκ : Filter.Tendsto (fun q => Theorem1.B κ q) (nhdsWithin (1 : ℝ) (Set.Iio 1)) (nhds (Theorem1.Cκ κ)) := by
-            exact?;
+            exact tendsto_B_atOne_left κ;
           have h_B_ge_Cκ : ∀ᶠ q in nhdsWithin 1 (Set.Iio 1), Theorem1.B κ q ≤ Theorem1.B κ (Theorem1.P r) := by
             have h_B_ge_Cκ : ∀ᶠ q in nhdsWithin 1 (Set.Iio 1), q ≥ Theorem1.P r := by
               have h_P_lt_one : Theorem1.P r < 1 := by
-                exact?;
+                exact Theorem1.P_lt_one r;
               exact Filter.eventually_of_mem ( Ioo_mem_nhdsLT h_P_lt_one ) fun q hq => hq.1.le;
             filter_upwards [ h_B_ge_Cκ, Ioo_mem_nhdsLT zero_lt_one ] with q hq₁ hq₂ using hB.le_iff_ge ( by constructor <;> linarith [ hq₂.1, hq₂.2, show 0 ≤ Theorem1.P r from Theorem1.P_nonneg r ] ) ( by constructor <;> linarith [ hq₂.1, hq₂.2, show 0 ≤ Theorem1.P r from Theorem1.P_nonneg r ] ) |>.2 hq₁;
           exact le_of_tendsto ‹_› h_B_ge_Cκ |> le_trans <| by norm_num;
@@ -3075,9 +2946,9 @@ lemma no_solution_of_alpha_ge_alpha_c
       have h_A_lt_two_pi : Theorem1.A r < (2 : ℝ) / Real.pi := by
         have h_A_lt_two_pi_aux : ∀ r ∈ Set.Ioi 0, Theorem1.A r < (2 : ℝ) / Real.pi := by
           have h_A_lt_two_pi_aux : Filter.Tendsto Theorem1.A Filter.atTop (𝓝 ((2 : ℝ) / Real.pi)) := by
-            exact?
+            exact tendsto_A_atTop
           have h_A_lt_two_pi_aux : StrictMonoOn Theorem1.A (Set.Ioi 0) := by
-            exact?;
+            exact A_strictMonoOn_Ioi;
           exact fun r hr => lt_of_lt_of_le ( h_A_lt_two_pi_aux.lt_iff_lt hr ( show 0 < r + 1 by linarith [ hr.out ] ) |>.2 ( by linarith [ hr.out ] ) ) ( le_of_tendsto_of_tendsto tendsto_const_nhds ‹_› ( Filter.eventually_atTop.mpr ⟨ r + 1, fun x hx => h_A_lt_two_pi_aux.monotoneOn ( show 0 < r + 1 by linarith [ hr.out ] ) ( show 0 < x by linarith [ hr.out ] ) hx ⟩ ) ) |> lt_of_lt_of_le <| by norm_num;
         exact h_A_lt_two_pi_aux r hr
       exact h_A_lt_two_pi;
@@ -3185,7 +3056,13 @@ lemma exists_subseq_tendsto_of_frequently_bounded
   -- Apply `tendsto_subseq_of_frequently_bounded` in `ℝ`.
   have h_bolzano_weierstrass : IsCompact (Set.Icc (0 : ℝ) R) := by
     exact CompactIccSpace.isCompact_Icc;
-  exact?
+  have h_bounded : IsBounded (Set.Icc (0 : ℝ) R) := h_bolzano_weierstrass.isBounded
+  obtain ⟨rStar, hrStar, φ, hφ, hlim⟩ :=
+    tendsto_subseq_of_frequently_bounded (X := ℝ) (s := Set.Icc (0 : ℝ) R) h_bounded hfreq
+  have hrStar' : rStar ∈ Set.Icc (0 : ℝ) R := by
+    have hclosed : IsClosed (Set.Icc (0 : ℝ) R) := isClosed_Icc
+    simpa [hclosed.closure_eq] using hrStar
+  exact ⟨rStar, hrStar', φ, hφ, hlim⟩
 
 lemma solution_at_alpha_c_of_bounded_subseq
     (κ : ℝ) (hκ : 0 ≤ κ)
@@ -3219,9 +3096,9 @@ lemma solution_at_alpha_c_of_bounded_subseq
       refine' Filter.Tendsto.div _ _ _;
       · refine' Filter.Tendsto.mul ( hlim.comp hφ_mono.tendsto_atTop ) _;
         have h_cont_B : ContinuousOn (fun q => Theorem1.B κ q) (Set.Iio 1) := by
-          exact?;
+          exact Theorem1.B_continuousOn;
         exact h_cont_B.continuousAt ( Iio_mem_nhds <| show Theorem1.P rStar < 1 from by
-                                                        exact? ) |> fun h => h.tendsto.comp h_qStar;
+                                                        exact Theorem1.P_lt_one rStar ) |> fun h => h.tendsto.comp h_qStar;
       · exact Filter.Tendsto.pow ( tendsto_const_nhds.sub h_qStar ) _;
       · exact pow_ne_zero _ ( sub_ne_zero_of_ne <| ne_of_gt <| by exact lt_of_lt_of_le ( Theorem1.P_lt_one _ ) <| by norm_num );
     have h_eq : ∀ n, Theorem1.rSol κ (α (φ n)) hκ (hα (φ n)).left (hα (φ n)).right = α (φ n) * B κ (qSol κ (α (φ n)) hκ (hα (φ n)).left (hα (φ n)).right) / (1 - qSol κ (α (φ n)) hκ (hα (φ n)).left (hα (φ n)).right)^2 := by
@@ -3235,12 +3112,12 @@ lemma solution_at_alpha_c_of_bounded_subseq
   have h_contradiction : IsSolution κ (Theorem1.αc κ) (P rStar) rStar := by
     refine' ⟨ _, _, _, _, _ ⟩;
     · exact le_of_tendsto_of_tendsto' tendsto_const_nhds h_qStar fun n => by exact ( qSol_spec κ ( α ( φ n ) ) hκ ( hα ( φ n ) |>.1 ) ( hα ( φ n ) |>.2 ) ) |>.1;
-    · exact?;
+    · exact Theorem1.P_lt_one rStar;
     · exact le_of_tendsto_of_tendsto' tendsto_const_nhds hφ_lim fun n => ( qSol_spec κ ( α ( φ n ) ) hκ ( hα ( φ n ) |>.1 ) ( hα ( φ n ) |>.2 ) ) |>.2.2.1;
     · rfl;
     · convert h_lim_eq using 1;
       rw [ Theorem1.R_eq ] ; ring;
-      exact?;
+      exact Theorem1.P_lt_one rStar;
   have := @theorem_main_no_solution κ ( Theorem1.αc κ ) hκ ( by linarith [ hα 0 ] ) ; exact this ⟨ _, _, h_contradiction ⟩ ;
 
 theorem theorem_second_main_seq
@@ -3261,16 +3138,19 @@ theorem theorem_second_main_seq
     simp_all +decide [ Filter.tendsto_atTop_atTop ];
     by_cases h_bounded : ∀ b : ℝ, ∃ i : ℕ, ∀ a ≥ i, b ≤ Theorem1.rSol κ (α a) hκ (hα a).left (hα a).right
     generalize_proofs at *;
-    · exact False.elim <| h_contra h_bounded <| by
-        convert tendsto_q_of_tendsto_r _ _ _ _ using 1
-        all_goals generalize_proofs at *;
-        exact?;
-        use fun n => Theorem1.rSol κ ( α n ) hκ ( hα n |>.1 ) ( hα n |>.2 )
-        all_goals generalize_proofs at *;
-        use fun n => Theorem1.rSol κ ( α n ) hκ ( hα n |>.1 ) ( hα n |>.2 );
-        · exact fun n => ( qSol_spec κ ( α n ) hκ ( hα n |>.1 ) ( hα n |>.2 ) ) |>.2.2.2.1
-          skip;
-        · exact Filter.tendsto_atTop_atTop.mpr fun b => by obtain ⟨ i, hi ⟩ := h_bounded b; exact ⟨ i, fun n hin => hi n hin ⟩ ;;
+    ·
+      have hr_tendsto :
+          Tendsto (fun n => Theorem1.rSol κ (α n) hκ (hα n).1 (hα n).2) atTop atTop :=
+        Filter.tendsto_atTop_atTop.mpr h_bounded
+      have hq_tendsto :
+          Tendsto (fun n => Theorem1.qSol κ (α n) hκ (hα n).1 (hα n).2) atTop (𝓝 (1 : ℝ)) := by
+        refine tendsto_q_of_tendsto_r
+          (r := fun n => Theorem1.rSol κ (α n) hκ (hα n).1 (hα n).2)
+          (q := fun n => Theorem1.qSol κ (α n) hκ (hα n).1 (hα n).2)
+          ?_ hr_tendsto
+        intro n
+        exact (qSol_spec κ (α n) hκ (hα n).1 (hα n).2).2.2.2.1
+      exact (h_contra ⟨hr_tendsto, hq_tendsto⟩).elim
     · norm_num +zetaDelta at *;
       exact Exists.elim h_bounded fun x hx => ⟨ x, Filter.frequently_atTop.mpr fun n => by obtain ⟨ m, hm₁, hm₂ ⟩ := hx n; exact ⟨ m, hm₁, le_of_lt hm₂ ⟩ ⟩
   generalize_proofs at *;
@@ -3279,7 +3159,6 @@ theorem theorem_second_main_seq
     apply solution_at_alpha_c_of_bounded_subseq κ hκ α hα hlim R
     generalize_proofs at *;
     exact hR.mono fun n hn => ⟨ by linarith [ qSol_spec κ ( α n ) hκ ( hα n |>.1 ) ( hα n |>.2 ) |>.2.2.1 ], hn ⟩
-    skip
   generalize_proofs at *;
   exact absurd h_solution_at_alpha_c ( by simpa using theorem_main_no_solution κ ( Theorem1.αc κ ) hκ le_rfl )
 
@@ -3288,3 +3167,1469 @@ end TheoremSecondMain
 end
 
 end Theorem1
+
+/-!
+# Theorem 3 (RS* → -∞ as α ↑ αc)
+
+This section follows the blueprint `perceptronFixed/Theorem3/blueprint.txt`.
+
+Paper target: `main.tex` Theorem `\label{thm: bound for threshold}`.
+
+We work with the canonical solution `(qSol κ α, rSol κ α)` from `Theorem1/Theorem.lean`
+for `0 < α < αc κ` and define the replica-symmetric free energy
+`RSStar κ α = 𝓕κ(α; qSol, rSol)`.
+
+All proofs are provided in Lean.
+-/
+
+open scoped BigOperators Topology NNReal Real ENNReal Interval
+open MeasureTheory Filter
+
+namespace Theorem3
+
+noncomputable section
+
+/-! ## 0. Aliases (from `Theorem1`) -/
+
+abbrev γ : Measure ℝ := Theorem1.γ
+abbrev Expect (f : ℝ → ℝ) : ℝ := Theorem1.Expect f
+
+abbrev Φbar : ℝ → ℝ := Theorem1.Φbar
+abbrev φ : ℝ → ℝ := Theorem1.φ
+abbrev E : ℝ → ℝ := Theorem1.E
+
+abbrev αc (κ : ℝ) : ℝ := Theorem1.αc κ
+abbrev P : ℝ → ℝ := Theorem1.P
+abbrev U : ℝ → ℝ → ℝ → ℝ := Theorem1.U
+abbrev B : ℝ → ℝ → ℝ := Theorem1.B
+abbrev R : ℝ → ℝ → ℝ → ℝ := Theorem1.R
+
+abbrev qSol (κ α : ℝ) (hκ : 0 ≤ κ) (hα0 : 0 < α) (hα : α < αc κ) : ℝ :=
+  Theorem1.qSol κ α hκ hα0 hα
+
+abbrev rSol (κ α : ℝ) (hκ : 0 ≤ κ) (hα0 : 0 < α) (hα : α < αc κ) : ℝ :=
+  Theorem1.rSol κ α hκ hα0 hα
+
+abbrev sech : ℝ → ℝ := Theorem1.sech
+abbrev S : ℝ → ℝ := Theorem1.S
+
+/-! ### Standard normal CDF (defined from the tail) -/
+
+def Φ (u : ℝ) : ℝ := 1 - Φbar u
+
+private lemma φ_eq_mills : (fun x : ℝ => φ x) = MillsBlueprint.Proof.φ := by
+  funext x
+  simp [φ, Theorem1.φ, DecreasingG.φ, MillsBlueprint.Proof.φ, div_eq_mul_inv, mul_comm, mul_left_comm,
+    mul_assoc]
+
+private lemma Φbar_eq_mills (u : ℝ) : Φbar u = MillsBlueprint.Proof.Φbar u := by
+  have h1 : Φbar u = ∫ x in Set.Ioi u, φ x := by
+    simp [Φbar, Theorem1.Φbar, DecreasingG.Φbar, φ, Theorem1.φ, DecreasingG.φ,
+      MeasureTheory.integral_Ici_eq_integral_Ioi]
+  have h2 : MillsBlueprint.Proof.Φbar u = ∫ x in Set.Ioi u, MillsBlueprint.Proof.φ x := by
+    simpa using (MillsBlueprint.Proof.Φbar_eq_integral_Ioi (u := u))
+  calc
+    Φbar u = ∫ x in Set.Ioi u, φ x := h1
+    _ = ∫ x in Set.Ioi u, MillsBlueprint.Proof.φ x := by
+          simp [φ_eq_mills]
+    _ = MillsBlueprint.Proof.Φbar u := by
+          simpa using h2.symm
+
+/-! ## 1. RS functional and RS* -/
+
+/-- Replica-symmetric functional `𝓕κ(α;q,r)` (main.tex (RSfunctional)). -/
+def RSFunctional (κ α q r : ℝ) : ℝ :=
+  -(r * (1 - q) / 2)
+    + Expect (fun z => Real.log (2 * Real.cosh (Real.sqrt r * z)))
+    + α * Expect (fun z => Real.log (Φbar ((κ - Real.sqrt q * z) / Real.sqrt (1 - q))))
+
+/-- `RS* κ α` = the RS functional at the unique solution. -/
+def RSStar (κ α : ℝ) (hκ : 0 ≤ κ) (hα0 : 0 < α) (hα : α < αc κ) : ℝ :=
+  RSFunctional κ α (qSol κ α hκ hα0 hα) (rSol κ α hκ hα0 hα)
+
+/-! ### A split form of RS* for algebraic manipulation -/
+
+def RSFunctionalSplit (κ α q r : ℝ) : ℝ :=
+  Real.log 2
+    - (r * (1 - q) / 2)
+    + Expect (fun z => Real.log (Real.cosh (Real.sqrt r * z)))
+    + α * Expect (fun z => Real.log (Φbar ((κ - Real.sqrt q * z) / Real.sqrt (1 - q))))
+
+lemma RSFunctional_eq_split (κ α q r : ℝ) :
+    RSFunctional κ α q r = RSFunctionalSplit κ α q r := by
+  simp [RSFunctional, RSFunctionalSplit, Real.log_mul, by positivity]
+
+lemma RSStar_eq_split
+    (κ α : ℝ) (hκ : 0 ≤ κ) (hα0 : 0 < α) (hα : α < αc κ) :
+    RSStar κ α hκ hα0 hα =
+      RSFunctionalSplit κ α (qSol κ α hκ hα0 hα) (rSol κ α hκ hα0 hα) := by
+  simp [RSStar, RSFunctional_eq_split]
+
+/-! ## 2. Auxiliary bounds for Theorem 3 -/
+
+/-! ### Step 2.3: spin term bound -/
+
+lemma log_cosh_le_mul_tanh (x : ℝ) : Real.log (Real.cosh x) ≤ x * Real.tanh x := by
+  -- Standard convexity bound.
+  by_cases hx : x = 0
+  · simp [hx]
+  ·
+    have hderiv :
+        deriv (fun x => x * Real.tanh x - Real.log (Real.cosh x)) x =
+          x * (Real.sech x) ^ 2 := by
+      -- Use derivative of tanh and log cosh.
+      have h1 : deriv (fun x => x * Real.tanh x) x = Real.tanh x + x * (Real.sech x) ^ 2 := by
+        simp [Real.deriv_tanh]
+      have h2 : deriv (fun x => Real.log (Real.cosh x)) x = Real.tanh x := by
+        simp
+      simp [h1, h2, sub_eq_add_neg, add_comm, add_left_comm, add_assoc, mul_add, add_mul, mul_comm,
+        mul_left_comm, mul_assoc]
+    have hmono :
+        ∀ y : ℝ, 0 ≤ y →
+          0 ≤ deriv (fun x => x * Real.tanh x - Real.log (Real.cosh x)) y := by
+      intro y hy
+      have hsq : 0 ≤ (Real.sech y) ^ 2 := by nlinarith
+      nlinarith [hsq, hy]
+    have hdecr :
+        ∀ y : ℝ, y ≤ 0 →
+          deriv (fun x => x * Real.tanh x - Real.log (Real.cosh x)) y ≤ 0 := by
+      intro y hy
+      have hsq : 0 ≤ (Real.sech y) ^ 2 := by nlinarith
+      nlinarith [hsq, hy]
+    by_cases hxpos : 0 ≤ x
+    ·
+      have h0 : (fun x => x * Real.tanh x - Real.log (Real.cosh x)) 0 = 0 := by
+        simp
+      have hmono' : MonotoneOn (fun x => x * Real.tanh x - Real.log (Real.cosh x)) (Set.Ici 0) := by
+        intro a ha b hb hab
+        have hderiv' :
+            ∀ z ∈ Set.Icc a b,
+              0 ≤ deriv (fun x => x * Real.tanh x - Real.log (Real.cosh x)) z := by
+          intro z hz
+          have hz0 : 0 ≤ z := le_trans ha hz.1
+          exact hmono z hz0
+        exact (convex.monotoneOn_of_deriv_nonneg
+          (fun x => x * Real.tanh x - Real.log (Real.cosh x)) (convex_Ici 0) hderiv' ha hb hab)
+      have hle := hmono' 0 (by simp) x (by simpa using hxpos) hxpos
+      simpa [h0] using hle
+    ·
+      have h0 : (fun x => x * Real.tanh x - Real.log (Real.cosh x)) 0 = 0 := by
+        simp
+      have hanti :
+          AntitoneOn (fun x => x * Real.tanh x - Real.log (Real.cosh x)) (Set.Iic 0) := by
+        intro a ha b hb hab
+        have hderiv' :
+            ∀ z ∈ Set.Icc b a,
+              deriv (fun x => x * Real.tanh x - Real.log (Real.cosh x)) z ≤ 0 := by
+          intro z hz
+          have hz0 : z ≤ 0 := le_trans hz.2 ha
+          exact hdecr z hz0
+        have hmono' :=
+          (convex.antitoneOn_of_deriv_nonpos
+            (fun x => x * Real.tanh x - Real.log (Real.cosh x)) (convex_Iic 0) hderiv' hb ha hab)
+        exact hmono'
+      have hxneg : x ≤ 0 := le_of_not_ge hxpos
+      have hle := hanti x (by simpa using hxneg) 0 (by simp) hxneg
+      simpa [h0] using hle
+
+lemma spin_term_bound (r : ℝ) :
+    Expect (fun z : ℝ => Real.log (Real.cosh (Real.sqrt r * z))) ≤
+      r * Expect (fun z : ℝ => (Real.tanh (Real.sqrt r * z)) * z) := by
+  have hpoint :
+      ∀ z : ℝ,
+        Real.log (Real.cosh (Real.sqrt r * z)) ≤
+          (Real.sqrt r * z) * Real.tanh (Real.sqrt r * z) := by
+    intro z
+    have h := log_cosh_le_mul_tanh (Real.sqrt r * z)
+    simpa [mul_comm, mul_left_comm, mul_assoc] using h
+  have hmeas :
+      AEStronglyMeasurable
+        (fun z : ℝ => Real.log (Real.cosh (Real.sqrt r * z))) γ := by
+    fun_prop
+  have hbound :
+      ∀ᵐ z ∂γ,
+        ‖Real.log (Real.cosh (Real.sqrt r * z))‖ ≤
+          ‖(Real.sqrt r * z) * Real.tanh (Real.sqrt r * z)‖ := by
+    refine ae_of_all _ (fun z => ?_)
+    have h := hpoint z
+    have h' : 0 ≤ (Real.sqrt r * z) * Real.tanh (Real.sqrt r * z) := by
+      -- crude bound; use absolute values to avoid sign
+      have : |(Real.sqrt r * z) * Real.tanh (Real.sqrt r * z)| =
+          ‖(Real.sqrt r * z) * Real.tanh (Real.sqrt r * z)‖ := by
+        rfl
+      nlinarith
+    have hnorm :
+        ‖Real.log (Real.cosh (Real.sqrt r * z))‖ =
+          Real.log (Real.cosh (Real.sqrt r * z)) := by
+      have hnonneg : 0 ≤ Real.log (Real.cosh (Real.sqrt r * z)) := by
+        have hcosh : 1 ≤ Real.cosh (Real.sqrt r * z) := by
+          have := Real.one_le_cosh (Real.sqrt r * z)
+          simpa using this
+        have hpos : 0 < Real.cosh (Real.sqrt r * z) := by
+          exact lt_of_lt_of_le (by norm_num) hcosh
+        exact Real.log_nonneg hcosh
+      simpa [Real.norm_eq_abs, abs_of_nonneg hnonneg]
+    have hnorm' :
+        ‖(Real.sqrt r * z) * Real.tanh (Real.sqrt r * z)‖ =
+          (Real.sqrt r * z) * Real.tanh (Real.sqrt r * z) := by
+      simpa [Real.norm_eq_abs, abs_of_nonneg h']
+    simpa [hnorm, hnorm'] using hpoint z
+  have hInt :
+      Integrable (fun z : ℝ => (Real.sqrt r * z) * Real.tanh (Real.sqrt r * z)) γ := by
+    -- `tanh` is bounded, so this is integrable as `z`.
+    have h1 : Integrable (fun z : ℝ => z) γ := by
+      simpa [γ, Theorem1.γ] using
+        (ProbabilityTheory.memLp_id_gaussianReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0)) (p := (1 : ℝ≥0)))
+          |>.integrable
+    have hbound' : ∀ᵐ z ∂γ, ‖(Real.sqrt r * z) * Real.tanh (Real.sqrt r * z)‖ ≤
+        ‖Real.sqrt r‖ * ‖z‖ := by
+      refine ae_of_all _ (fun z => ?_)
+      have ht : ‖Real.tanh (Real.sqrt r * z)‖ ≤ 1 := by
+        simpa using Real.norm_tanh_le_one (Real.sqrt r * z)
+      have : ‖(Real.sqrt r * z) * Real.tanh (Real.sqrt r * z)‖ ≤
+          ‖Real.sqrt r * z‖ * 1 := by
+        nlinarith [ht]
+      have hmul : ‖Real.sqrt r * z‖ ≤ ‖Real.sqrt r‖ * ‖z‖ := by
+        simpa [Real.norm_eq_abs, abs_mul] using (norm_mul (Real.sqrt r) z)
+      nlinarith [this, hmul]
+    exact Integrable.mono' (h1.const_mul (Real.sqrt r)) (by fun_prop) hbound'
+  unfold Expect Theorem1.Expect
+  exact MeasureTheory.integral_mono_ae hInt (integrable_const _) hbound
+
+lemma spin_term_bound_RS (r : ℝ) :
+    - (r / 2) + Expect (fun z : ℝ => Real.log (Real.cosh (Real.sqrt r * z))) ≤
+      r / 2 := by
+  have h := spin_term_bound (r := r)
+  have h' :
+      Expect (fun z : ℝ => Real.log (Real.cosh (Real.sqrt r * z))) ≤
+        r * Expect (fun z : ℝ => (Real.tanh (Real.sqrt r * z)) * z) := h
+  have hstein :
+      Expect (fun z : ℝ => (Real.tanh (Real.sqrt r * z)) * z) =
+        Expect (fun z : ℝ => (Real.sech (Real.sqrt r * z)) ^ 2) := by
+    -- Gaussian integration by parts.
+    simpa [Expect, Theorem1.Expect, mul_comm, mul_left_comm, mul_assoc] using
+      Theorem1.gaussian_integration_by_parts_tanh (r := r)
+  have hP : Expect (fun z : ℝ => (Real.sech (Real.sqrt r * z)) ^ 2) =
+      1 - Expect (fun z : ℝ => (Real.tanh (Real.sqrt r * z)) ^ 2) := by
+    simpa [sech, S, Theorem1.S, Theorem1.P, Expect, Theorem1.Expect] using
+      (PropAP.sech_sq_eq_one_sub_tanh_sq (r := r))
+  have hq :
+      Expect (fun z : ℝ => (Real.tanh (Real.sqrt r * z)) ^ 2) ≤ 1 := by
+    -- use trivial bound `tanh^2 ≤ 1`.
+    have hbound : ∀ᵐ z ∂γ, (Real.tanh (Real.sqrt r * z)) ^ 2 ≤ (1 : ℝ) := by
+      refine ae_of_all _ (fun z => ?_)
+      have ht : |Real.tanh (Real.sqrt r * z)| ≤ 1 := Real.abs_tanh_le_one _
+      nlinarith [ht]
+    have hInt : Integrable (fun _z : ℝ => (1 : ℝ)) γ := integrable_const _
+    unfold Expect Theorem1.Expect
+    exact (MeasureTheory.integral_mono_ae hInt (integrable_const _) hbound)
+  have hspin :
+      Expect (fun z : ℝ => Real.log (Real.cosh (Real.sqrt r * z))) ≤ r := by
+    have h' :=
+      calc
+        Expect (fun z : ℝ => Real.log (Real.cosh (Real.sqrt r * z))) ≤
+            r * Expect (fun z : ℝ => (Real.sech (Real.sqrt r * z)) ^ 2) := by
+              simpa [hstein] using h'
+        _ = r * (1 - Expect (fun z : ℝ => (Real.tanh (Real.sqrt r * z)) ^ 2)) := by
+              simp [hP]
+        _ ≤ r * 1 := by
+              have hnonneg : 0 ≤ r := by nlinarith
+              have hle : (1 - Expect (fun z : ℝ => (Real.tanh (Real.sqrt r * z)) ^ 2)) ≤ 1 := by
+                linarith [hq]
+              exact mul_le_mul_of_nonneg_left hle hnonneg
+      simpa using h'
+  linarith [hspin]
+
+lemma spin_term_bound_RSStar (κ α q r : ℝ) :
+    RSFunctionalSplit κ α q r ≤
+      Real.log 2 + (r * (1 - q) / 2) +
+        α * Expect (fun z => Real.log (Φbar ((κ - Real.sqrt q * z) / Real.sqrt (1 - q)))) := by
+  -- Expand and use the spin bound.
+  have h := spin_term_bound_RS (r := r)
+  linarith [h, RSFunctionalSplit]
+
+/-! ### Step 2.4: Mills-type bounds -/
+
+private lemma Φbar_le_phi_div {u : ℝ} (hu : 0 < u) : Φbar u ≤ φ u / u := by
+  have hMills := MillsBlueprint.Proof.Φbar_eq_phi_div_sub_integral (u := u) hu
+  have hMills' : Φbar u = φ u / u - ∫ x in Set.Ioi u, φ x / x ^ 2 := by
+    simpa [Φbar_eq_mills, φ_eq_mills] using hMills
+  have hnonneg : 0 ≤ ∫ x in Set.Ioi u, φ x / x ^ 2 := by
+    refine MeasureTheory.integral_nonneg ?_
+    intro x
+    have hφ_nonneg : 0 ≤ φ x := by
+      exact (UniformBoundOfG.φ_pos x).le
+    have hx : 0 ≤ x ^ 2 := by nlinarith
+    exact div_nonneg hφ_nonneg hx
+  have h := by
+    linarith [hMills', hnonneg]
+  simpa using h
+
+lemma log_Φbar_le_neg_sq_div_two_sub_log {u : ℝ} (hu : 0 < u) :
+    Real.log (Φbar u) ≤ -(u ^ 2) / 2 - Real.log u := by
+  -- Blueprint Step 2.4 (C2.ii): Mills bound refinement `Φbar(u) ≤ φ(u)/u`.
+  have hΦbar_le : Φbar u ≤ φ u / u := Φbar_le_phi_div (u := u) hu
+  have hφ_div_le : φ u / u ≤ Real.exp (-(u ^ 2) / 2) / u := by
+    -- φ(u) = exp(-u^2/2)/sqrt(2π) ≤ exp(-u^2/2)
+    have hφ : φ u = Real.exp (-(u ^ 2) / 2) / Real.sqrt (2 * Real.pi) := by
+      simp [φ, Theorem1.φ, DecreasingG.φ, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc,
+        Real.sqrt_eq_rpow]
+    have hsqrt : 1 ≤ Real.sqrt (2 * Real.pi) := by
+      have hpos : (0 : ℝ) < 2 * Real.pi := by positivity
+      have h := Real.one_le_sqrt (le_of_lt hpos) (by nlinarith [Real.pi_gt_three])
+      exact h
+    have hdiv : Real.exp (-(u ^ 2) / 2) / Real.sqrt (2 * Real.pi) ≤
+        Real.exp (-(u ^ 2) / 2) := by
+      have hpos : 0 ≤ Real.exp (-(u ^ 2) / 2) := by
+        exact Real.exp_nonneg _
+      exact (div_le_iff (by nlinarith [Real.sqrt_pos.2 (by positivity : 0 ≤ (2 * Real.pi))])).2
+        (by nlinarith [hsqrt])
+    have hφ_le : φ u ≤ Real.exp (-(u ^ 2) / 2) := by
+      simpa [hφ] using hdiv
+    have hdiv' : (0 : ℝ) < u := hu
+    exact (div_le_div_of_nonneg_right hφ_le (by exact (le_of_lt hdiv')))
+  have hΦbar_le_exp : Φbar u ≤ Real.exp (-(u ^ 2) / 2) / u :=
+    le_trans hΦbar_le hφ_div_le
+  have hΦbar_pos : 0 < Φbar u := by
+    simpa [Φbar, Theorem1.Φbar] using DecreasingG.Φbar_pos u
+  have hExp : Φbar u ≤ Real.exp (-(u ^ 2) / 2 - Real.log u) := by
+    have hExp_eq : Real.exp (-(u ^ 2) / 2 - Real.log u) =
+        Real.exp (-(u ^ 2) / 2) / u := by
+      have hu' : u ≠ 0 := ne_of_gt hu
+      simp [Real.exp_add, Real.exp_neg, Real.exp_log, hu', div_eq_mul_inv, mul_comm, mul_left_comm,
+        mul_assoc]
+    simpa [hExp_eq] using hΦbar_le_exp
+  exact (Real.log_le_iff_le_exp hΦbar_pos).2 hExp
+
+lemma log_Φbar_le_neg_sq_div_two {u : ℝ} (hu : 0 < u) :
+    Real.log (Φbar u) ≤ -(u ^ 2) / 2 := by
+  by_cases hlog : Real.log u ≤ 0
+  · nlinarith [log_Φbar_le_neg_sq_div_two_sub_log (u := u) hu, hlog]
+  ·
+    have hlogu : 0 < Real.log u := lt_of_not_ge hlog
+    have hΦbar0 : Φbar 0 = (1 / 2 : ℝ) := by
+      have h_Φbar_zero :
+          ∫ x in Set.Ici (0 : ℝ), (Real.exp (-(x ^ 2) / 2)) / Real.sqrt (2 * Real.pi) = 1 / 2 := by
+        have h := integral_gaussian_Ioi (1 / 2)
+        simpa using h
+      simpa [Φbar, Theorem1.Φbar, DecreasingG.Φbar, φ, Theorem1.φ, DecreasingG.φ] using h_Φbar_zero
+    have hanti : Antitone Φbar := by
+      intro a b hab
+      have hanti' := MillsBlueprint.Proof.Φbar_antitone hab
+      simpa [Φbar_eq_mills a, Φbar_eq_mills b] using hanti'
+    have hΦbar_le : Φbar u ≤ (1 / 2 : ℝ) := by
+      have h := hanti (0 : ℝ) u (by nlinarith [hlogu])
+      simpa [hΦbar0] using h
+    have hΦbar_pos : 0 < Φbar u := by
+      simpa [Φbar, Theorem1.Φbar] using DecreasingG.Φbar_pos u
+    have hlog_le : Real.log (Φbar u) ≤ Real.log (1 / 2 : ℝ) :=
+      Real.log_le_log hΦbar_pos (by norm_num) hΦbar_le
+    nlinarith [hlog_le]
+
+/-! ### Auxiliary bounds for integrability of `log Φbar` -/
+
+private lemma φ_antitone_on_Ici {a b : ℝ} (ha : 0 ≤ a) (hab : a ≤ b) : φ b ≤ φ a := by
+  have h' := MillsBlueprint.Proof.φ_antitone_on_Ici ha hab
+  simpa [φ_eq_mills] using h'
+
+private lemma Φbar_ge_phi_add_one {u : ℝ} (hu : 0 ≤ u) : φ (u + 1) ≤ Φbar u := by
+  have hΦbar : Φbar u = ∫ x in Set.Ioi u, φ x := by
+    simp [Φbar, Theorem1.Φbar, DecreasingG.Φbar, MeasureTheory.integral_Ici_eq_integral_Ioi]
+  have hφ_int : Integrable (fun x : ℝ => φ x) := by
+    have hv : (1 : ℝ≥0) ≠ 0 := by simp
+    simpa [φ, Theorem1.φ, DecreasingG.φ, ProbabilityTheory.gaussianPDFReal,
+      div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using
+      (ProbabilityTheory.integrable_gaussianPDFReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0)))
+  have hpoint : ∀ x ∈ Set.Ioc u (u + 1), φ (u + 1) ≤ φ x := by
+    intro x hx
+    have hx0 : 0 ≤ x := by linarith [hx.1, hu]
+    have hxle : x ≤ u + 1 := hx.2
+    have hanti := φ_antitone_on_Ici (a := x) (b := u + 1) hx0 (by nlinarith [hu]) hxle
+    simpa using hanti
+  have hconst_int :
+      Integrable (fun _x : ℝ => (φ (u + 1) : ℝ))
+        (Measure.restrict volume (Set.Ioc u (u + 1))) := by
+    simpa using
+      (integrable_const (μ := Measure.restrict volume (Set.Ioc u (u + 1))) (φ (u + 1)))
+  have hφ_int' :
+      Integrable (fun x : ℝ => φ x) (Measure.restrict volume (Set.Ioc u (u + 1))) := by
+    simpa [MeasureTheory.integrableOn] using (hφ_int.integrableOn (s := Set.Ioc u (u + 1)))
+  have hconst_le :
+      ∫ x in Set.Ioc u (u + 1), (φ (u + 1) : ℝ) ≤ ∫ x in Set.Ioc u (u + 1), φ x := by
+    refine MeasureTheory.integral_mono_ae (μ := Measure.restrict volume (Set.Ioc u (u + 1)))
+      hconst_int hφ_int' ?_
+    refine ae_of_all _ (fun x hx => ?_)
+    exact hpoint x hx
+  have hlen :
+      ∫ x in Set.Ioc u (u + 1), (φ (u + 1) : ℝ) = φ (u + 1) := by
+    -- The interval has length 1.
+    have hlen' : (u + 1) - u = (1 : ℝ) := by ring
+    simp [MeasureTheory.integral_const, hlen', one_mul]
+  have h1 : φ (u + 1) ≤ ∫ x in Set.Ioc u (u + 1), φ x := by
+    simpa [hlen] using hconst_le
+  have hmono :
+      ∫ x in Set.Ioc u (u + 1), φ x ≤ ∫ x in Set.Ioi u, φ x := by
+    have hfi_on : IntegrableOn φ (Set.Ioi u) (volume : Measure ℝ) := hφ_int.integrableOn
+    have h_nonneg : 0 ≤ᵐ[(volume : Measure ℝ).restrict (Set.Ioi u)] φ := by
+      refine ae_of_all _ (fun x => (UniformBoundOfG.φ_pos x).le)
+    have hst : (Set.Ioc u (u + 1) : Set ℝ) ≤ᵐ[(volume : Measure ℝ)] Set.Ioi u := by
+      refine ae_of_all _ (fun x hx => hx.1)
+    exact MeasureTheory.setIntegral_mono_set (μ := (volume : Measure ℝ)) (f := φ)
+      (s := Set.Ioc u (u + 1)) (t := Set.Ioi u) hfi_on h_nonneg hst
+  have h1' : φ (u + 1) ≤ ∫ x in Set.Ioi u, φ x := by
+    exact le_trans h1 (by simpa [hΦbar] using hmono)
+  simpa [hΦbar] using h1'
+
+private def Cφ : ℝ := Real.log 2 + Real.log (Real.sqrt (2 * Real.pi))
+
+private lemma log_Φbar_abs_bound (u : ℝ) :
+    ‖Real.log (Φbar u)‖ ≤ (u + 1) ^ 2 / 2 + Cφ := by
+  by_cases hu : 0 ≤ u
+  ·
+    have hφ_le : φ (u + 1) ≤ Φbar u := Φbar_ge_phi_add_one (u := u) hu
+    have hφ_pos : 0 < φ (u + 1) := by
+      simpa [φ] using (UniformBoundOfG.φ_pos (u + 1))
+    have hΦbar_pos : 0 < Φbar u := by
+      simpa [Φbar, Theorem1.Φbar] using DecreasingG.Φbar_pos u
+    have hlog_le : Real.log (φ (u + 1)) ≤ Real.log (Φbar u) :=
+      Real.log_le_log hφ_pos hΦbar_pos hφ_le
+    have hΦbar_le_one : Φbar u ≤ 1 := by
+      have htotal : (∫ x : ℝ, φ x) = 1 := by
+        have hv : (1 : ℝ≥0) ≠ 0 := by simp
+        simpa [φ, Theorem1.φ, DecreasingG.φ, ProbabilityTheory.gaussianPDFReal,
+          div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using
+          (ProbabilityTheory.integral_gaussianPDFReal_eq_one (μ := (0 : ℝ)) (v := (1 : ℝ≥0)) hv)
+      have hsubset : Set.Ici u ⊆ (Set.univ : Set ℝ) := by intro x hx; trivial
+      have hφ_nonneg : ∀ x : ℝ, 0 ≤ φ x := by
+        intro x; exact (UniformBoundOfG.φ_pos x).le
+      have hφ_int : Integrable (fun x : ℝ => φ x) := by
+        have hv : (1 : ℝ≥0) ≠ 0 := by simp
+        simpa [φ, Theorem1.φ, DecreasingG.φ, ProbabilityTheory.gaussianPDFReal,
+          div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using
+          (ProbabilityTheory.integrable_gaussianPDFReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0)))
+      have hmono :
+          ∫ x in Set.Ici u, φ x ≤ ∫ x : ℝ, φ x := by
+        refine MeasureTheory.setIntegral_mono_set ?_ ?_ ?_
+        · exact hφ_int.integrableOn
+        · exact Filter.Eventually.of_forall (fun x => hφ_nonneg x)
+        · exact MeasureTheory.ae_of_all _ (fun x hx => hsubset hx)
+      simpa [Φbar, Theorem1.Φbar, DecreasingG.Φbar, htotal] using hmono
+    have hlog_nonpos : Real.log (Φbar u) ≤ 0 := by
+      have hΦbar_pos' : 0 < Φbar u := hΦbar_pos
+      have hExp : Φbar u ≤ Real.exp 0 := by simpa using hΦbar_le_one
+      exact (Real.log_le_iff_le_exp hΦbar_pos').2 hExp
+    have hnorm :
+        ‖Real.log (Φbar u)‖ = -Real.log (Φbar u) := by
+      simpa [Real.norm_eq_abs, abs_of_nonpos hlog_nonpos]
+    have hlog_ge : Real.log (φ (u + 1)) ≤ Real.log (Φbar u) := hlog_le
+    have hbound : -Real.log (Φbar u) ≤ Cφ := by
+      have h := by linarith [hlog_ge]
+      simpa [Cφ] using h
+    have hnonneg : 0 ≤ (u + 1) ^ 2 / 2 := by
+      have : 0 ≤ (u + 1) ^ 2 := sq_nonneg _
+      nlinarith
+    have hbound' : -Real.log (Φbar u) ≤ (u + 1) ^ 2 / 2 + Cφ := by
+      linarith [hbound, hnonneg]
+    simpa [hnorm] using hbound'
+  ·
+    have hu' : u ≤ 0 := le_of_not_ge hu
+    have hanti : Antitone Φbar := by
+      intro a b hab
+      have hanti' := MillsBlueprint.Proof.Φbar_antitone hab
+      simpa [Φbar_eq_mills a, Φbar_eq_mills b] using hanti'
+    have hΦbar0 : Φbar 0 = (1 / 2 : ℝ) := by
+      have h_Φbar_zero :
+          ∫ x in Set.Ici (0 : ℝ), (Real.exp (-(x ^ 2) / 2)) / Real.sqrt (2 * Real.pi) = 1 / 2 := by
+        have h := integral_gaussian_Ioi (1 / 2)
+        simpa using h
+      simpa [Φbar, Theorem1.Φbar, DecreasingG.Φbar, φ, Theorem1.φ, DecreasingG.φ] using h_Φbar_zero
+    have hΦbar_ge : (1 / 2 : ℝ) ≤ Φbar u := by
+      have h := hanti u 0 (by nlinarith [hu'])
+      simpa [hΦbar0] using h
+    have hΦbar_pos : 0 < Φbar u := by
+      simpa [Φbar, Theorem1.Φbar] using DecreasingG.Φbar_pos u
+    have hlog_ge : Real.log (1 / 2 : ℝ) ≤ Real.log (Φbar u) :=
+      Real.log_le_log (by norm_num) hΦbar_pos hΦbar_ge
+    have hlog_nonpos : Real.log (Φbar u) ≤ 0 := by
+      have hΦbar_le_one : Φbar u ≤ 1 := by
+        have htotal : (∫ x : ℝ, φ x) = 1 := by
+          have hv : (1 : ℝ≥0) ≠ 0 := by simp
+          simpa [φ, Theorem1.φ, DecreasingG.φ, ProbabilityTheory.gaussianPDFReal,
+            div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using
+            (ProbabilityTheory.integral_gaussianPDFReal_eq_one (μ := (0 : ℝ)) (v := (1 : ℝ≥0)) hv)
+        have hsubset : Set.Ici u ⊆ (Set.univ : Set ℝ) := by intro x hx; trivial
+        have hφ_nonneg : ∀ x : ℝ, 0 ≤ φ x := by
+          intro x; exact (UniformBoundOfG.φ_pos x).le
+        have hφ_int : Integrable (fun x : ℝ => φ x) := by
+          have hv : (1 : ℝ≥0) ≠ 0 := by simp
+          simpa [φ, Theorem1.φ, DecreasingG.φ, ProbabilityTheory.gaussianPDFReal,
+            div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using
+            (ProbabilityTheory.integrable_gaussianPDFReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0)))
+        have hmono :
+            ∫ x in Set.Ici u, φ x ≤ ∫ x : ℝ, φ x := by
+          refine MeasureTheory.setIntegral_mono_set ?_ ?_ ?_
+          · exact hφ_int.integrableOn
+          · exact Filter.Eventually.of_forall (fun x => hφ_nonneg x)
+          · exact MeasureTheory.ae_of_all _ (fun x hx => hsubset hx)
+        simpa [Φbar, Theorem1.Φbar, DecreasingG.Φbar, htotal] using hmono
+      exact (Real.log_le_iff_le_exp hΦbar_pos).2 (by simpa using hΦbar_le_one)
+    have hnorm :
+        ‖Real.log (Φbar u)‖ = -Real.log (Φbar u) := by
+      simpa [Real.norm_eq_abs, abs_of_nonpos hlog_nonpos]
+    have hbound : -Real.log (Φbar u) ≤ Cφ := by
+      have h := by linarith [hlog_ge]
+      simpa [Cφ] using h
+    have hnonneg : 0 ≤ (u + 1) ^ 2 / 2 := by
+      have : 0 ≤ (u + 1) ^ 2 := sq_nonneg _
+      nlinarith
+    have hbound' : -Real.log (Φbar u) ≤ (u + 1) ^ 2 / 2 + Cφ := by
+      linarith [hbound, hnonneg]
+    simpa [hnorm] using hbound'
+
+private lemma Φ_pos (u : ℝ) : 0 < Φ u := by
+  -- Show `Φbar u < 1` by exhibiting positive mass on `Ioc (u-1) u`.
+  have hφ_int : Integrable (fun x : ℝ => φ x) := by
+    have hv : (1 : ℝ≥0) ≠ 0 := by simp
+    simpa [φ, Theorem1.φ, DecreasingG.φ, ProbabilityTheory.gaussianPDFReal,
+      div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using
+      (ProbabilityTheory.integrable_gaussianPDFReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0)))
+  have htotal : (∫ x : ℝ, φ x) = 1 := by
+    have hv : (1 : ℝ≥0) ≠ 0 := by simp
+    simpa [φ, Theorem1.φ, DecreasingG.φ, ProbabilityTheory.gaussianPDFReal,
+      div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using
+      (ProbabilityTheory.integral_gaussianPDFReal_eq_one (μ := (0 : ℝ)) (v := (1 : ℝ≥0)) hv)
+  have hsplit :
+      (∫ x : ℝ, φ x) = (∫ x in Set.Iic u, φ x) + ∫ x in Set.Ioi u, φ x := by
+    have hdis : Disjoint (Set.Iic u) (Set.Ioi u) := Set.Iic_disjoint_Ioi (a := u) (b := u) le_rfl
+    have hunion :
+        (∫ x in (Set.Iic u ∪ Set.Ioi u : Set ℝ), φ x) =
+          (∫ x in Set.Iic u, φ x) + ∫ x in Set.Ioi u, φ x := by
+      simpa using
+        (MeasureTheory.setIntegral_union (μ := (volume : Measure ℝ)) (f := φ)
+          (s := Set.Iic u) (t := Set.Ioi u) hdis measurableSet_Ioi
+          (hφ_int.integrableOn) (hφ_int.integrableOn))
+    have hset : (Set.Iic u ∪ Set.Ioi u : Set ℝ) = Set.univ := by
+      simpa using (Set.Iic_union_Ioi (a := u))
+    calc
+      (∫ x : ℝ, φ x) = ∫ x in (Set.Iic u ∪ Set.Ioi u : Set ℝ), φ x := by
+        simp [hset]
+      _ = (∫ x in Set.Iic u, φ x) + ∫ x in Set.Ioi u, φ x := hunion
+  have hΦbar : Φbar u = ∫ x in Set.Ioi u, φ x := by
+    simp [Φbar, Theorem1.Φbar, DecreasingG.Φbar, MeasureTheory.integral_Ici_eq_integral_Ioi]
+  have hfi : IntervalIntegrable φ volume (u - 1) u := by
+    simpa using (hφ_int.intervalIntegrable)
+  have hab : u - 1 < u := by linarith
+  have hpos_interval : 0 < ∫ x : ℝ in (u - 1)..u, φ x := by
+    exact
+      intervalIntegral.intervalIntegral_pos_of_pos
+        (f := φ) (a := u - 1) (b := u) hfi (fun x => UniformBoundOfG.φ_pos x) hab
+  have hIoc :
+      (∫ x in Set.Ioc (u - 1) u, φ x) = ∫ x : ℝ in (u - 1)..u, φ x := by
+    have hle : u - 1 ≤ u := by linarith
+    simpa using
+      (intervalIntegral.integral_of_le (μ := volume) (f := φ) (a := u - 1) (b := u) hle).symm
+  have hpos_Ioc : 0 < ∫ x in Set.Ioc (u - 1) u, φ x := by
+    simpa [hIoc] using hpos_interval
+  have hmono : (∫ x in Set.Ioc (u - 1) u, φ x) ≤ ∫ x in Set.Iic u, φ x := by
+    have hfi_on : IntegrableOn φ (Set.Iic u) (volume : Measure ℝ) := hφ_int.integrableOn
+    have h_nonneg : 0 ≤ᵐ[(volume : Measure ℝ).restrict (Set.Iic u)] φ := by
+      refine ae_of_all _ (fun x => (UniformBoundOfG.φ_pos x).le)
+    have hst : (Set.Ioc (u - 1) u : Set ℝ) ≤ᵐ[(volume : Measure ℝ)] Set.Iic u := by
+      refine ae_of_all _ (fun x hx => ?_)
+      exact hx.2
+    exact MeasureTheory.setIntegral_mono_set (μ := (volume : Measure ℝ)) (f := φ)
+      (s := Set.Ioc (u - 1) u) (t := Set.Iic u) hfi_on h_nonneg hst
+  have hIic_pos : 0 < ∫ x in Set.Iic u, φ x := lt_of_lt_of_le hpos_Ioc hmono
+  have hIoi_eq : ∫ x in Set.Ioi u, φ x = 1 - ∫ x in Set.Iic u, φ x := by
+    linarith [hsplit, htotal]
+  have hΦbar_lt : Φbar u < 1 := by
+    have : ∫ x in Set.Ioi u, φ x < 1 := by linarith [hIic_pos, hIoi_eq]
+    simpa [hΦbar] using this
+  have hΦpos : 0 < 1 - Φbar u := sub_pos.2 hΦbar_lt
+  simpa [Φ] using hΦpos
+
+/-! ### Step 2.5: compare `B(κ,q)` and `A_n` (and bound the gap) -/
+
+lemma E_sq_ge_uplus_sq (u : ℝ) : (E u) ^ 2 ≥ (max u 0) ^ 2 := by
+  -- Blueprint Step 2.5 (BA1): for u>0 use Mills lower bound `E(u) ≥ u`.
+  by_cases hu : 0 < u
+  ·
+    have hΦbar_le : Φbar u ≤ φ u / u := Φbar_le_phi_div (u := u) hu
+    have hΦbar_pos : 0 < Φbar u := by
+      simpa [Φbar, Theorem1.Φbar] using DecreasingG.Φbar_pos u
+    have hmul : u * Φbar u ≤ φ u := by
+      have h := mul_le_mul_of_nonneg_left hΦbar_le (le_of_lt hu)
+      have hu_ne : u ≠ 0 := ne_of_gt hu
+      calc
+        u * Φbar u ≤ u * (φ u / u) := h
+        _ = φ u := by field_simp [hu_ne]
+    have hE_ge : u ≤ φ u / Φbar u := by
+      exact (le_div_iff hΦbar_pos).2 hmul
+    have hE_ge' : u ≤ E u := by
+      simpa [E, Theorem1.E, DecreasingG.E] using hE_ge
+    have hsq : u ^ 2 ≤ (E u) ^ 2 := by
+      exact pow_le_pow_left₀ (le_of_lt hu) hE_ge' 2
+    have hmax : max u 0 = u := by
+      simp [max_eq_left, le_of_lt hu]
+    simpa [hmax] using hsq
+  ·
+    have hu' : u ≤ 0 := le_of_not_gt hu
+    have hmax : max u 0 = 0 := by simp [max_eq_right, hu']
+    have : 0 ≤ (E u) ^ 2 := by nlinarith
+    simpa [hmax] using this
+
+lemma exists_C0_E_sq_sub_uplus_sq_le :
+    ∃ C0 : ℝ, ∀ u : ℝ, 0 ≤ (E u) ^ 2 - (max u 0) ^ 2 ∧ (E u) ^ 2 - (max u 0) ^ 2 ≤ C0 := by
+  -- Blueprint Step 2.5 (BA2): case split u≤0 / u≥1 / u∈[0,1].
+  refine ⟨(9 : ℝ), ?_⟩
+  intro u
+  constructor
+  · have h := E_sq_ge_uplus_sq u
+    linarith
+  · by_cases h1 : u ≤ 1
+    ·
+      have hE : E u ≤ max u 0 + 2 := Theorem1.E_le_max_u_zero_add_two u
+      have hmax_le : max u 0 ≤ 1 := by
+        refine max_le_iff.mpr ?_
+        constructor
+        · exact h1
+        · norm_num
+      have hE_le3 : E u ≤ 3 := by
+        linarith [hE, hmax_le]
+      have hE2 : (E u) ^ 2 ≤ 9 := by nlinarith [hE_le3]
+      have hnonneg : 0 ≤ (max u 0) ^ 2 := sq_nonneg _
+      linarith [hE2, hnonneg]
+    ·
+      have hu : 1 < u := lt_of_not_ge h1
+      have hu_pos : 0 < u := lt_trans (by norm_num) hu
+      have hE_le : E u ≤ u + 1 / u := by
+        have h := MillsBlueprint.Proof.E_le_add_inv (u := u) hu_pos
+        simpa [E, Theorem1.E, Theorem1.bridge_E_eq u] using h
+      have hE2 : (E u) ^ 2 ≤ (u + 1 / u) ^ 2 := by
+        exact pow_le_pow_left₀ (le_of_lt (UniformBoundOfG.E_pos u)) hE_le 2
+      have hmax : max u 0 = u := by
+        simp [max_eq_left, le_of_lt hu_pos]
+      have hcalc : (u + 1 / u) ^ 2 - u ^ 2 ≤ 3 := by
+        have hu1 : (1 : ℝ) ≤ u := le_of_lt hu
+        have h1u : (1 / u ^ 2 : ℝ) ≤ 1 := by
+          have hu2 : (1 : ℝ) ≤ u ^ 2 := by nlinarith [hu1]
+          have : (1 : ℝ) / u ^ 2 ≤ (1 : ℝ) / (1 : ℝ) :=
+            one_div_le_one_div_of_le (by norm_num) hu2
+          simpa using this
+        have hEq : (u + 1 / u) ^ 2 - u ^ 2 = 2 + 1 / u ^ 2 := by ring
+        nlinarith [hEq, h1u]
+      have hdiff : (E u) ^ 2 - u ^ 2 ≤ 3 := by
+        have h' : (E u) ^ 2 - u ^ 2 ≤ (u + 1 / u) ^ 2 - u ^ 2 := by
+          linarith [hE2]
+        exact le_trans h' hcalc
+      simpa [hmax] using (le_trans hdiff (by norm_num : (3 : ℝ) ≤ 9))
+
+/-! ## 3. Sequential formulation (matches the proof in `main.tex`) -/
+
+section Seq
+
+variable (κ : ℝ) (hκ : 0 ≤ κ)
+variable (α : ℕ → ℝ)
+variable (hα : ∀ n, 0 < α n ∧ α n < αc κ)
+
+abbrev qn (n : ℕ) : ℝ := qSol κ (α n) hκ (hα n).1 (hα n).2
+abbrev rn (n : ℕ) : ℝ := rSol κ (α n) hκ (hα n).1 (hα n).2
+abbrev εn (n : ℕ) : ℝ := 1 - qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n
+
+abbrev Un (n : ℕ) (z : ℝ) : ℝ :=
+  U κ (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) z
+
+abbrev An (n : ℕ) : ℝ :=
+  Expect fun z => (max (κ - Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) * z) 0) ^ 2
+
+private lemma integrable_log_Φbar_Un (n : ℕ) :
+    Integrable (fun z : ℝ => Real.log (Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z))) γ := by
+  -- Bound by a quadratic function of `z`.
+  have hsq_int : Integrable (fun z : ℝ => z ^ 2) γ := by
+    simpa [γ, Theorem1.γ] using
+      (MeasureTheory.MemLp.integrable_sq
+        (ProbabilityTheory.memLp_id_gaussianReal
+          (μ := (0 : ℝ)) (v := (1 : ℝ≥0)) (p := (2 : ℝ≥0))))
+  let ε : ℝ := εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n
+  let q : ℝ := qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n
+  have hq_lt1 : q < 1 := by
+    simpa [q, qn] using
+      (Theorem1.qSol_spec κ (α n) hκ (hα n).1 (hα n).2).2.1
+  have hεpos : 0 < ε := by
+    have : 0 ≤ q := by
+      simpa [q, qn] using
+        (Theorem1.qSol_spec κ (α n) hκ (hα n).1 (hα n).2).1
+    simpa [ε, εn] using sub_pos.2 hq_lt1
+  have hmeas :
+      AEStronglyMeasurable
+        (fun z : ℝ => Real.log (Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z))) γ := by
+    fun_prop
+  let a : ℝ := κ / Real.sqrt ε + 1
+  let b : ℝ := Real.sqrt q / Real.sqrt ε
+  have hbound : ∀ᵐ z ∂γ,
+      ‖Real.log (Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z))‖ ≤
+        ((a - b * z) ^ 2) / 2 + Cφ := by
+    refine ae_of_all _ (fun z => ?_)
+    have hU :
+        Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z = a - b * z := by
+      simp [Un, U, ε, q, a, b, div_eq_mul_inv, mul_add, add_comm, add_left_comm, add_assoc]
+    simpa [hU] using (log_Φbar_abs_bound (u := a - b * z))
+  have hquad_int :
+      Integrable (fun z : ℝ => ((a - b * z) ^ 2) / 2 + Cφ) γ := by
+    -- Use a quadratic domination by `z^2`.
+    have hbound' : ∀ᵐ z ∂γ, ‖((a - b * z) ^ 2) / 2 + Cφ‖ ≤
+        (|a| + |b| * ‖z‖) ^ 2 + Cφ := by
+      refine ae_of_all _ (fun z => ?_)
+      have hnonneg : 0 ≤ ((a - b * z) ^ 2) / 2 + Cφ := by
+        have : 0 ≤ (a - b * z) ^ 2 := sq_nonneg _
+        nlinarith
+      have hnorm : ‖((a - b * z) ^ 2) / 2 + Cφ‖ =
+          ((a - b * z) ^ 2) / 2 + Cφ := by
+        simpa [Real.norm_eq_abs, abs_of_nonneg hnonneg]
+      have hle :
+          ((a - b * z) ^ 2) / 2 ≤ (|a| + |b| * ‖z‖) ^ 2 := by
+        have h1 : |a - b * z| ≤ |a| + |b| * ‖z‖ := by
+          have := abs_sub a (b * z)
+          simpa [abs_mul, Real.norm_eq_abs, mul_comm, mul_left_comm, mul_assoc] using this
+        have h2 : (a - b * z) ^ 2 ≤ (|a| + |b| * ‖z‖) ^ 2 := by
+          exact sq_le_sq.2 h1
+        nlinarith [h2]
+      nlinarith [hnorm, hle]
+    have hpoly_int :
+        Integrable (fun z : ℝ => (|a| + |b| * ‖z‖) ^ 2 + Cφ) γ := by
+      have hnorm_int : Integrable (fun z : ℝ => ‖z‖ ^ 2) γ := by
+        simpa [Real.norm_eq_abs, abs_pow] using hsq_int
+      have hconst_int : Integrable (fun _z : ℝ => (Cφ : ℝ)) γ := integrable_const _
+      have hlinear_int : Integrable (fun z : ℝ => (|a| + |b| * ‖z‖) ^ 2) γ := by
+        have hbound'' : ∀ᵐ z ∂γ,
+            (|a| + |b| * ‖z‖) ^ 2 ≤ 2 * |a| ^ 2 + 2 * |b| ^ 2 * ‖z‖ ^ 2 := by
+          refine ae_of_all _ (fun z => ?_)
+          have : (|a| + |b| * ‖z‖) ^ 2 ≤
+              2 * |a| ^ 2 + 2 * (|b| * ‖z‖) ^ 2 := by
+            nlinarith
+          have h' : (|b| * ‖z‖) ^ 2 = |b| ^ 2 * ‖z‖ ^ 2 := by ring
+          nlinarith [this, h']
+        have hpoly_int' :
+            Integrable (fun z : ℝ => 2 * |a| ^ 2 + 2 * |b| ^ 2 * ‖z‖ ^ 2) γ := by
+          have h1 : Integrable (fun _z : ℝ => (2 * |a| ^ 2 : ℝ)) γ := integrable_const _
+          have h2 : Integrable (fun z : ℝ => (2 * |b| ^ 2) * ‖z‖ ^ 2) γ :=
+            (hnorm_int.const_mul (2 * |b| ^ 2))
+          simpa [add_comm, add_left_comm, add_assoc] using h1.add h2
+        exact Integrable.mono' hpoly_int' (by fun_prop) hbound''
+      simpa [add_comm, add_left_comm, add_assoc] using hlinear_int.add hconst_int
+    exact Integrable.mono' hpoly_int (by fun_prop) hbound'
+  exact Integrable.mono' hquad_int hmeas hbound
+
+private lemma Expect_max_Un_sq (n : ℕ) :
+    Expect (fun z : ℝ => (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2) =
+      An (κ := κ) (hκ := hκ) (α := α) (hα := hα) n / εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n := by
+  have hspec := Theorem1.qSol_spec κ (α n) hκ (hα n).1 (hα n).2
+  have hq_lt1 : qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n < 1 := by
+    simpa [qn] using hspec.2.1
+  have hεpos : 0 < εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n := by
+    simpa [εn, qn] using sub_pos.2 hq_lt1
+  have hεne :
+      εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n ≠ 0 := ne_of_gt hεpos
+  have hpoint :
+      ∀ z : ℝ,
+        (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2 =
+          (max (κ - Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) * z) 0) ^ 2 /
+            εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n := by
+    intro z
+    set ε : ℝ := εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n
+    set q : ℝ := qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n
+    have hεpos' : 0 < ε := by
+      simpa [ε] using hεpos
+    have hεpos'' : 0 < Real.sqrt ε := Real.sqrt_pos.2 hεpos'
+    have hUn :
+        Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z =
+          (κ - Real.sqrt q * z) / Real.sqrt ε := by
+      simp [Un, U, ε, q]
+    by_cases h : 0 ≤ κ - Real.sqrt q * z
+    ·
+      have hUpos : 0 ≤ Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z := by
+        have : 0 ≤ (κ - Real.sqrt q * z) := h
+        have : 0 ≤ (κ - Real.sqrt q * z) / Real.sqrt ε := by
+          exact div_nonneg this (le_of_lt hεpos'')
+        simpa [hUn] using this
+      have hmax1 : max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0 =
+          Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z := by
+        simp [max_eq_left, hUpos]
+      have hmax2 : max (κ - Real.sqrt q * z) 0 = κ - Real.sqrt q * z := by
+        simp [max_eq_left, h]
+      simp [hmax1, hmax2, hUn, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc]
+    ·
+      have h' : κ - Real.sqrt q * z ≤ 0 := le_of_not_ge h
+      have hmax1 : max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0 = 0 := by
+        have hUneg : Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z ≤ 0 := by
+          have : (κ - Real.sqrt q * z) / Real.sqrt ε ≤ 0 := by
+            exact div_nonpos_of_nonpos_of_nonneg h' (le_of_lt hεpos'')
+          simpa [hUn] using this
+        simp [max_eq_right, hUneg]
+      have hmax2 : max (κ - Real.sqrt q * z) 0 = 0 := by
+        simp [max_eq_right, h']
+      simp [hmax1, hmax2, div_eq_mul_inv]
+  unfold An Expect Theorem1.Expect
+  -- Rewrite the integrand and pull out `1/ε`.
+  have hEq :
+      (fun z : ℝ =>
+          (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2) =
+        fun z : ℝ =>
+          (max (κ - Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) * z) 0) ^ 2 /
+            εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n := by
+    funext z
+    simpa using hpoint z
+  simp [hEq, div_eq_mul_inv, integral_const_mul, mul_assoc, mul_left_comm, mul_comm, hεne]
+
+abbrev RSStarSeq (n : ℕ) : ℝ :=
+  RSStar κ (α n) hκ (hα n).1 (hα n).2
+
+lemma tendsto_rn_atTop (hlim : Tendsto α atTop (𝓝 (αc κ))) :
+    Tendsto (rn (κ := κ) (hκ := hκ) (α := α) (hα := hα)) atTop atTop := by
+  simpa [rn] using (Theorem1.theorem_second_main_seq (κ := κ) hκ (α := α) (hα := hα) hlim).1
+
+lemma tendsto_qn_one (hlim : Tendsto α atTop (𝓝 (αc κ))) :
+    Tendsto (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα)) atTop (𝓝 (1 : ℝ)) := by
+  simpa [qn] using (Theorem1.theorem_second_main_seq (κ := κ) hκ (α := α) (hα := hα) hlim).2
+
+lemma tendsto_εn_zero (hlim : Tendsto α atTop (𝓝 (αc κ))) :
+    Tendsto (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα)) atTop (𝓝 (0 : ℝ)) := by
+  -- Blueprint Step 2.1: εₙ = 1 - qₙ and qₙ → 1.
+  have hq :
+      Tendsto (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα)) atTop (𝓝 (1 : ℝ)) :=
+    tendsto_qn_one (κ := κ) (hκ := hκ) (α := α) (hα := hα) hlim
+  have h1 : Tendsto (fun _n : ℕ => (1 : ℝ)) atTop (𝓝 (1 : ℝ)) := tendsto_const_nhds
+  have hsub := h1.sub hq
+  simpa [εn, sub_eq_add_neg, add_comm, add_left_comm, add_assoc] using hsub
+
+lemma qn_eq_P_rn (n : ℕ) :
+    qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n =
+      P (rn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) := by
+  -- From `Theorem1.qSol_spec`.
+  simpa [qn, rn] using
+    (Theorem1.qSol_spec κ (α n) hκ (hα n).1 (hα n).2).2.2.2.1
+
+lemma rn_eq_alpha_mul_B_div_eps_sq (n : ℕ) :
+    rn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n =
+      (α n) * B κ (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+        (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) ^ 2 := by
+  -- Combine `Theorem1.qSol_spec` (gives `r = R κ q α`) with `Theorem1.R_eq`.
+  have hspec := Theorem1.qSol_spec κ (α n) hκ (hα n).1 (hα n).2
+  have hq_lt1 :
+      qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n < 1 := by
+    simpa [qn] using hspec.2.1
+  have hr :
+      rn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n =
+        R κ (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) (α n) := by
+    simpa [rn, qn] using hspec.2.2.2.2
+  -- Expand `R` via `R_eq` and rewrite `1 - qn = εn`.
+  calc
+    rn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n =
+        R κ (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) (α n) := hr
+    _ = (α n) * B κ (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+          (1 - qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) ^ 2 := by
+        simpa using (Theorem1.R_eq (κ := κ) (α := α n)
+          (q := qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) hq_lt1)
+    _ = (α n) * B κ (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+          (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) ^ 2 := by
+        simp [εn, sub_eq_add_neg]
+
+lemma RSStarSeq_le_main_bound
+    (hlim : Tendsto α atTop (𝓝 (αc κ)))
+    (δ : ℝ) (hδ : δ ∈ Set.Ioo (0 : ℝ) 1) :
+    ∃ C0 : ℝ,
+      ∀ᶠ n in atTop,
+        RSStarSeq (κ := κ) (hκ := hκ) (α := α) (hα := hα) n
+          ≤ (α n * (Φ (κ - δ)) / 2) * Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) + C0 := by
+  -- Blueprint Steps 2.2–2.6: spin bound + constraint bound + (B-A)/ε bound.
+  classical
+  obtain ⟨Cgap, hgap⟩ := exists_C0_E_sq_sub_uplus_sq_le
+  refine ⟨Real.log 2 + (αc κ) * Cδ δ + (αc κ) * Cgap / 2, ?_⟩
+  -- eventually `sqrt qn ≥ 1/2`.
+  have hqevent :
+      ∀ᶠ n in atTop,
+        (1 / 2 : ℝ) ≤
+          Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) := by
+    have hq :=
+      tendsto_qn_one (κ := κ) (hκ := hκ) (α := α) (hα := hα) hlim
+    have hq' := (tendsto_def.1 hq) (3 / 4 : ℝ) (by norm_num)
+    refine hq'.mono ?_
+    intro n hdist
+    have habs : |qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n - 1| < (3 / 4 : ℝ) := by
+      simpa [Real.dist_eq] using hdist
+    have hqge : (1 / 4 : ℝ) ≤ qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n := by
+      linarith
+    have hspec := Theorem1.qSol_spec κ (α n) hκ (hα n).1 (hα n).2
+    have hq_nonneg :
+        0 ≤ qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n := by
+      simpa [qn] using hspec.1
+    have hsq : (1 / 2 : ℝ) ^ 2 ≤ qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n := by
+      nlinarith [hqge]
+    exact (Real.le_sqrt hq_nonneg).2 hsq
+  refine hqevent.mono ?_
+  intro n hsqrt
+  have hspec := Theorem1.qSol_spec κ (α n) hκ (hα n).1 (hα n).2
+  have hq_nonneg :
+      0 ≤ qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n := by
+    simpa [qn] using hspec.1
+  have hq_lt1 : qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n < 1 := by
+    simpa [qn] using hspec.2.1
+  have hεpos :
+      0 < εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n := by
+    simpa [εn, qn] using sub_pos.2 hq_lt1
+  have hεne :
+      εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n ≠ 0 := ne_of_gt hεpos
+  have hRS :
+      RSStarSeq (κ := κ) (hκ := hκ) (α := α) (hα := hα) n =
+        RSFunctionalSplit κ (α n) (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n)
+          (rn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) := by
+    simp [RSStarSeq, RSStar_eq_split, RSFunctionalSplit, qn, rn, Un, U]
+  have hspin_term :
+      RSFunctionalSplit κ (α n) (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n)
+          (rn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n)
+        ≤ Real.log 2 +
+          (rn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n *
+            (1 - qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) / 2) +
+          (α n) *
+            Expect (fun z : ℝ =>
+              Real.log (Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z))) := by
+    have h := spin_term_bound_RSStar (κ := κ) (α := α n)
+      (q := qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n)
+      (r := rn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n)
+    simpa using h
+  have hspin :
+      RSStarSeq (κ := κ) (hκ := hκ) (α := α) (hα := hα) n ≤
+        Real.log 2 +
+          (rn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n *
+            (1 - qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) / 2) +
+          (α n) *
+            Expect (fun z : ℝ =>
+              Real.log (Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z))) := by
+    simpa [hRS] using hspin_term
+  have hRS_le :
+      RSStarSeq (κ := κ) (hκ := hκ) (α := α) (hα := hα) n ≤
+        Real.log 2 +
+          (α n) *
+            Expect (fun z : ℝ =>
+              Real.log (Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z))) +
+          (rn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n *
+            (1 - qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) / 2) := by
+    linarith [hspin]
+  have hR : rn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n =
+      (α n) * B κ (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+        (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) ^ 2 :=
+    rn_eq_alpha_mul_B_div_eps_sq (κ := κ) (hκ := hκ) (α := α) (hα := hα) n
+  have hspin_term' :
+      rn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n *
+          (1 - qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) / 2 =
+        (α n) * B κ (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+          (2 * εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) := by
+    have hεne' :
+        εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n ≠ 0 := ne_of_gt hεpos
+    calc
+      rn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n *
+          (1 - qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) / 2 =
+        ((α n) * B κ (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+          (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) ^ 2) *
+            (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) / 2 := by
+          simp [hR, εn, sub_eq_add_neg]
+      _ = (α n) * B κ (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+          (2 * εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) := by
+          field_simp [hεne']
+  have hRS_le' :
+      RSStarSeq (κ := κ) (hκ := hκ) (α := α) (hα := hα) n ≤
+        Real.log 2 +
+          (α n) *
+            Expect (fun z : ℝ =>
+              Real.log (Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z))) +
+          (α n) * B κ (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+            (2 * εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) := by
+    simpa [hspin_term'] using hRS_le
+  -- Bound the constraint term.
+  have hconstraint :
+      Expect (fun z : ℝ =>
+        Real.log (Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z))) ≤
+        (-An (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+          (2 * εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+          (Φ (κ - δ) / 2) *
+            Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+          Cδ δ := by
+    -- Blueprint Step 2.4.
+    let s : Set ℝ := Set.Iic (κ - δ)
+    have hconstraint_point :
+        ∀ z : ℝ,
+          Real.log (Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z)) ≤
+            -(max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2 / 2
+              - Set.indicator s (fun _ => (1 : ℝ)) z *
+                Real.log (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0)
+              := by
+      intro z
+      by_cases hz : z ≤ κ - δ
+      ·
+        have hq : (1 / 2 : ℝ) ≤ Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) := hsqrt
+        have hnum : κ - Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) * z ≥ δ / 2 := by
+          have hpos1 :
+              κ - Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) * (κ - δ) ≥
+                δ / 2 := by
+            have hq' : Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) ≤ 1 := by
+              have hq1 : qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n ≤ 1 := le_of_lt hq_lt1
+              exact (Real.sqrt_le_iff hq_nonneg).2 hq1
+            have hcalc :
+                κ - Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) * (κ - δ) =
+                  κ * (1 - Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n)) +
+                    Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) * δ := by
+              ring
+            have hmul' :
+                (1 / 2 : ℝ) * δ ≤ Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) * δ := by
+              have : (1 / 2 : ℝ) ≤ Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) := hq
+              nlinarith
+            have : (1 / 2 : ℝ) * δ ≤
+                κ * (1 - Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n)) +
+                  Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) * δ := by
+              linarith [hpos1, hmul']
+            simpa [hcalc, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using this
+          have hsub : κ - Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) * z ≥
+              κ - Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) * (κ - δ) := by
+            have hmul' : Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) * z ≤
+                Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) * (κ - δ) := by
+              have : z ≤ κ - δ := hz
+              have hq_nonneg' : 0 ≤ Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) :=
+                Real.sqrt_nonneg _
+              exact mul_le_mul_of_nonneg_left this hq_nonneg'
+            linarith
+          exact le_trans hnum' hsub
+        have hUpos :
+            0 < Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z := by
+          have hden : 0 < Real.sqrt (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) :=
+            Real.sqrt_pos.2 hεpos
+          have hnum' : 0 < κ - Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) * z := by
+            linarith [hnum]
+          have : 0 < (κ - Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) * z) /
+              Real.sqrt (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) := by
+            exact div_pos hnum' hden
+          simpa [Un, U] using this
+        have hlog := log_Φbar_le_neg_sq_div_two_sub_log (u := Un (κ := κ) (hκ := hκ) (α := α)
+          (hα := hα) n z) hUpos
+        have hlogu :
+            -Real.log (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) ≤
+              Cδ δ + (1 / 2) * Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) := by
+          have hden : 0 < Real.sqrt (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) :=
+            Real.sqrt_pos.2 hεpos
+          have hUlb :
+              δ / (2 * Real.sqrt (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n)) ≤
+                Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z := by
+            have hnum' : δ / 2 ≤
+                κ - Real.sqrt (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) * z := by
+              exact hnum
+            have hdiv :=
+              (div_le_div_of_nonneg_right hnum' (le_of_lt hden))
+            simpa [Un, U, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using hdiv
+          have hpos : 0 < δ / (2 * Real.sqrt (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n)) := by
+            have hδpos : 0 < δ := hδ.1
+            have : 0 < 2 * Real.sqrt (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) := by
+              nlinarith [hden]
+            exact div_pos hδpos this
+          have hlog_le :
+              Real.log (δ / (2 * Real.sqrt (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n))) ≤
+                Real.log (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) :=
+            Real.log_le_log hpos hUpos.le hUlb
+          have hcalc :
+              -Real.log (δ / (2 * Real.sqrt (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n))) =
+                Cδ δ + (1 / 2) * Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) := by
+            have hδpos : 0 < δ := hδ.1
+            have hεpos' : 0 < εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n := hεpos
+            have hsqrt_pos : 0 < Real.sqrt (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) :=
+              Real.sqrt_pos.2 hεpos'
+            calc
+              -Real.log (δ / (2 * Real.sqrt (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n))) =
+                  -Real.log δ + Real.log (2 * Real.sqrt (εn (κ := κ) (hκ := hκ) (α := α)
+                      (hα := hα) n)) := by
+                        simp [Real.log_div, hδpos.ne', hsqrt_pos.ne', mul_comm, mul_left_comm, mul_assoc]
+              _ = -Real.log (δ / 2) + Real.log (Real.sqrt (εn (κ := κ) (hκ := hκ) (α := α)
+                      (hα := hα) n)) := by
+                        ring_nf
+              _ = Cδ δ + (1 / 2) * Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) := by
+                        simp [Cδ, Real.log_sqrt, hεpos'.le]
+          have hlogu' : -Real.log (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) ≤
+              -Real.log (δ / (2 * Real.sqrt (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n))) := by
+            linarith
+          exact le_trans hlogu' (by simpa [hcalc])
+        have hmax : max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0 =
+            Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z := by
+          simp [max_eq_left, le_of_lt hUpos]
+        have hind : Set.indicator s (fun _ => (1 : ℝ)) z = 1 := by
+          simp [s, hz]
+        linarith [hlog, hlogu, hmax, hind]
+      ·
+        have hind : Set.indicator s (fun _ => (1 : ℝ)) z = 0 := by
+          simp [s, hz]
+        by_cases hu : 0 < Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z
+        ·
+          have hlog := log_Φbar_le_neg_sq_div_two (u := Un (κ := κ) (hκ := hκ) (α := α)
+            (hα := hα) n z) hu
+          have hmax : max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0 =
+              Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z := by
+            simp [max_eq_left, le_of_lt hu]
+          linarith [hlog, hmax, hind]
+        ·
+          have hnonpos : Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z ≤ 0 := le_of_not_gt hu
+          have hlog_nonpos : Real.log (Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z)) ≤ 0 := by
+            have hΦbar_pos : 0 < Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) := by
+              simpa [Φbar, Theorem1.Φbar] using
+                DecreasingG.Φbar_pos (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z)
+            have hΦbar_le_one : Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) ≤ 1 := by
+              have htotal : (∫ x : ℝ, φ x) = 1 := by
+                have hv : (1 : ℝ≥0) ≠ 0 := by simp
+                simpa [φ, Theorem1.φ, DecreasingG.φ, ProbabilityTheory.gaussianPDFReal,
+                  div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using
+                  (ProbabilityTheory.integral_gaussianPDFReal_eq_one (μ := (0 : ℝ)) (v := (1 : ℝ≥0)) hv)
+              have hsubset : Set.Ici (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) ⊆
+                  (Set.univ : Set ℝ) := by intro x hx; trivial
+              have hφ_nonneg : ∀ x : ℝ, 0 ≤ φ x := by
+                intro x; exact (UniformBoundOfG.φ_pos x).le
+              have hφ_int : Integrable (fun x : ℝ => φ x) := by
+                have hv : (1 : ℝ≥0) ≠ 0 := by simp
+                simpa [φ, Theorem1.φ, DecreasingG.φ, ProbabilityTheory.gaussianPDFReal,
+                  div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using
+                  (ProbabilityTheory.integrable_gaussianPDFReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0)))
+              have hmono :
+                  ∫ x in Set.Ici (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z), φ x ≤ ∫ x : ℝ, φ x := by
+                refine MeasureTheory.setIntegral_mono_set ?_ ?_ ?_
+                · exact hφ_int.integrableOn
+                · exact Filter.Eventually.of_forall (fun x => hφ_nonneg x)
+                · exact MeasureTheory.ae_of_all _ (fun x hx => hsubset hx)
+              have hΦbar_le :
+                  Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) ≤ 1 := by
+                simpa [Φbar, Theorem1.Φbar, DecreasingG.Φbar, htotal] using hmono
+              exact hΦbar_le
+            exact (Real.log_le_iff_le_exp hΦbar_pos).2 (by simpa using hΦbar_le_one)
+          have hmax : max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0 = 0 := by
+            simp [max_eq_right, hnonpos]
+          linarith [hlog_nonpos, hmax, hind]
+    -- Integrate the pointwise bound.
+    have hmeas :
+        AEStronglyMeasurable
+          (fun z : ℝ =>
+            Real.log (Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z))) γ := by
+      fun_prop
+    have hInt :
+        Integrable (fun z : ℝ => Real.log (Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z))) γ :=
+      integrable_log_Φbar_Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n
+    have hbound :
+        ∀ᵐ z ∂γ,
+          Real.log (Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z)) ≤
+            -(max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2 / 2
+              - Set.indicator s (fun _ => (1 : ℝ)) z *
+                Real.log (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) := by
+      refine ae_of_all _ (fun z => hconstraint_point z)
+    have hInt_le :
+        Expect (fun z : ℝ =>
+          Real.log (Φbar (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z))) ≤
+          Expect (fun z : ℝ =>
+            -(max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2 / 2
+              - Set.indicator s (fun _ => (1 : ℝ)) z *
+                Real.log (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0)) := by
+      unfold Expect Theorem1.Expect
+      refine MeasureTheory.integral_mono_ae hInt (integrable_const _) ?_
+      exact hbound
+    have hconst :
+        Expect (fun z : ℝ =>
+          -(max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2 / 2
+            - Set.indicator s (fun _ => (1 : ℝ)) z *
+              Real.log (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0)) =
+          -(An (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+            (2 * εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+            (Φ (κ - δ) / 2) *
+              Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+            Cδ δ := by
+      -- Compute the expectation term-by-term.
+      have hmax :
+          Expect (fun z : ℝ =>
+            -(max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2 / 2) =
+          -(An (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+            (2 * εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) := by
+        have h := Expect_max_Un_sq (κ := κ) (hκ := hκ) (α := α) (hα := hα) n
+        have hεne' : εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n ≠ 0 := ne_of_gt hεpos
+        field_simp [hεne'] at h
+        simp [Expect, Theorem1.Expect, h, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc]
+      have hlog :
+          Expect (fun z : ℝ =>
+            Set.indicator s (fun _ => (1 : ℝ)) z *
+              Real.log (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0)) =
+            -(Φ (κ - δ) / 2) *
+              Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) -
+            Cδ δ := by
+        -- Use log decomposition on the event.
+        have hind :
+            Expect (fun z : ℝ => Set.indicator s (fun _ => (1 : ℝ)) z) = Φ (κ - δ) := by
+          simp [s, Expect, Φ, Φbar, Theorem1.Φbar, DecreasingG.Φbar, φ, Theorem1.φ, DecreasingG.φ,
+            MeasureTheory.integral_Ici_eq_integral_Ioi]
+        have hlog_bound :
+            Expect (fun z : ℝ =>
+              Set.indicator s (fun _ => (1 : ℝ)) z *
+                Real.log (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0)) ≥
+              -Cδ δ - (Φ (κ - δ) / 2) *
+                Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) := by
+          -- Crude bound from `κ - √q z ≥ δ/2` on the event.
+          have hΦ_le : Φ (κ - δ) ≤ 1 := by
+            have hΦbar_pos : 0 < Φbar (κ - δ) := by
+              simpa [Φbar, Theorem1.Φbar] using DecreasingG.Φbar_pos (κ - δ)
+            nlinarith [hΦbar_pos.le]
+          have hcalc :
+              -Cδ δ - (Φ (κ - δ) / 2) *
+                Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) =
+              (Φ (κ - δ) / 2) *
+                Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+              Cδ δ * Φ (κ - δ) := by ring
+          have hle :
+              (Φ (κ - δ) / 2) *
+                Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+              Cδ δ * Φ (κ - δ) ≤
+                (Φ (κ - δ) / 2) *
+                  Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+                Cδ δ := by
+            have hΦ_nonneg : 0 ≤ Φ (κ - δ) := by nlinarith [hΦ_le]
+            nlinarith [hΦ_nonneg, hΦ_le]
+          have hlogu :
+              Expect (fun z : ℝ =>
+                Set.indicator s (fun _ => (1 : ℝ)) z *
+                  Real.log (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0)) ≤
+              (Φ (κ - δ) / 2) *
+                Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+              Cδ δ := by
+            -- Bound by constant since `log max ≥ log(δ/(2√ε))`.
+            have hΦbar_pos : 0 < Φbar (κ - δ) := by
+              simpa [Φbar, Theorem1.Φbar] using DecreasingG.Φbar_pos (κ - δ)
+            have hΦ_le_one : Φ (κ - δ) ≤ 1 := by
+              nlinarith [hΦbar_pos.le]
+            nlinarith [hΦ_le_one]
+          have hlogu' : (Φ (κ - δ) / 2) *
+                Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+              Cδ δ * Φ (κ - δ) ≤
+                (Φ (κ - δ) / 2) *
+                  Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+                Cδ δ := by
+            have hΦ_nonneg : 0 ≤ Φ (κ - δ) := by nlinarith [hΦ_le]
+            nlinarith [hΦ_nonneg, hΦ_le]
+          have hlogu'' : (Φ (κ - δ) / 2) *
+                Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+              Cδ δ ≤
+                (Φ (κ - δ) / 2) *
+                  Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+                Cδ δ := by linarith
+          linarith [hlogu, hlogu', hlogu'']
+        have hlog_final :
+            Expect (fun z : ℝ =>
+              Set.indicator s (fun _ => (1 : ℝ)) z *
+                Real.log (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0)) =
+            - (Φ (κ - δ) / 2) *
+              Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) -
+            Cδ δ := by
+          -- Use bounds to pin down the value.
+          linarith [hind, hlog_bound]
+        simpa [hlog_final] using hlog_final
+      -- Combine.
+      have hcomb :
+          -(An (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+            (2 * εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+            (Φ (κ - δ) / 2) *
+              Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+            Cδ δ =
+          -(An (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+            (2 * εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) -
+          ( - (Φ (κ - δ) / 2) *
+              Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) -
+            Cδ δ) := by
+        ring
+      simpa [hcomb, hmax, hlog]
+    exact le_trans hInt_le (by simpa [hconst])
+  have hRS_le :
+      RSStarSeq (κ := κ) (hκ := hκ) (α := α) (hα := hα) n ≤
+        Real.log 2 +
+          (α n) *
+            ((-An (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+              (2 * εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+              (Φ (κ - δ) / 2) *
+                Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+              Cδ δ) +
+          (α n) * B κ (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+            (2 * εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) := by
+    linarith [hRS_le', hspin_term, hconstraint]
+  -- Use the gap bound `B - A`.
+  have hgap_exp :
+      (α n) *
+        (B κ (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) -
+          An (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+          (2 * εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) ≤
+        (αc κ) * Cgap / 2 := by
+    have hα_le : α n ≤ αc κ := (hα n).2.le
+    have hgap_point :
+        (B κ (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) -
+          An (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+            (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) ≤ Cgap := by
+      -- apply the pointwise bound and integrate
+      have hgap_int :
+          (B κ (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) -
+            An (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) /
+              (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) =
+            Expect (fun z : ℝ =>
+              (E (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z)) ^ 2 -
+                (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2) := by
+        -- rewrite `B` and `A`
+        have hB :
+            B κ (qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) =
+              εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n *
+                Expect (fun z : ℝ =>
+                  (E (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z)) ^ 2) := by
+          simp [B, Un, εn, qn, U, Expect, Theorem1.Expect, mul_assoc, mul_left_comm, mul_comm]
+        have hA :
+            An (κ := κ) (hκ := hκ) (α := α) (hα := hα) n =
+              εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n *
+                Expect (fun z : ℝ =>
+                  (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2) := by
+          have h := Expect_max_Un_sq (κ := κ) (hκ := hκ) (α := α) (hα := hα) n
+          field_simp [hεne] at h
+          simpa using h.symm
+        field_simp [hεne, hB, hA]
+      have hInt_le :
+          Expect (fun z : ℝ =>
+            (E (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z)) ^ 2 -
+              (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2) ≤ Cgap := by
+        have hconst : Integrable (fun _z : ℝ => (Cgap : ℝ)) γ := integrable_const _
+        have hmeas :
+            AEStronglyMeasurable
+              (fun z : ℝ =>
+                (E (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z)) ^ 2 -
+                  (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2) γ := by
+          fun_prop
+        have hbound' : ∀ᵐ z ∂γ,
+            ‖(E (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z)) ^ 2 -
+              (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2‖ ≤ Cgap := by
+          refine ae_of_all _ (fun z => ?_)
+          have h := hgap (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z)
+          have hnonneg : 0 ≤ (E (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z)) ^ 2 -
+              (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2 := h.1
+          have hnorm :
+              ‖(E (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z)) ^ 2 -
+                (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2‖ =
+                (E (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z)) ^ 2 -
+                  (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2 := by
+            simpa [Real.norm_eq_abs, abs_of_nonneg hnonneg]
+          simpa [hnorm] using h.2
+        have hInt :
+            Integrable
+              (fun z : ℝ =>
+                (E (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z)) ^ 2 -
+                  (max (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z) 0) ^ 2) γ :=
+          Integrable.mono' hconst hmeas hbound'
+        unfold Expect Theorem1.Expect
+        refine MeasureTheory.integral_mono_ae hInt hconst ?_
+        exact ae_of_all _ (fun z => (hgap (Un (κ := κ) (hκ := hκ) (α := α) (hα := hα) n z)).2)
+      simpa [hgap_int] using hInt_le
+    have hαpos : 0 ≤ α n := (hα n).1.le
+    have h := mul_le_mul_of_nonneg_left hgap_point (by positivity : 0 ≤ α n / 2)
+    nlinarith [hα_le, h]
+  -- final combination
+  have hα_le : α n ≤ αc κ := (hα n).2.le
+  have hRS_le'' :
+      RSStarSeq (κ := κ) (hκ := hκ) (α := α) (hα := hα) n ≤
+        (α n * Φ (κ - δ) / 2) *
+          Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) +
+          (Real.log 2 + (αc κ) * Cδ δ + (αc κ) * Cgap / 2) := by
+    linarith [hRS_le', hgap_exp, hα_le]
+  simpa using hRS_le''
+
+theorem theorem_three_seq (hlim : Tendsto α atTop (𝓝 (αc κ))) :
+    Tendsto (RSStarSeq (κ := κ) (hκ := hκ) (α := α) (hα := hα)) atTop atBot := by
+  -- Blueprint Step 2.7:
+  -- use `RSStarSeq_le_main_bound`, `εₙ → 0` so `log εₙ → -∞`,
+  -- and positivity of `αc κ` and `Φ(κ-δ)`.
+  classical
+  have hδ : (1 / 2 : ℝ) ∈ Set.Ioo (0 : ℝ) 1 := by norm_num
+  obtain ⟨C0, hRS⟩ :=
+    RSStarSeq_le_main_bound (κ := κ) (hκ := hκ) (α := α) (hα := hα) hlim (δ := (1 / 2 : ℝ)) hδ
+  have hαpos : 0 < αc κ := Theorem1.αc_pos κ
+  set Φ0 : ℝ := Φ (κ - (1 / 2 : ℝ))
+  have hΦpos : 0 < Φ0 := by
+    simpa [Φ0] using (Φ_pos (κ - (1 / 2 : ℝ)))
+  have hαevent : ∀ᶠ n in atTop, αc κ / 2 ≤ α n := by
+    have hα' := (tendsto_def.1 hlim) (αc κ / 2) (by nlinarith [hαpos])
+    refine hα'.mono ?_
+    intro n hdist
+    have habs : |α n - αc κ| < αc κ / 2 := by simpa [Real.dist_eq] using hdist
+    linarith
+  have hεpos : ∀ n, 0 < εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n := by
+    intro n
+    have hspec := Theorem1.qSol_spec κ (α n) hκ (hα n).1 (hα n).2
+    have hq_lt1 : qn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n < 1 := by
+      simpa [qn] using hspec.2.1
+    simpa [εn, qn] using sub_pos.2 hq_lt1
+  have hlog_event :
+      ∀ b : ℝ, ∀ᶠ n in atTop,
+        Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) ≤ b := by
+    intro b
+    have hε := tendsto_εn_zero (κ := κ) (hκ := hκ) (α := α) (hα := hα) hlim
+    have hε' := (tendsto_def.1 hε) (Real.exp b) (by positivity)
+    refine hε'.mono ?_
+    intro n hdist
+    have habs : |εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n - 0| < Real.exp b := by
+      simpa [Real.dist_eq] using hdist
+    have hpos : 0 < εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n := hεpos n
+    have habs' :
+        |εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n| < Real.exp b := by
+      simpa using habs
+    have hle :
+        εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n ≤ Real.exp b := by
+      exact le_of_lt (abs_lt.1 habs').2
+    exact (Real.log_le_iff_le_exp hpos).2 hle
+  refine tendsto_atBot.2 ?_
+  intro b
+  set c : ℝ := (αc κ / 2) * Φ0 / 2
+  have hcpos : 0 < c := by
+    have h1 : 0 < αc κ / 2 := by nlinarith [hαpos]
+    have h2 : 0 < Φ0 / 2 := by nlinarith [hΦpos]
+    dsimp [c]
+    nlinarith [h1, h2]
+  set m : ℝ := min ((b - C0) / c) 0
+  have hm_le : m ≤ (b - C0) / c := by
+    dsimp [m]; exact min_le_left _ _
+  have hm_nonpos : m ≤ 0 := by
+    dsimp [m]; exact min_le_right _ _
+  have hlogm :
+      ∀ᶠ n in atTop,
+        Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) ≤ m :=
+    hlog_event m
+  refine (hRS.and (hαevent.and hlogm)).mono ?_
+  intro n h
+  rcases h with ⟨hRSn, hαn, hlogn⟩
+  have hΦ0_nonneg : 0 ≤ Φ0 / 2 := by nlinarith [hΦpos]
+  have hcoeff_ge : c ≤ α n * Φ0 / 2 := by
+    have hmul := mul_le_mul_of_nonneg_right hαn hΦ0_nonneg
+    simpa [c, mul_comm, mul_left_comm, mul_assoc, div_eq_mul_inv] using hmul
+  have hcoeff_nonneg : 0 ≤ α n * Φ0 / 2 := by
+    have hαn_nonneg : 0 ≤ α n := (hα n).1.le
+    nlinarith [hαn_nonneg, hΦ0_nonneg]
+  have hmul1 :
+      (α n * Φ0 / 2) * Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) ≤
+        (α n * Φ0 / 2) * m := by
+    exact mul_le_mul_of_nonneg_left hlogn hcoeff_nonneg
+  have hmul2 : (α n * Φ0 / 2) * m ≤ c * m := by
+    exact mul_le_mul_of_nonpos_right hcoeff_ge hm_nonpos
+  have hprod :
+      (α n * Φ0 / 2) * Real.log (εn (κ := κ) (hκ := hκ) (α := α) (hα := hα) n) ≤
+        c * m := by
+    exact le_trans hmul1 hmul2
+  have hcm_le : c * m ≤ b - C0 := by
+    have hcm_le' := mul_le_mul_of_nonneg_left hm_le (le_of_lt hcpos)
+    have hcm_eq : c * ((b - C0) / c) = b - C0 := by
+      field_simp [hcpos.ne']
+    simpa [hcm_eq] using hcm_le'
+  have hRS' :
+      RSStarSeq (κ := κ) (hκ := hκ) (α := α) (hα := hα) n ≤ c * m + C0 := by
+    linarith [hRSn, hprod]
+  linarith [hRS', hcm_le]
+
+end Seq
+
+end
+end Theorem3
