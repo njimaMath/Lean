@@ -1,4 +1,5 @@
 import Mathlib
+import perceptronFixed.GIP.GIP
 
 /-!
 Blueprint scaffold: proof that `B'(t) = 𝔼[g(U_t)]`.
@@ -695,7 +696,7 @@ lemma E_le_add_inv {u : ℝ} (hu : 0 < u) : E u ≤ u + 1 / u := by
     calc
       (∫ x in Set.Ioi u, φ x / x ^ 2) ≤ ∫ x in Set.Ioi u, (1 / u ^ 2) * φ x := hmono
       _ = (1 / u ^ 2) * ∫ x in Set.Ioi u, φ x := by
-            simp [MeasureTheory.integral_const_mul]
+            simp [neg_mul, MeasureTheory.integral_const_mul, mul_assoc]
       _ = (1 / u ^ 2) * Φbar u := by
             simp [Φbar_eq_integral_Ioi (u := u)]
 
@@ -1147,128 +1148,6 @@ lemma deriv_ψ (ht : t ∈ Set.Ioo (0 : ℝ) 1) (z : ℝ) :
         * deriv (fun u => deriv h u) ((κ - Real.sqrt t * z) / Real.sqrt (1 - t)) := by
         simp [ufun]
 
-private lemma gaussianIBP_gaussianReal
-    (ψ : ℝ → ℝ)
-    (hψ : Differentiable ℝ ψ)
-    (hψ_int : Integrable ψ (ProbabilityTheory.gaussianReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0))))
-    (hψ'_int :
-      Integrable (fun x => deriv ψ x) (ProbabilityTheory.gaussianReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0))))
-    (hxψ_int :
-      Integrable (fun x => x * ψ x) (ProbabilityTheory.gaussianReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0)))) :
-    (∫ x, x * ψ x ∂(ProbabilityTheory.gaussianReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0)))) =
-      (∫ x, deriv ψ x ∂(ProbabilityTheory.gaussianReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0)))) := by
-  set μ : Measure ℝ := ProbabilityTheory.gaussianReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0))
-  have hv : (1 : ℝ≥0) ≠ 0 := by simp
-  have hf : Measurable (ProbabilityTheory.gaussianPDF (0 : ℝ) (1 : ℝ≥0)) :=
-    ProbabilityTheory.measurable_gaussianPDF _ _
-  have hflt :
-      (∀ᵐ x ∂(volume : Measure ℝ), ProbabilityTheory.gaussianPDF (0 : ℝ) (1 : ℝ≥0) x < ∞) := by
-    exact ae_of_all _ (fun _ => ProbabilityTheory.gaussianPDF_lt_top)
-
-  have hψ_int' :
-      Integrable ψ (volume.withDensity (ProbabilityTheory.gaussianPDF (0 : ℝ) (1 : ℝ≥0))) := by
-    simpa [μ, ProbabilityTheory.gaussianReal_of_var_ne_zero (μ := (0 : ℝ)) (v := (1 : ℝ≥0)) hv] using
-      hψ_int
-  have hψ'_int' :
-      Integrable (fun x => deriv ψ x)
-        (volume.withDensity (ProbabilityTheory.gaussianPDF (0 : ℝ) (1 : ℝ≥0))) := by
-    simpa [μ, ProbabilityTheory.gaussianReal_of_var_ne_zero (μ := (0 : ℝ)) (v := (1 : ℝ≥0)) hv] using
-      hψ'_int
-  have hxψ_int' :
-      Integrable (fun x => x * ψ x)
-        (volume.withDensity (ProbabilityTheory.gaussianPDF (0 : ℝ) (1 : ℝ≥0))) := by
-    simpa [μ, ProbabilityTheory.gaussianReal_of_var_ne_zero (μ := (0 : ℝ)) (v := (1 : ℝ≥0)) hv] using
-      hxψ_int
-
-  have hψφ : Integrable (fun x : ℝ => ψ x * φ x) (volume : Measure ℝ) := by
-    have h :=
-      (integrable_withDensity_iff_integrable_smul' (μ := (volume : Measure ℝ))
-            (f := ProbabilityTheory.gaussianPDF (0 : ℝ) (1 : ℝ≥0)) hf hflt (g := ψ)).1 hψ_int'
-    simpa [smul_eq_mul, mul_assoc, mul_left_comm, mul_comm, φ_eq_gaussianPDFReal] using h
-  have hψ'φ : Integrable (fun x : ℝ => deriv ψ x * φ x) (volume : Measure ℝ) := by
-    have h :=
-      (integrable_withDensity_iff_integrable_smul' (μ := (volume : Measure ℝ))
-            (f := ProbabilityTheory.gaussianPDF (0 : ℝ) (1 : ℝ≥0)) hf hflt (g := fun x => deriv ψ x)).1
-        hψ'_int'
-    simpa [smul_eq_mul, mul_assoc, mul_left_comm, mul_comm, φ_eq_gaussianPDFReal] using h
-  have hxψφ : Integrable (fun x : ℝ => (x * ψ x) * φ x) (volume : Measure ℝ) := by
-    have h :=
-      (integrable_withDensity_iff_integrable_smul' (μ := (volume : Measure ℝ))
-            (f := ProbabilityTheory.gaussianPDF (0 : ℝ) (1 : ℝ≥0)) hf hflt (g := fun x => x * ψ x)).1
-        hxψ_int'
-    simpa [smul_eq_mul, mul_assoc, mul_left_comm, mul_comm, φ_eq_gaussianPDFReal] using h
-
-  have hu : ∀ x, HasDerivAt ψ (deriv ψ x) x := fun x => (hψ x).hasDerivAt
-  have hvφ : ∀ x, HasDerivAt φ (-x * φ x) x := by
-    intro x
-    have hdiff : DifferentiableAt ℝ φ x := by
-      change
-        DifferentiableAt ℝ
-          (fun u : ℝ => (1 / Real.sqrt (2 * Real.pi)) * rexp (-(u ^ 2) / 2)) x
-      fun_prop
-    simpa [deriv_φ (u := x)] using hdiff.hasDerivAt
-
-  have huv' : Integrable (fun x : ℝ => ψ x * (-x * φ x)) (volume : Measure ℝ) := by
-    have hneg : Integrable (fun x : ℝ => -(x * (ψ x * φ x))) (volume : Measure ℝ) := by
-      simpa [mul_assoc] using (hxψφ.const_mul (-1 : ℝ))
-    have hpoint :
-        (fun x : ℝ => ψ x * (-x * φ x)) = fun x => -(x * (ψ x * φ x)) := by
-      funext x
-      ring_nf
-    rw [hpoint]
-    exact hneg
-
-  have hu'v : Integrable (fun x : ℝ => deriv ψ x * φ x) (volume : Measure ℝ) := hψ'φ
-
-  have huv : Integrable (fun x : ℝ => ψ x * φ x) (volume : Measure ℝ) := hψφ
-
-  have hibp_vol :
-      (∫ x : ℝ, ψ x * (-x * φ x)) = -∫ x : ℝ, (deriv ψ x) * φ x := by
-    simpa using
-      (MeasureTheory.integral_mul_deriv_eq_deriv_mul_of_integrable
-        (u := ψ) (v := φ) (u' := fun x => deriv ψ x) (v' := fun x => -x * φ x)
-        hu hvφ huv' hu'v huv)
-
-  have hibp_vol' :
-      (∫ x : ℝ, (x * ψ x) * φ x) = ∫ x : ℝ, (deriv ψ x) * φ x := by
-    have hneg :
-        (∫ x : ℝ, (x * ψ x) * φ x) = -∫ x : ℝ, ψ x * (-x * φ x) := by
-      -- Expand and use linearity.
-      have :
-          (fun x : ℝ => (x * ψ x) * φ x) = fun x => -(ψ x * (-x * φ x)) := by
-        funext x
-        ring_nf
-      simp [this, MeasureTheory.integral_neg]
-    have hneg' :
-        -∫ x : ℝ, ψ x * (-x * φ x) = ∫ x : ℝ, (deriv ψ x) * φ x := by
-      simpa using congrArg Neg.neg hibp_vol
-    simpa [hneg] using hneg'
-
-  -- Go back to the Gaussian measure using `integral_gaussianReal_eq_integral_smul`.
-  have hL :
-      (∫ x, x * ψ x ∂μ) = ∫ x : ℝ, (x * ψ x) * φ x := by
-    have hμ :
-        (∫ x, x * ψ x ∂μ) =
-          ∫ x : ℝ, ProbabilityTheory.gaussianPDFReal 0 (1 : ℝ≥0) x * (x * ψ x) := by
-      simpa [μ, ProbabilityTheory.integral_gaussianReal_eq_integral_smul (μ := (0 : ℝ)) (v := (1 : ℝ≥0)) hv,
-        smul_eq_mul, mul_assoc, mul_left_comm, mul_comm]
-    simpa [μ, φ_eq_gaussianPDFReal, mul_assoc, mul_left_comm, mul_comm] using hμ
-  have hR :
-      (∫ x, deriv ψ x ∂μ) = ∫ x : ℝ, (deriv ψ x) * φ x := by
-    have hμ :
-        (∫ x, deriv ψ x ∂μ) =
-          ∫ x : ℝ, ProbabilityTheory.gaussianPDFReal 0 (1 : ℝ≥0) x * (deriv ψ x) := by
-      simpa [μ, ProbabilityTheory.integral_gaussianReal_eq_integral_smul (μ := (0 : ℝ)) (v := (1 : ℝ≥0)) hv,
-        smul_eq_mul, mul_assoc, mul_left_comm, mul_comm]
-    simpa [μ, φ_eq_gaussianPDFReal, mul_assoc, mul_left_comm, mul_comm] using hμ
-
-  -- Finish.
-  calc
-    (∫ x, x * ψ x ∂μ) = ∫ x : ℝ, (x * ψ x) * φ x := hL
-    _ = ∫ x : ℝ, (deriv ψ x) * φ x := hibp_vol'
-    _ = (∫ x, deriv ψ x ∂μ) := by
-      simpa [hR]
-
 /-- If `Z` has the standard Gaussian law, then `Z` is a.e. measurable. -/
 lemma aemeasurable_Z_of_gaussian
     (hZ_gaussian :
@@ -1298,14 +1177,8 @@ lemma Z_term_eq
     𝔼 (P := P) (fun ω => (Z ω) * (deriv h (U (κ := κ) (Z := Z) t ω))) =
       -(Real.sqrt (t / (1 - t)))
         * 𝔼 (P := P) (fun ω => deriv (fun u => deriv h u) (U (κ := κ) (Z := Z) t ω)) := by
-  have hZ_meas : AEMeasurable Z P :=
-    aemeasurable_Z_of_gaussian (P := P) (Z := Z) (hZ_gaussian := hZ_gaussian)
   -- Unfold expectations to integrals.
   simp [𝔼]
-  set μ : Measure ℝ :=
-    ProbabilityTheory.gaussianReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0))
-  have hmap : Measure.map Z P = μ := by
-    simpa [μ] using hZ_gaussian
 
   have hψdiff : Differentiable ℝ (ψ (κ := κ) (t := t)) := by
     intro z
@@ -1334,84 +1207,20 @@ lemma Z_term_eq
       simpa [hderiv_h_fun] using houter_poly
     simpa [ψ, ufun, Function.comp] using houter.comp z hu
 
-  have hψ_aesm : AEStronglyMeasurable (ψ (κ := κ) (t := t)) (Measure.map Z P) := by
-    exact hψdiff.continuous.measurable.aestronglyMeasurable
-  have hψ'_aesm :
-      AEStronglyMeasurable (fun x : ℝ => deriv (ψ (κ := κ) (t := t)) x) (Measure.map Z P) := by
-    simpa using aestronglyMeasurable_deriv (ψ (κ := κ) (t := t)) (Measure.map Z P)
-  have hxψ_aesm :
-      AEStronglyMeasurable (fun x : ℝ => x * (ψ (κ := κ) (t := t) x)) (Measure.map Z P) := by
-    have hmeas : Measurable (fun x : ℝ => x * (ψ (κ := κ) (t := t) x)) := by
-      simpa using measurable_id.mul (hψdiff.continuous.measurable)
-    exact hmeas.aestronglyMeasurable
-
-  have hψ_int_gauss : Integrable (ψ (κ := κ) (t := t)) μ := by
-    have hψ_int_map : Integrable (ψ (κ := κ) (t := t)) (Measure.map Z P) := by
-      exact (integrable_map_measure hψ_aesm hZ_meas).2 integrable_ψZ
-    simpa [hmap] using hψ_int_map
-  have hψ'_int_gauss : Integrable (fun x => deriv (ψ (κ := κ) (t := t)) x) μ := by
-    have hψ'_int_map :
-        Integrable (fun x => deriv (ψ (κ := κ) (t := t)) x) (Measure.map Z P) := by
-      exact (integrable_map_measure hψ'_aesm hZ_meas).2 integrable_deriv_ψZ
-    simpa [hmap] using hψ'_int_map
-  have hxψ_int_gauss : Integrable (fun x => x * (ψ (κ := κ) (t := t) x)) μ := by
-    have hxψ_int_map :
-        Integrable (fun x => x * (ψ (κ := κ) (t := t) x)) (Measure.map Z P) := by
-      have : Integrable (fun ω => (Z ω) * (ψ (κ := κ) (t := t) (Z ω))) P := by
-        simpa [ψ, U] using integrable_Zh
-      exact (integrable_map_measure hxψ_aesm hZ_meas).2 this
-    simpa [hmap] using hxψ_int_map
-
-  have hibp_gauss :
-      (∫ x, x * (ψ (κ := κ) (t := t) x) ∂μ) =
-        (∫ x, deriv (ψ (κ := κ) (t := t)) x ∂μ) := by
-    simpa [μ] using
-      gaussianIBP_gaussianReal (ψ := ψ (κ := κ) (t := t)) hψdiff hψ_int_gauss hψ'_int_gauss
-        hxψ_int_gauss
-
   have hibp :
-      (∫ ω, (Z ω) * (ψ (κ := κ) (t := t) (Z ω)) ∂P) =
-        (∫ ω, deriv (ψ (κ := κ) (t := t)) (Z ω) ∂P) := by
-    have hL :
-        (∫ ω, (Z ω) * (ψ (κ := κ) (t := t) (Z ω)) ∂P) =
-          ∫ x, x * (ψ (κ := κ) (t := t) x) ∂μ := by
-      have hmap_int :
-          (∫ x, x * (ψ (κ := κ) (t := t) x) ∂Measure.map Z P) =
-            ∫ ω, (Z ω) * (ψ (κ := κ) (t := t) (Z ω)) ∂P := by
-        simpa [mul_assoc, Function.comp] using
-          (MeasureTheory.integral_map (μ := P) (φ := Z) hZ_meas
-            (f := fun x : ℝ => x * (ψ (κ := κ) (t := t) x)) hxψ_aesm)
-      calc
-        (∫ ω, (Z ω) * (ψ (κ := κ) (t := t) (Z ω)) ∂P) =
-            (∫ x, x * (ψ (κ := κ) (t := t) x) ∂Measure.map Z P) := by
-              simpa using hmap_int.symm
-        _ = ∫ x, x * (ψ (κ := κ) (t := t) x) ∂μ := by
-              simpa [hmap]
-    have hR :
-        (∫ ω, deriv (ψ (κ := κ) (t := t)) (Z ω) ∂P) =
-          ∫ x, deriv (ψ (κ := κ) (t := t)) x ∂μ := by
-      have hmap_int :
-          (∫ x, deriv (ψ (κ := κ) (t := t)) x ∂Measure.map Z P) =
-            ∫ ω, deriv (ψ (κ := κ) (t := t)) (Z ω) ∂P := by
-        simpa [Function.comp] using
-          (MeasureTheory.integral_map (μ := P) (φ := Z) hZ_meas
-            (f := fun x : ℝ => deriv (ψ (κ := κ) (t := t)) x) hψ'_aesm)
-      calc
-        (∫ ω, deriv (ψ (κ := κ) (t := t)) (Z ω) ∂P) =
-            (∫ x, deriv (ψ (κ := κ) (t := t)) x ∂Measure.map Z P) := by
-              simpa using hmap_int.symm
-        _ = ∫ x, deriv (ψ (κ := κ) (t := t)) x ∂μ := by
-              simpa [hmap]
-    calc
-      (∫ ω, (Z ω) * (ψ (κ := κ) (t := t) (Z ω)) ∂P) =
-          ∫ x, x * (ψ (κ := κ) (t := t) x) ∂μ := hL
-      _ = ∫ x, deriv (ψ (κ := κ) (t := t)) x ∂μ := hibp_gauss
-      _ = (∫ ω, deriv (ψ (κ := κ) (t := t)) (Z ω) ∂P) := hR.symm
-  have hibp' :
       (∫ ω, (Z ω) * (deriv h (U (κ := κ) (Z := Z) t ω)) ∂P) =
-        (∫ ω, (deriv (ψ (κ := κ) (t := t)) (Z ω)) ∂P) := by
-    simpa [ψ, U] using hibp
-  rw [hibp']
+        (∫ ω, deriv (ψ (κ := κ) (t := t)) (Z ω) ∂P) := by
+    have hv : (1 : ℝ≥0) ≠ 0 := by simp
+    have hZψ_int :
+        Integrable (fun ω => (Z ω - (0 : ℝ)) * (ψ (κ := κ) (t := t) (Z ω))) P := by
+      simpa [sub_zero, ψ, U] using integrable_Zh
+    simpa [sub_zero, one_mul, ψ, U] using
+      (ProbabilityTheory.gaussianReal_ibp_integrable_of_map_eq
+        (P := P) (Z := Z) (μ := (0 : ℝ)) (v := (1 : ℝ≥0)) hv hZ_gaussian
+        (f := ψ (κ := κ) (t := t)) hψdiff integrable_ψZ integrable_deriv_ψZ hZψ_int)
+
+  rw [hibp]
+
   have hderiv_point :
       (fun ω => deriv (ψ (κ := κ) (t := t)) (Z ω)) =
         fun ω =>
@@ -1420,26 +1229,34 @@ lemma Z_term_eq
     funext ω
     simpa [ψ, U] using
       (deriv_ψ (κ := κ) (t := t) (ht := ht) (z := Z ω))
-  -- Pull out the constant scalar.
+
+  have hderiv_point_ae :
+      (∀ᵐ ω ∂P,
+        deriv (ψ (κ := κ) (t := t)) (Z ω) =
+          (-(Real.sqrt (t / (1 - t))))
+            * deriv (fun u => deriv h u) (U (κ := κ) (Z := Z) t ω)) := by
+    refine ae_of_all _ (fun ω => ?_)
+    simpa using congrArg (fun f => f ω) hderiv_point
+
   calc
     (∫ ω : Ω, deriv (ψ (κ := κ) (t := t)) (Z ω) ∂P) =
         ∫ ω : Ω,
-          -(Real.sqrt (t / (1 - t))
-            * deriv (fun u => deriv h u) (U (κ := κ) (Z := Z) t ω)) ∂P := by
-          simp [hderiv_point, mul_assoc]
+          (-(Real.sqrt (t / (1 - t))))
+            * deriv (fun u => deriv h u) (U (κ := κ) (Z := Z) t ω) ∂P := by
+          refine MeasureTheory.integral_congr_ae hderiv_point_ae
     _ =
-        -(∫ ω : Ω,
-            (Real.sqrt (t / (1 - t)))
-              * deriv (fun u => deriv h u) (U (κ := κ) (Z := Z) t ω) ∂P) := by
+        (-(Real.sqrt (t / (1 - t))))
+          * ∫ ω : Ω, deriv (fun u => deriv h u) (U (κ := κ) (Z := Z) t ω) ∂P := by
           simpa using
-            (MeasureTheory.integral_neg (μ := P)
+            (MeasureTheory.integral_const_mul (μ := P)
+              (r := (-(Real.sqrt (t / (1 - t)))))
               (f := fun ω : Ω =>
-                (Real.sqrt (t / (1 - t)))
-                  * deriv (fun u => deriv h u) (U (κ := κ) (Z := Z) t ω)))
+                deriv (fun u => deriv h u) (U (κ := κ) (Z := Z) t ω)))
+
     _ =
-        -((Real.sqrt (t / (1 - t)))
+        -(Real.sqrt (t / (1 - t))
           * ∫ ω : Ω, deriv (fun u => deriv h u) (U (κ := κ) (Z := Z) t ω) ∂P) := by
-          simp [MeasureTheory.integral_const_mul]
+          simp [neg_mul, mul_assoc]
 
 lemma deriv_B_step4
     (hZ_gaussian :

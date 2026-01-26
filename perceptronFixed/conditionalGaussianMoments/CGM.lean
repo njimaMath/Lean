@@ -1,24 +1,8 @@
-/-
-The following was proved by Aristotle:
-
-- lemma deriv_φ (x : ℝ) : deriv φ x = -x * φ x
-
-- lemma tail_pos (u : ℝ) : 0 < tail u
-
-- lemma integrable_pow_sub_mul_φ (k : ℕ) (u : ℝ) :
-    IntegrableOn (fun x : ℝ => (x - u)^k * φ x) (Set.Ici u)
-
-- lemma J_rec (k : ℕ) (u : ℝ) (hk : 1 ≤ k) :
-    J (k + 1) u = (k : ℝ) * J (k - 1) u - u * J k u
-
-- lemma μ_rec (k : ℕ) (u : ℝ) (hk : 1 ≤ k) :
-    μ (k + 1) u = (k : ℝ) * μ (k - 1) u - u * μ k u
--/
-
 import Mathlib
+import perceptronFixed.GIP.GIP
 
 
-open scoped BigOperators Topology
+open scoped BigOperators Topology NNReal
 
 open MeasureTheory
 
@@ -65,14 +49,18 @@ def d (u : ℝ) : ℝ :=
 -/
 
 /-- Derivative identity for the standard normal density: φ' = -x φ. -/
+private lemma φ_eq_gaussianPDFReal :
+    φ = ProbabilityTheory.gaussianPDFReal (0 : ℝ) (1 : ℝ≥0) := by
+  funext x
+  simp [φ, ProbabilityTheory.gaussianPDFReal_def, div_eq_mul_inv, mul_left_comm, mul_comm]
+
 lemma deriv_φ (x : ℝ) : deriv φ x = -x * φ x := by
-  -- Fill in with calculus:
-  --   φ(x) = c * exp (-(x^2)/2), c = 1/sqrt(2π).
-  -- Use:
-  --   `by simp [φ]` will not finish by itself; you will likely need `simp` + `ring`
-  --   and lemmas about `deriv` of `Real.exp` and polynomials.
-  unfold TruncatedNormalMoments.φ;
-  norm_num ; ring
+  have hv : (1 : ℝ≥0) ≠ 0 := by simp
+  rw [φ_eq_gaussianPDFReal]
+  have h :=
+    congrArg (fun f => f x)
+      (ProbabilityTheory.deriv_gaussianPDFReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0)) hv)
+  simpa using h
 
 /-- Positivity of the tail integral, hence `tail u ≠ 0`. -/
 lemma tail_pos (u : ℝ) : 0 < tail u := by
@@ -155,38 +143,24 @@ noncomputable section AristotleLemmas
 /-
 The function (x-u)^k * φ(x) tends to 0 as x goes to infinity.
 -/
-lemma TruncatedNormalMoments.tendsto_pow_sub_mul_phi_atTop (k : ℕ) (u : ℝ) :
-    Filter.Tendsto (fun x => (x - u) ^ k * TruncatedNormalMoments.φ x) Filter.atTop (nhds 0) := by
-      -- We'll use the fact that $\phi(x) = \frac{e^{-x^2/2}}{\sqrt{2\pi}}$ to simplify the expression.
-      suffices h_suff_top : Filter.Tendsto (fun x => (x - u)^k * Real.exp (-x^2 / 2) / Real.sqrt (2 * Real.pi)) Filter.atTop (nhds 0) by
-        convert h_suff_top using 2 ; unfold TruncatedNormalMoments.φ ; ring;
-      -- We'll use the fact that $e^{-x^2 / 2}$ decays faster than any polynomial grows. Specifically, we have $\lim_{x \to \infty} x^k e^{-x^2 / 2} = 0$ for any $k$.
-      have h_exp_decay : Filter.Tendsto (fun x : ℝ => x^k * Real.exp (-x^2 / 2)) Filter.atTop (nhds 0) := by
-        have := Real.tendsto_pow_mul_exp_neg_atTop_nhds_zero k;
-        refine' squeeze_zero_norm' _ this;
-        filter_upwards [ Filter.eventually_ge_atTop 2 ] with x hx using by rw [ Real.norm_of_nonneg ( by positivity ) ] ; gcongr ; nlinarith;
-      -- We can factor out $(x - u)^k$ from the limit expression.
-      have h_factor : Filter.Tendsto (fun x : ℝ => ((x - u) / x)^k * x^k * Real.exp (-x^2 / 2) / Real.sqrt (2 * Real.pi)) Filter.atTop (nhds 0) := by
-        -- We'll use the fact that $(x - u) / x \to 1$ as $x \to \infty$.
-        have h_frac : Filter.Tendsto (fun x : ℝ => (x - u) / x) Filter.atTop (nhds 1) := by
-          norm_num [ sub_div ];
-          exact le_trans ( Filter.Tendsto.sub ( tendsto_const_nhds.congr' ( by filter_upwards [ Filter.eventually_ne_atTop 0 ] with x hx; aesop ) ) ( tendsto_const_nhds.div_atTop Filter.tendsto_id ) ) ( by norm_num );
-        simpa [ mul_assoc ] using Filter.Tendsto.div_const ( Filter.Tendsto.mul ( h_frac.pow k ) h_exp_decay ) _;
-      refine h_factor.congr' ( by filter_upwards [ Filter.eventually_gt_atTop 0 ] with x hx using by rw [ div_pow, div_mul_cancel₀ _ ( pow_ne_zero _ hx.ne' ) ] )
+lemma tendsto_pow_sub_mul_phi_atTop (k : ℕ) (u : ℝ) :
+    Filter.Tendsto (fun x => (x - u) ^ k * φ x) Filter.atTop (𝓝 0) := by
+  simpa using (tendsto_pow_sub_mul_φ_atTop k u)
 
 /-
 Compute the derivative of (x-u)^k * φ(x).
 -/
-lemma TruncatedNormalMoments.deriv_pow_sub_mul_phi (k : ℕ) (u x : ℝ) (hk : 1 ≤ k) :
-    deriv (fun x => (x - u) ^ k * TruncatedNormalMoments.φ x) x =
-    k * (x - u) ^ (k - 1) * TruncatedNormalMoments.φ x - x * (x - u) ^ k * TruncatedNormalMoments.φ x := by
-      unfold TruncatedNormalMoments.φ;
-      norm_num ; ring
+lemma deriv_pow_sub_mul_phi (k : ℕ) (u x : ℝ) :
+    deriv (fun x => (x - u) ^ k * φ x) x =
+      k * (x - u) ^ (k - 1) * φ x - x * (x - u) ^ k * φ x := by
+  unfold φ
+  norm_num
+  ring
 
 /-
 The integral of the derivative of (x-u)^k φ(x) over [u, ∞) is 0.
 -/
-lemma TruncatedNormalMoments.integral_deriv_pow_sub_mul_phi_eq_zero (k : ℕ) (u : ℝ) (hk : 1 ≤ k) :
+lemma integral_deriv_pow_sub_mul_phi_eq_zero (k : ℕ) (u : ℝ) (hk : 1 ≤ k) :
     ∫ x in Set.Ici u, deriv (fun x => (x - u) ^ k * TruncatedNormalMoments.φ x) x = 0 := by
       -- By the Fundamental Theorem of Calculus, the integral of the derivative of a function over an interval is the function evaluated at the upper limit minus the function evaluated at the lower limit.
       have h_ftc : Filter.Tendsto (fun b => ∫ x in u..b, deriv (fun x => (x - u) ^ k * (TruncatedNormalMoments.φ x)) x) Filter.atTop (nhds (∫ x in Set.Ioi u, deriv (fun x => (x - u) ^ k * (TruncatedNormalMoments.φ x)) x)) := by
@@ -208,10 +182,10 @@ lemma TruncatedNormalMoments.integral_deriv_pow_sub_mul_phi_eq_zero (k : ℕ) (u
               have h_expand : ∀ x : ℝ, x * (x - u) ^ k * TruncatedNormalMoments.φ x = ∑ j ∈ Finset.range (k + 1), Nat.choose k j * (-u) ^ (k - j) * x ^ (j + 1) * TruncatedNormalMoments.φ x := by
                 intro x; rw [ sub_eq_add_neg, add_pow ] ; ring;
                 simp +decide only [mul_assoc, Finset.mul_sum _ _ _, mul_comm, mul_left_comm];
-              simp_all +decide [ mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _ ];
+              simp_all +decide [mul_assoc];
               exact MeasureTheory.integrable_finset_sum _ fun i hi => MeasureTheory.Integrable.const_mul ( MeasureTheory.Integrable.const_mul ( h_integrable _ ) _ ) _;
           refine' h_deriv_integrable.mono_set ( Set.Ioi_subset_Ici_self ) |> fun h => h.congr_fun _ measurableSet_Ioi;
-          intro x hx; simp +decide [ TruncatedNormalMoments.deriv_pow_sub_mul_phi _ _ _ hk ] ;
+          intro x hx; simp +decide [deriv_pow_sub_mul_phi k u x]
         · exact Filter.tendsto_id;
       -- By the Fundamental Theorem of Calculus, we know that the integral of the derivative of a function over an interval is the function evaluated at the upper limit minus the function evaluated at the lower limit.
       have h_ftc_eval : ∀ b > u, ∫ x in u..b, deriv (fun x => (x - u) ^ k * (TruncatedNormalMoments.φ x)) x = (b - u) ^ k * (TruncatedNormalMoments.φ b) - (u - u) ^ k * (TruncatedNormalMoments.φ u) := by
@@ -221,8 +195,10 @@ lemma TruncatedNormalMoments.integral_deriv_pow_sub_mul_phi_eq_zero (k : ℕ) (u
         · apply_rules [ Continuous.intervalIntegrable ];
           unfold TruncatedNormalMoments.φ;
           fun_prop;
+      have hk0 : k ≠ 0 := by
+        exact Nat.ne_of_gt (Nat.lt_of_lt_of_le (by decide : 0 < 1) hk)
       rw [ MeasureTheory.integral_Ici_eq_integral_Ioi ];
-      exact tendsto_nhds_unique h_ftc ( Filter.Tendsto.congr' ( by filter_upwards [ Filter.eventually_gt_atTop u ] with b hb; rw [ h_ftc_eval b hb ] ) ( by simpa [ show k ≠ 0 by linarith ] using TruncatedNormalMoments.tendsto_pow_sub_mul_phi_atTop k u ) )
+      exact tendsto_nhds_unique h_ftc ( Filter.Tendsto.congr' ( by filter_upwards [ Filter.eventually_gt_atTop u ] with b hb; rw [ h_ftc_eval b hb ] ) ( by simpa [ hk0 ] using tendsto_pow_sub_mul_phi_atTop k u ) )
 
 end AristotleLemmas
 
@@ -257,10 +233,10 @@ lemma J_rec (k : ℕ) (u : ℝ) (hk : 1 ≤ k) :
     Combine:
       J_{k+1} = k * J_{k-1} - u * J_k.
   -/
-  have := TruncatedNormalMoments.integral_deriv_pow_sub_mul_phi_eq_zero k u hk;
+  have := integral_deriv_pow_sub_mul_phi_eq_zero k u hk;
   -- Apply the linearity of the integral to split the integral into two parts.
   have h_split : ∫ x in Set.Ici u, deriv (fun x => (x - u)^k * TruncatedNormalMoments.φ x) x = ∫ x in Set.Ici u, (k * (x - u)^(k - 1) * TruncatedNormalMoments.φ x) - (x * (x - u)^k * TruncatedNormalMoments.φ x) := by
-    exact MeasureTheory.setIntegral_congr_fun measurableSet_Ici fun x hx => by rw [ TruncatedNormalMoments.deriv_pow_sub_mul_phi k u x hk ] ;
+    exact MeasureTheory.setIntegral_congr_fun measurableSet_Ici fun x hx => by rw [ deriv_pow_sub_mul_phi k u x ] ;
   rw [ MeasureTheory.integral_sub ] at h_split;
   · -- Apply the linearity of the integral to split the integral into two parts and simplify.
     have h_split : ∫ x in Set.Ici u, x * (x - u)^k * TruncatedNormalMoments.φ x = ∫ x in Set.Ici u, (x - u)^(k + 1) * TruncatedNormalMoments.φ x + u * (x - u)^k * TruncatedNormalMoments.φ x := by
@@ -281,10 +257,9 @@ lemma J_rec (k : ℕ) (u : ℝ) (hk : 1 ≤ k) :
 /-- Convert the J recursion into the μ recursion by dividing by tail(u). -/
 lemma μ_rec (k : ℕ) (u : ℝ) (hk : 1 ≤ k) :
     μ (k + 1) u = (k : ℝ) * μ (k - 1) u - u * μ k u := by
-  have ht : tail u ≠ 0 := tail_ne_zero u
   -- expand μ, use J_rec, and simplify divisions
-  -- `field_simp [μ, ht]` is usually the right tool here.
-  simp [μ, J_rec k u hk, ht, div_eq_mul_inv, mul_add, add_mul, sub_eq_add_neg]  -- likely not enough
+  -- `field_simp [μ]` is an alternative here.
+  simp [μ, J_rec k u hk, div_eq_mul_inv, add_mul, sub_eq_add_neg]
   -- finish with `ring` after `field_simp` in the actual proof
   ring
 
