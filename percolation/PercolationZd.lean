@@ -1,4 +1,7 @@
 import Mathlib.Analysis.SpecificLimits.Basic
+import Mathlib.Combinatorics.SimpleGraph.Basic
+import Mathlib.Combinatorics.SimpleGraph.Walks.Basic
+import Mathlib.Data.Int.Basic
 import Mathlib.Data.Fintype.BigOperators
 import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
 import Mathlib.Topology.Order.OrderClosed
@@ -185,5 +188,281 @@ theorem p_c_pos
   exact hpos.trans_le hle
 
 end CriticalProbability
+
+section BondPercolation
+
+open MeasureTheory
+
+namespace Bond
+
+namespace Zd
+
+variable {d : ℕ}
+
+def e (i : Fin d) : Percolation.Zd d := fun j => if j = i then (1 : ℤ) else 0
+
+lemma e_apply_self (i : Fin d) : e (d := d) i i = 1 := by simp [e]
+
+lemma e_apply_ne (i j : Fin d) (h : j ≠ i) : e (d := d) i j = 0 := by simp [e, h]
+
+end Zd
+
+namespace Lattice
+
+variable {d : ℕ}
+
+abbrev V : Type := Percolation.Zd d
+
+def Adj (x y : V (d := d)) : Prop :=
+  ∃ i : Fin d, y = x + Zd.e (d := d) i ∨ y = x - Zd.e (d := d) i
+
+lemma Adj_symm {x y : V (d := d)} : Adj (d := d) x y → Adj (d := d) y x := by
+  sorry
+
+lemma Adj_irrefl (x : V (d := d)) : ¬ Adj (d := d) x x := by
+  sorry
+
+noncomputable def latticeGraph (d : ℕ) : SimpleGraph (Percolation.Zd d) where
+  Adj := Adj (d := d)
+  symm := by
+    intro x y
+    exact Adj_symm (d := d)
+  loopless := by
+    intro x
+    exact Adj_irrefl (d := d) x
+
+lemma countable_Zd (d : ℕ) : Countable (Percolation.Zd d) := by infer_instance
+
+end Lattice
+
+namespace Prob
+
+open Lattice
+
+variable (d : ℕ)
+
+abbrev V : Type := Percolation.Zd d
+abbrev G : SimpleGraph (V d) := Lattice.latticeGraph d
+abbrev Edge : Type := {e : Sym2 (V d) // e ∈ (G d).edgeSet}
+
+noncomputable def P (p : ℝ≥0∞) : Measure (Set (Edge d)) := by
+  classical
+  sorry
+
+instance (p : ℝ≥0∞) : MeasureTheory.IsProbabilityMeasure (P (d := d) p) := by
+  classical
+  sorry
+
+theorem measurable_mem_edge (p : ℝ≥0∞) (e : Edge d) : MeasurableSet {ω : Set (Edge d) | e ∈ ω} := by
+  classical
+  sorry
+
+end Prob
+
+namespace Geometry
+
+variable {d : ℕ}
+
+def box (n : ℕ) : Set (Percolation.Zd d) := {x | ∀ i : Fin d, Int.natAbs (x i) ≤ n}
+
+theorem finite_box (n : ℕ) : (box (d := d) n).Finite := by
+  classical
+  sorry
+
+abbrev Z2 : Type := Percolation.Zd 2
+
+def rect (n m : ℕ) : Set Z2 :=
+  {x | 0 ≤ x 0 ∧ x 0 ≤ (n : ℤ) ∧ 0 ≤ x 1 ∧ x 1 ≤ (m : ℤ)}
+
+theorem finite_rect (n m : ℕ) : (rect n m).Finite := by
+  classical
+  sorry
+
+def leftBoundary (n m : ℕ) : Set Z2 := {x | x 0 = 0 ∧ 0 ≤ x 1 ∧ x 1 ≤ (m : ℤ)}
+
+def rightBoundary (n m : ℕ) : Set Z2 := {x | x 0 = (n : ℤ) ∧ 0 ≤ x 1 ∧ x 1 ≤ (m : ℤ)}
+
+def bottomBoundary (n m : ℕ) : Set Z2 := {x | x 1 = 0 ∧ 0 ≤ x 0 ∧ x 0 ≤ (n : ℤ)}
+
+def topBoundary (n m : ℕ) : Set Z2 := {x | x 1 = (m : ℤ) ∧ 0 ≤ x 0 ∧ x 0 ≤ (n : ℤ)}
+
+end Geometry
+
+namespace Open
+
+open Lattice Prob Geometry
+
+variable {d : ℕ}
+
+abbrev V : Type := Percolation.Zd d
+abbrev G : SimpleGraph (V d) := Lattice.latticeGraph d
+abbrev E : Type := Prob.Edge d
+
+noncomputable def edgeOfAdj {x y : V (d := d)} (h : (G d).Adj x y) : E d := by
+  refine ⟨Sym2.mk x y, ?_⟩
+  simpa using h
+
+def openAdj (ω : Set (E d)) (x y : V (d := d)) : Prop :=
+  ∃ h : (G d).Adj x y, edgeOfAdj (d := d) h ∈ ω
+
+def WalkAllOpen (ω : Set (E d)) : ∀ {x y : V (d := d)}, (G d).Walk x y → Prop
+  | _, _, .nil => True
+  | _, _, .cons h w => edgeOfAdj (d := d) h ∈ ω ∧ WalkAllOpen ω w
+
+def WalkAllIn (S : Set (V (d := d))) {x y : V (d := d)} (w : (G d).Walk x y) : Prop :=
+  ∀ v, v ∈ w.support → v ∈ S
+
+def OpenConnected (ω : Set (E d)) (x y : V (d := d)) : Prop :=
+  ∃ w : (G d).Walk x y, WalkAllOpen (d := d) ω w
+
+theorem OpenConnected_refl (ω : Set (E d)) (x : V (d := d)) : OpenConnected (d := d) ω x x := by
+  classical
+  sorry
+
+theorem OpenConnected_symm (ω : Set (E d)) {x y : V (d := d)} :
+    OpenConnected (d := d) ω x y → OpenConnected (d := d) ω y x := by
+  classical
+  sorry
+
+theorem OpenConnected_trans (ω : Set (E d)) {x y z : V (d := d)} :
+    OpenConnected (d := d) ω x y → OpenConnected (d := d) ω y z → OpenConnected (d := d) ω x z := by
+  classical
+  sorry
+
+theorem OpenConnected_mono {ω ω' : Set (E d)} (hω : ω ⊆ ω') {x y : V (d := d)} :
+    OpenConnected (d := d) ω x y → OpenConnected (d := d) ω' x y := by
+  classical
+  sorry
+
+def connectsToBoundary (n : ℕ) : Set (Set (E d)) :=
+  {ω | ∃ y : V (d := d), y ∉ Geometry.box (d := d) n ∧ OpenConnected (d := d) ω 0 y}
+
+def percolates : Set (Set (E d)) := ⋂ n : ℕ, connectsToBoundary (d := d) n
+
+theorem measurableSet_connectsToBoundary (n : ℕ) :
+    MeasurableSet (connectsToBoundary (d := d) n) := by
+  classical
+  sorry
+
+theorem measurableSet_percolates : MeasurableSet (percolates (d := d)) := by
+  classical
+  sorry
+
+end Open
+
+namespace CriticalProbability
+
+open Prob Open
+
+noncomputable def theta (d : ℕ) (p : ℝ≥0∞) : ℝ≥0∞ :=
+  (Prob.P (d := d) p) (Open.percolates (d := d))
+
+noncomputable def p_c (d : ℕ) : ℝ≥0∞ :=
+  sInf {p : ℝ≥0∞ | 0 < theta d p}
+
+theorem theta_mono {d : ℕ} {p q : ℝ≥0∞} (hpq : p ≤ q) : theta d p ≤ theta d q := by
+  classical
+  sorry
+
+theorem p_c_le_of_theta_pos {d : ℕ} {p : ℝ≥0∞} (hp : 0 < theta d p) : p_c d ≤ p := by
+  classical
+  sorry
+
+theorem le_p_c_of_theta_eq_zero {d : ℕ} {p : ℝ≥0∞} (hp : theta d p = 0) : p ≤ p_c d := by
+  classical
+  sorry
+
+end CriticalProbability
+
+namespace TwoD
+
+open Prob Open Geometry CriticalProbability
+
+abbrev V : Type := Percolation.Zd 2
+abbrev G : SimpleGraph V := Lattice.latticeGraph 2
+abbrev E : Type := Prob.Edge 2
+
+def CrossLR (n m : ℕ) : Set (Set E) :=
+  {ω |
+    ∃ x : V, x ∈ Geometry.leftBoundary n m ∧
+      ∃ y : V, y ∈ Geometry.rightBoundary n m ∧
+        ∃ w : (G).Walk x y, Open.WalkAllOpen (d := 2) ω w ∧
+          Open.WalkAllIn (d := 2) (Geometry.rect n m) w}
+
+def CrossTB (n m : ℕ) : Set (Set E) :=
+  {ω |
+    ∃ x : V, x ∈ Geometry.bottomBoundary n m ∧
+      ∃ y : V, y ∈ Geometry.topBoundary n m ∧
+        ∃ w : (G).Walk x y, Open.WalkAllOpen (d := 2) ω w ∧
+          Open.WalkAllIn (d := 2) (Geometry.rect n m) w}
+
+noncomputable def dualConfig (ω : Set E) : Set E := by
+  classical
+  sorry
+
+theorem crossing_dichotomy (n m : ℕ) (ω : Set E) :
+    ω ∈ CrossLR n m ∨ dualConfig ω ∈ CrossTB n m := by
+  classical
+  sorry
+
+theorem crossing_disjoint (n m : ℕ) (ω : Set E) :
+    ¬(ω ∈ CrossLR n m ∧ dualConfig ω ∈ CrossTB n m) := by
+  classical
+  sorry
+
+theorem crossing_complement (n m : ℕ) (ω : Set E) :
+    ω ∈ CrossLR n m ↔ ¬ dualConfig ω ∈ CrossTB n m := by
+  classical
+  sorry
+
+theorem prob_crossLR_square_at_half (n : ℕ) :
+    (Prob.P (d := 2) (1 / 2) (CrossLR n n)) = (1 / 2 : ℝ≥0∞) := by
+  classical
+  sorry
+
+theorem rsw_lower_bound_at_half (ρ : ℝ) :
+    ∃ c : ℝ≥0∞, 0 < c ∧ ∀ n : ℕ, c ≤ (Prob.P (d := 2) (1 / 2) (CrossLR (Nat.floor (ρ * n)) n)) := by
+  classical
+  sorry
+
+theorem russo_formula_crossLR (n : ℕ) : True := by
+  trivial
+
+theorem prob_crossLR_square_tendsto_one_of_gt_half {p : ℝ≥0∞} (hp : (1 / 2 : ℝ≥0∞) < p) :
+    Filter.Tendsto (fun n : ℕ => (Prob.P (d := 2) p (CrossLR n n))) Filter.atTop (𝓝 1) := by
+  classical
+  sorry
+
+theorem theta_pos_of_gt_half {p : ℝ≥0∞} (hp : (1 / 2 : ℝ≥0∞) < p) :
+    0 < CriticalProbability.theta 2 p := by
+  classical
+  sorry
+
+theorem theta_eq_zero_of_lt_half {p : ℝ≥0∞} (hp : p < (1 / 2 : ℝ≥0∞)) :
+    CriticalProbability.theta 2 p = 0 := by
+  classical
+  sorry
+
+theorem one_half_le_p_c : (1 / 2 : ℝ≥0∞) ≤ CriticalProbability.p_c 2 := by
+  classical
+  sorry
+
+theorem p_c_le_one_half : CriticalProbability.p_c 2 ≤ (1 / 2 : ℝ≥0∞) := by
+  classical
+  sorry
+
+theorem p_c_two_eq_one_half : CriticalProbability.p_c 2 = (1 / 2 : ℝ≥0∞) := by
+  classical
+  exact le_antisymm p_c_le_one_half one_half_le_p_c
+
+end TwoD
+
+end Bond
+
+end BondPercolation
+
+
+
+
 
 end Percolation

@@ -149,9 +149,9 @@ theorem addCommN (n: N) : ∀ (m: N), addN n m = addN m n := by
 
 
 theorem addAss (n: N) : ∀ (m k: N), addN (addN n m) k = addN n (addN m k) := by
-  induction n with 
+  induction n with
   | z => simp [addN]
-  | s n hn => 
+  | s n hn =>
     intro m k
     simp [addN]
     rw [hn m k]
@@ -159,27 +159,27 @@ theorem addAss (n: N) : ∀ (m k: N), addN (addN n m) k = addN n (addN m k) := b
 def mul: N → N → N := by
   intro n m
   match n with
-    | z => exact z 
+    | z => exact z
     | s n => exact addN (mul n m) m
 
 theorem mulComm (n:N): ∀ m:N, mul n m = mul m n := by
-  induction n with 
-    | z => 
+  induction n with
+    | z =>
       intro m
       induction m with
         | z => simp [mul]
-        | s m hm => 
+        | s m hm =>
           simp [mul]
           rw [addCommN (mul m z) z]
           rw [← hm]
           simp [mul]
           simp [addN]
-    | s n => 
+    | s n =>
       rename_i hn
       intro m
-      induction m with 
-      | z => 
-        simp [mul]  
+      induction m with
+      | z =>
+        simp [mul]
         rw [addCommN (mul n z) z]
         simp [addN]
         rw [hn z]
@@ -210,4 +210,3 @@ def divisible_by_two : N → Prop
 | N.z => True
 | N.s N.z => False
 | N.s (N.s n) => divisible_by_two n
-
