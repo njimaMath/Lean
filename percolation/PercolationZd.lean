@@ -222,7 +222,7 @@ lemma Adj_symm {x y : V (d := d)} : Adj (d := d) x y → Adj (d := d) y x := by
 lemma Adj_irrefl (x : V (d := d)) : ¬ Adj (d := d) x x := by
   sorry
 
-noncomputable def latticeGraph (d : ℕ) : SimpleGraph (Percolation.Zd d) where
+def latticeGraph (d : ℕ) : SimpleGraph (Percolation.Zd d) where
   Adj := Adj (d := d)
   symm := by
     intro x y
@@ -239,21 +239,20 @@ namespace Prob
 
 open Lattice
 
-variable (d : ℕ)
+abbrev V (d : ℕ) : Type := Percolation.Zd d
+abbrev G (d : ℕ) : SimpleGraph (V d) := Lattice.latticeGraph d
+abbrev Edge (d : ℕ) : Type := {e : Sym2 (V d) // e ∈ (G d).edgeSet}
 
-abbrev V : Type := Percolation.Zd d
-abbrev G : SimpleGraph (V d) := Lattice.latticeGraph d
-abbrev Edge : Type := {e : Sym2 (V d) // e ∈ (G d).edgeSet}
-
-noncomputable def P (p : ℝ≥0∞) : Measure (Set (Edge d)) := by
+noncomputable def P (d : ℕ) (p : ℝ≥0∞) : Measure (Set (Edge d)) := by
   classical
   sorry
 
-instance (p : ℝ≥0∞) : MeasureTheory.IsProbabilityMeasure (P (d := d) p) := by
+instance (d : ℕ) (p : ℝ≥0∞) : MeasureTheory.IsProbabilityMeasure (P d p) := by
   classical
   sorry
 
-theorem measurable_mem_edge (p : ℝ≥0∞) (e : Edge d) : MeasurableSet {ω : Set (Edge d) | e ∈ ω} := by
+theorem measurable_mem_edge (d : ℕ) (p : ℝ≥0∞) (e : Edge d) :
+    MeasurableSet {ω : Set (Edge d) | e ∈ ω} := by
   classical
   sorry
 
@@ -295,49 +294,50 @@ open Lattice Prob Geometry
 variable {d : ℕ}
 
 abbrev V : Type := Percolation.Zd d
-abbrev G : SimpleGraph (V d) := Lattice.latticeGraph d
+abbrev G : SimpleGraph (V (d := d)) := Lattice.latticeGraph d
 abbrev E : Type := Prob.Edge d
 
-noncomputable def edgeOfAdj {x y : V (d := d)} (h : (G d).Adj x y) : E d := by
-  refine ⟨Sym2.mk x y, ?_⟩
+def edgeOfAdj {x y : V (d := d)} (h : (G (d := d)).Adj x y) : E (d := d) := by
+  refine ⟨s(x, y), ?_⟩
   simpa using h
 
-def openAdj (ω : Set (E d)) (x y : V (d := d)) : Prop :=
-  ∃ h : (G d).Adj x y, edgeOfAdj (d := d) h ∈ ω
+def openAdj (ω : Set (E (d := d))) (x y : V (d := d)) : Prop :=
+  ∃ h : (G (d := d)).Adj x y, edgeOfAdj (d := d) h ∈ ω
 
-def WalkAllOpen (ω : Set (E d)) : ∀ {x y : V (d := d)}, (G d).Walk x y → Prop
+def WalkAllOpen (ω : Set (E (d := d))) : ∀ {x y : V (d := d)}, (G (d := d)).Walk x y → Prop
   | _, _, .nil => True
   | _, _, .cons h w => edgeOfAdj (d := d) h ∈ ω ∧ WalkAllOpen ω w
 
-def WalkAllIn (S : Set (V (d := d))) {x y : V (d := d)} (w : (G d).Walk x y) : Prop :=
+def WalkAllIn (S : Set (V (d := d))) {x y : V (d := d)} (w : (G (d := d)).Walk x y) : Prop :=
   ∀ v, v ∈ w.support → v ∈ S
 
-def OpenConnected (ω : Set (E d)) (x y : V (d := d)) : Prop :=
-  ∃ w : (G d).Walk x y, WalkAllOpen (d := d) ω w
+def OpenConnected (ω : Set (E (d := d))) (x y : V (d := d)) : Prop :=
+  ∃ w : (G (d := d)).Walk x y, WalkAllOpen (d := d) ω w
 
-theorem OpenConnected_refl (ω : Set (E d)) (x : V (d := d)) : OpenConnected (d := d) ω x x := by
+theorem OpenConnected_refl (ω : Set (E (d := d))) (x : V (d := d)) :
+    OpenConnected (d := d) ω x x := by
   classical
   sorry
 
-theorem OpenConnected_symm (ω : Set (E d)) {x y : V (d := d)} :
+theorem OpenConnected_symm (ω : Set (E (d := d))) {x y : V (d := d)} :
     OpenConnected (d := d) ω x y → OpenConnected (d := d) ω y x := by
   classical
   sorry
 
-theorem OpenConnected_trans (ω : Set (E d)) {x y z : V (d := d)} :
+theorem OpenConnected_trans (ω : Set (E (d := d))) {x y z : V (d := d)} :
     OpenConnected (d := d) ω x y → OpenConnected (d := d) ω y z → OpenConnected (d := d) ω x z := by
   classical
   sorry
 
-theorem OpenConnected_mono {ω ω' : Set (E d)} (hω : ω ⊆ ω') {x y : V (d := d)} :
+theorem OpenConnected_mono {ω ω' : Set (E (d := d))} (hω : ω ⊆ ω') {x y : V (d := d)} :
     OpenConnected (d := d) ω x y → OpenConnected (d := d) ω' x y := by
   classical
   sorry
 
-def connectsToBoundary (n : ℕ) : Set (Set (E d)) :=
+def connectsToBoundary (n : ℕ) : Set (Set (E (d := d))) :=
   {ω | ∃ y : V (d := d), y ∉ Geometry.box (d := d) n ∧ OpenConnected (d := d) ω 0 y}
 
-def percolates : Set (Set (E d)) := ⋂ n : ℕ, connectsToBoundary (d := d) n
+def percolates : Set (Set (E (d := d))) := ⋂ n : ℕ, connectsToBoundary (d := d) n
 
 theorem measurableSet_connectsToBoundary (n : ℕ) :
     MeasurableSet (connectsToBoundary (d := d) n) := by
@@ -355,7 +355,7 @@ namespace CriticalProbability
 open Prob Open
 
 noncomputable def theta (d : ℕ) (p : ℝ≥0∞) : ℝ≥0∞ :=
-  (Prob.P (d := d) p) (Open.percolates (d := d))
+  (Prob.P d p) (Open.percolates (d := d))
 
 noncomputable def p_c (d : ℕ) : ℝ≥0∞ :=
   sInf {p : ℝ≥0∞ | 0 < theta d p}
