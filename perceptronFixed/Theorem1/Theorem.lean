@@ -3299,7 +3299,7 @@ lemma gaussian_integration_by_parts_tanh (r : ℝ) :
         HasDerivAt (fun x : ℝ => (√(2 * π))⁻¹ * Real.exp (-(x ^ 2) / (2 : ℝ)))
           ((√(2 * π))⁻¹ * (Real.exp (-(x ^ 2) / (2 : ℝ)) * (-x))) x :=
       hexp.const_mul ((√(2 * π))⁻¹)
-    simpa [vfun, v', pdf, v, ProbabilityTheory.gaussianPDFReal, pow_two, sub_eq_add_neg,
+    simpa [vfun, v', pdf, v, ProbabilityTheory.gaussianPDFReal_def, pow_two, sub_eq_add_neg,
       div_eq_mul_inv, mul_assoc, mul_left_comm, mul_comm] using hmul
 
   have tanh_norm_le_one : ∀ x : ℝ, ‖Real.tanh x‖ ≤ (1 : ℝ) := by
