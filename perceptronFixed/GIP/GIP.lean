@@ -455,7 +455,7 @@ theorem gaussianStd_ibp_coord
   | zero =>
       cases i with
       | mk val isLt =>
-        cases isLt
+        cases isLta
   | succ n =>
       let γ : Measure ℝ := gaussianReal (0 : ℝ) (1 : NNReal)
       let μrest : Measure (Fin n → ℝ) := gaussianStd n
