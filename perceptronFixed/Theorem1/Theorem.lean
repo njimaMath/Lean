@@ -3288,8 +3288,19 @@ lemma gaussian_integration_by_parts_tanh (r : ℝ) :
 
   have hv' : ∀ x : ℝ, HasDerivAt vfun (v' x) x := by
     intro x
-    simpa [vfun, v', pdf, v, mul_assoc, mul_left_comm, mul_comm] using
-      (ProbabilityTheory.hasDerivAt_gaussianPDFReal (μ := (0 : ℝ)) (v := v) hv x)
+    have hinner : HasDerivAt (fun x : ℝ => -(x ^ 2) / (2 : ℝ)) (-x) x := by
+      simpa [div_eq_mul_inv, mul_assoc, mul_left_comm, mul_comm] using
+        ((hasDerivAt_pow 2 x).neg.div_const (2 : ℝ))
+    have hexp :
+        HasDerivAt (fun x : ℝ => Real.exp (-(x ^ 2) / (2 : ℝ)))
+          (Real.exp (-(x ^ 2) / (2 : ℝ)) * (-x)) x := by
+      simpa using (Real.hasDerivAt_exp (-(x ^ 2) / (2 : ℝ))).comp x hinner
+    have hmul :
+        HasDerivAt (fun x : ℝ => (√(2 * π))⁻¹ * Real.exp (-(x ^ 2) / (2 : ℝ)))
+          ((√(2 * π))⁻¹ * (Real.exp (-(x ^ 2) / (2 : ℝ)) * (-x))) x :=
+      hexp.const_mul ((√(2 * π))⁻¹)
+    simpa [vfun, v', pdf, v, ProbabilityTheory.gaussianPDFReal, pow_two, sub_eq_add_neg,
+      div_eq_mul_inv, mul_assoc, mul_left_comm, mul_comm] using hmul
 
   have tanh_norm_le_one : ∀ x : ℝ, ‖Real.tanh x‖ ≤ (1 : ℝ) := by
     intro x

@@ -38,7 +38,7 @@ import Mathlib.Data.Matrix.Basic
 import Mathlib.Data.Matrix.Mul
 import Mathlib.LinearAlgebra.Matrix.ToLin
 
-open scoped BigOperators MeasureTheory
+open scoped BigOperators MeasureTheory ENNReal
 open MeasureTheory
 
 namespace ProbabilityTheory
@@ -524,7 +524,7 @@ theorem gaussianStd_ibp_coord
         calc
           ‖(fderiv ℝ f x) v‖
               = ‖(fderiv ℝ f x) (∑ j : Fin (n + 1), (v j) • e (n + 1) j)‖ := by
-                  simpa [hv]
+                  conv_lhs => rw [hv]
           _ = ‖∑ j : Fin (n + 1), (v j) • (fderiv ℝ f x) (e (n + 1) j)‖ := by
                   simp [map_sum, map_smul]
           _ ≤ ∑ j : Fin (n + 1), ‖(v j) • (fderiv ℝ f x) (e (n + 1) j)‖ := by
@@ -535,20 +535,22 @@ theorem gaussianStd_ibp_coord
                   refine Finset.sum_le_sum ?_
                   intro j _hj
                   have hvj : ‖v j‖ ≤ ‖v‖ := by
-                    simpa using (norm_le_pi_norm' (f := v) j)
+                    simpa using (norm_le_pi_norm (f := v) j)
                   have hCj : ‖(fderiv ℝ f x) (e (n + 1) j)‖ ≤ C j := by
                     simpa [partialDeriv, e] using hC j x
                   exact mul_le_mul hvj hCj (norm_nonneg _) (norm_nonneg _)
           _ = ‖v‖ * ∑ j : Fin (n + 1), C j := by
                   classical
-                  simp [Finset.mul_sum, mul_comm, mul_left_comm, mul_assoc]
+                  simpa [mul_comm, mul_left_comm, mul_assoc] using
+                    (Finset.mul_sum (s := (Finset.univ : Finset (Fin (n + 1))))
+                      (f := fun j => C j) (a := ‖v‖)).symm
           _ = Csum * ‖v‖ := by
                   simp [Csum, mul_comm, mul_left_comm, mul_assoc]
 
       have h_f_sub : ∀ x : E (n + 1), ‖f x - f 0‖ ≤ Csum * ‖x‖ := by
         intro x
         have h :=
-          norm_image_sub_le_of_norm_fderiv_le (s := (Set.univ : Set (E (n + 1))))
+          Convex.norm_image_sub_le_of_norm_fderiv_le (s := (Set.univ : Set (E (n + 1))))
             (f := f) (C := Csum)
             (hf := fun x _ => (hf.differentiable le_rfl x))
             (bound := fun x _ => h_fderiv_bound x)
@@ -568,7 +570,12 @@ theorem gaussianStd_ibp_coord
           add_le_add hsub le_rfl
         have hsum' : Csum * ‖x‖ + ‖f 0‖ = ‖f 0‖ + Csum * ‖x‖ := by
           simp [add_comm, add_left_comm, add_assoc]
-        exact htri.trans (by simpa [hsum'] using hsum)
+        have hsum'' : ‖f x - f 0‖ + ‖f 0‖ ≤ ‖f 0‖ + Csum * ‖x‖ := by
+          calc
+            ‖f x - f 0‖ + ‖f 0‖ ≤ Csum * ‖x‖ + ‖f 0‖ := hsum
+            _ = ‖f 0‖ + Csum * ‖x‖ := by
+                  simpa [hsum']
+        exact htri.trans hsum''
 
       have hmp_eval :
           ∀ k : Fin (n + 1),
@@ -616,10 +623,11 @@ theorem gaussianStd_ibp_coord
       have hsum_memLp2 :
           MemLp (fun x : E (n + 1) => ∑ k : Fin (n + 1), ‖x k‖) 2 (gaussianStd (n + 1)) := by
         classical
-        refine memLp_finset_sum (s := (Finset.univ : Finset (Fin (n + 1))))
-          (f := fun k x => ‖x k‖) ?_
-        intro k _hk
-        simpa using (hcoord_memLp2 k).norm
+        simpa [Finset.sum_apply] using
+          (memLp_finset_sum' (s := (Finset.univ : Finset (Fin (n + 1))))
+            (f := fun k x => ‖x k‖) (p := (2 : ℝ≥0∞)) (μ := gaussianStd (n + 1)) (by
+              intro k _hk
+              simpa using (hcoord_memLp2 k).norm))
 
       have hsum_sq_int :
           Integrable (fun x : E (n + 1) => (∑ k : Fin (n + 1), ‖x k‖) ^ 2)
@@ -631,13 +639,16 @@ theorem gaussianStd_ibp_coord
         have hmeas : AEStronglyMeasurable (fun x : E (n + 1) => ‖x‖) (gaussianStd (n + 1)) := by
           exact (continuous_norm.measurable.aemeasurable).aestronglyMeasurable
         have hbound :
-            ∀ᵐ x ∂gaussianStd (n + 1), ‖x‖ ≤ ∑ k : Fin (n + 1), ‖x k‖ := by
+            ∀ᵐ x ∂gaussianStd (n + 1), ‖‖x‖‖ ≤ ∑ k : Fin (n + 1), ‖x k‖ := by
           refine ae_of_all _ (fun x => ?_)
           have hsum_nonneg : 0 ≤ ∑ k : Fin (n + 1), ‖x k‖ := by
             exact Finset.sum_nonneg (fun k _ => norm_nonneg _)
-          refine (pi_norm_le_iff_of_nonneg' hsum_nonneg).2 ?_
-          intro k
-          exact Finset.single_le_sum (fun j _ => norm_nonneg _) (by simp)
+          have hnorm_le :
+              ‖x‖ ≤ ∑ k : Fin (n + 1), ‖x k‖ := by
+            refine (pi_norm_le_iff_of_nonneg hsum_nonneg).2 ?_
+            intro k
+            exact Finset.single_le_sum (fun j _ => norm_nonneg _) (by simp)
+          simpa using hnorm_le
         exact Integrable.mono' hsum_int hmeas hbound
 
       have hnorm_sq_int :
@@ -648,13 +659,13 @@ theorem gaussianStd_ibp_coord
           exact (hcont.aemeasurable).aestronglyMeasurable
         have hbound :
             ∀ᵐ x ∂gaussianStd (n + 1),
-              ‖x‖ ^ 2 ≤ (∑ k : Fin (n + 1), ‖x k‖) ^ 2 := by
+              ‖‖x‖ ^ 2‖ ≤ (∑ k : Fin (n + 1), ‖x k‖) ^ 2 := by
           refine ae_of_all _ (fun x => ?_)
           have hsum_nonneg : 0 ≤ ∑ k : Fin (n + 1), ‖x k‖ := by
             exact Finset.sum_nonneg (fun k _ => norm_nonneg _)
           have hnorm_le :
               ‖x‖ ≤ ∑ k : Fin (n + 1), ‖x k‖ := by
-            refine (pi_norm_le_iff_of_nonneg' hsum_nonneg).2 ?_
+            refine (pi_norm_le_iff_of_nonneg hsum_nonneg).2 ?_
             intro k
             exact Finset.single_le_sum (fun j _ => norm_nonneg _) (by simp)
           have hnorm_nonneg : 0 ≤ ‖x‖ := norm_nonneg _
@@ -671,7 +682,7 @@ theorem gaussianStd_ibp_coord
           refine ae_of_all _ (fun x => ?_)
           have hfx : ‖f x‖ ≤ ‖f 0‖ + Csum * ‖x‖ := h_f_bound x
           have hxi : ‖x i‖ ≤ ‖x‖ := by
-            simpa using (norm_le_pi_norm' (f := x) i)
+            simpa using (norm_le_pi_norm (f := x) i)
           calc
             ‖gL x‖ = ‖x i * f x‖ := by rfl
             _ = ‖x i‖ * ‖f x‖ := by
@@ -1147,7 +1158,7 @@ theorem gaussianLin_ibp_coord
         calc
           ‖(fderiv ℝ f x) v‖
               = ‖(fderiv ℝ f x) (∑ j : Fin (n + 1), (v j) • e (n + 1) j)‖ := by
-                  simpa [hv]
+                  conv_lhs => rw [hv]
           _ = ‖∑ j : Fin (n + 1), (v j) • (fderiv ℝ f x) (e (n + 1) j)‖ := by
                   simp [map_sum, map_smul]
           _ ≤ ∑ j : Fin (n + 1), ‖(v j) • (fderiv ℝ f x) (e (n + 1) j)‖ := by
@@ -1158,20 +1169,22 @@ theorem gaussianLin_ibp_coord
                   refine Finset.sum_le_sum ?_
                   intro j _hj
                   have hvj : ‖v j‖ ≤ ‖v‖ := by
-                    simpa using (norm_le_pi_norm' (f := v) j)
+                    simpa using (norm_le_pi_norm (f := v) j)
                   have hCj : ‖(fderiv ℝ f x) (e (n + 1) j)‖ ≤ C j := by
                     simpa [partialDeriv, e] using hC j x
                   exact mul_le_mul hvj hCj (norm_nonneg _) (norm_nonneg _)
           _ = ‖v‖ * ∑ j : Fin (n + 1), C j := by
                   classical
-                  simp [Finset.mul_sum, mul_comm, mul_left_comm, mul_assoc]
+                  simpa [mul_comm, mul_left_comm, mul_assoc] using
+                    (Finset.mul_sum (s := (Finset.univ : Finset (Fin (n + 1))))
+                      (f := fun j => C j) (a := ‖v‖)).symm
           _ = Csum * ‖v‖ := by
                   simp [Csum, mul_comm, mul_left_comm, mul_assoc]
 
       have h_f_sub : ∀ x : E (n + 1), ‖f x - f 0‖ ≤ Csum * ‖x‖ := by
         intro x
         have h :=
-          norm_image_sub_le_of_norm_fderiv_le (s := (Set.univ : Set (E (n + 1))))
+          Convex.norm_image_sub_le_of_norm_fderiv_le (s := (Set.univ : Set (E (n + 1))))
             (f := f) (C := Csum)
             (hf := fun x _ => (hf.differentiable le_rfl x))
             (bound := fun x _ => h_fderiv_bound x)
@@ -1191,7 +1204,12 @@ theorem gaussianLin_ibp_coord
           add_le_add hsub le_rfl
         have hsum' : Csum * ‖x‖ + ‖f 0‖ = ‖f 0‖ + Csum * ‖x‖ := by
           simp [add_comm, add_left_comm, add_assoc]
-        exact htri.trans (by simpa [hsum'] using hsum)
+        have hsum'' : ‖f x - f 0‖ + ‖f 0‖ ≤ ‖f 0‖ + Csum * ‖x‖ := by
+          calc
+            ‖f x - f 0‖ + ‖f 0‖ ≤ Csum * ‖x‖ + ‖f 0‖ := hsum
+            _ = ‖f 0‖ + Csum * ‖x‖ := by
+                  simpa [hsum']
+        exact htri.trans hsum''
 
       have hmp_eval :
           ∀ k : Fin (n + 1),
@@ -1241,10 +1259,11 @@ theorem gaussianLin_ibp_coord
       have hsum_memLp2 :
           MemLp (fun z : E (n + 1) => ∑ k : Fin (n + 1), ‖z k‖) 2 (gaussianStd (n + 1)) := by
         classical
-        refine memLp_finset_sum (s := (Finset.univ : Finset (Fin (n + 1))))
-          (f := fun k z => ‖z k‖) ?_
-        intro k _hk
-        simpa using (hcoord_memLp2 k).norm
+        simpa [Finset.sum_apply] using
+          (memLp_finset_sum' (s := (Finset.univ : Finset (Fin (n + 1))))
+            (f := fun k z => ‖z k‖) (p := (2 : ℝ≥0∞)) (μ := gaussianStd (n + 1)) (by
+              intro k _hk
+              simpa using (hcoord_memLp2 k).norm))
 
       have hsum_sq_int :
           Integrable (fun z : E (n + 1) => (∑ k : Fin (n + 1), ‖z k‖) ^ 2)
@@ -1256,13 +1275,16 @@ theorem gaussianLin_ibp_coord
         have hmeas : AEStronglyMeasurable (fun z : E (n + 1) => ‖z‖) (gaussianStd (n + 1)) := by
           exact (continuous_norm.measurable.aemeasurable).aestronglyMeasurable
         have hbound :
-            ∀ᵐ z ∂gaussianStd (n + 1), ‖z‖ ≤ ∑ k : Fin (n + 1), ‖z k‖ := by
+            ∀ᵐ z ∂gaussianStd (n + 1), ‖‖z‖‖ ≤ ∑ k : Fin (n + 1), ‖z k‖ := by
           refine ae_of_all _ (fun z => ?_)
           have hsum_nonneg : 0 ≤ ∑ k : Fin (n + 1), ‖z k‖ := by
             exact Finset.sum_nonneg (fun k _ => norm_nonneg _)
-          refine (pi_norm_le_iff_of_nonneg' hsum_nonneg).2 ?_
-          intro k
-          exact Finset.single_le_sum (fun j _ => norm_nonneg _) (by simp)
+          have hnorm_le :
+              ‖z‖ ≤ ∑ k : Fin (n + 1), ‖z k‖ := by
+            refine (pi_norm_le_iff_of_nonneg hsum_nonneg).2 ?_
+            intro k
+            exact Finset.single_le_sum (fun j _ => norm_nonneg _) (by simp)
+          simpa using hnorm_le
         exact Integrable.mono' hsum_int hmeas hbound
 
       have hnorm_sq_int :
@@ -1273,13 +1295,13 @@ theorem gaussianLin_ibp_coord
           exact (hcont.aemeasurable).aestronglyMeasurable
         have hbound :
             ∀ᵐ z ∂gaussianStd (n + 1),
-              ‖z‖ ^ 2 ≤ (∑ k : Fin (n + 1), ‖z k‖) ^ 2 := by
+              ‖‖z‖ ^ 2‖ ≤ (∑ k : Fin (n + 1), ‖z k‖) ^ 2 := by
           refine ae_of_all _ (fun z => ?_)
           have hsum_nonneg : 0 ≤ ∑ k : Fin (n + 1), ‖z k‖ := by
             exact Finset.sum_nonneg (fun k _ => norm_nonneg _)
           have hnorm_le :
               ‖z‖ ≤ ∑ k : Fin (n + 1), ‖z k‖ := by
-            refine (pi_norm_le_iff_of_nonneg' hsum_nonneg).2 ?_
+            refine (pi_norm_le_iff_of_nonneg hsum_nonneg).2 ?_
             intro k
             exact Finset.single_le_sum (fun j _ => norm_nonneg _) (by simp)
           have hnorm_nonneg : 0 ≤ ‖z‖ := norm_nonneg _
@@ -1384,7 +1406,7 @@ theorem gaussianLin_ibp_coord
             refine ae_of_all _ (fun x => ?_)
             have hfx : ‖f (A.mulVec x)‖ ≤ ‖f 0‖ + Csum * ‖L‖ * ‖x‖ := h_fA_bound x
             have hxk : ‖x k‖ ≤ ‖x‖ := by
-              simpa using (norm_le_pi_norm' (f := x) k)
+              simpa using (norm_le_pi_norm (f := x) k)
             calc
               ‖gL x‖ = ‖x k * f (A.mulVec x)‖ := by rfl
               _ = ‖x k‖ * ‖f (A.mulVec x)‖ := by
@@ -1805,7 +1827,7 @@ theorem gaussianLin_ibp_coord
           refine ae_of_all _ (fun z => ?_)
           have hfx : ‖f (A.mulVec z)‖ ≤ ‖f 0‖ + Csum * ‖L‖ * ‖z‖ := h_fA_bound z
           have hzk : ‖z k‖ ≤ ‖z‖ := by
-            simpa using (norm_le_pi_norm' (f := z) k)
+            simpa using (norm_le_pi_norm (f := z) k)
           calc
             ‖z k * f (A.mulVec z)‖ = ‖z k‖ * ‖f (A.mulVec z)‖ := by
               simpa [norm_mul, mul_comm, mul_left_comm, mul_assoc]
