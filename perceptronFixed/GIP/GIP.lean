@@ -455,7 +455,7 @@ theorem gaussianStd_ibp_coord
   | zero =>
       cases i with
       | mk val isLt =>
-        cases isLta
+        cases isLt
   | succ n =>
       let γ : Measure ℝ := gaussianReal (0 : ℝ) (1 : NNReal)
       let μrest : Measure (Fin n → ℝ) := gaussianStd n
@@ -1536,11 +1536,11 @@ theorem gaussianLin_ibp_coord
             (hFcd.differentiable le_rfl (Function.update x0 k t)).hasFDerivAt
           have hupd : HasDerivAt (Function.update x0 k) (Pi.single k (1 : ℝ)) t := by
             simpa using (hasDerivAt_update x0 k t)
-        have hcomp :
-            HasDerivAt (fun s : ℝ => F (Function.update x0 k s))
-              ((fderiv ℝ F (Function.update x0 k t)) (Pi.single k (1 : ℝ))) t :=
-          hFderiv.comp_hasDerivAt t hupd
-        simpa [g, F, partialDeriv, e] using hcomp.deriv
+          have hcomp :
+              HasDerivAt (fun s : ℝ => F (Function.update x0 k s))
+                ((fderiv ℝ F (Function.update x0 k t)) (Pi.single k (1 : ℝ))) t :=
+            hFderiv.comp_hasDerivAt t hupd
+          simpa [g, F, partialDeriv, e] using hcomp.deriv
 
         let Ck : ℝ := ∑ j : Fin (n + 1), ‖A j k‖ * C j
         have hderiv_bound : ∀ t : ℝ, ‖deriv g t‖ ≤ Ck := by
