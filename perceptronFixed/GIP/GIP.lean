@@ -696,7 +696,7 @@ theorem gaussianStd_ibp_coord
                   have hmul :
                       Csum * ‖x‖ * ‖x i‖ ≤ Csum * ‖x‖ * ‖x‖ := by
                     exact mul_le_mul_of_nonneg_left hxi hCsumx_nonneg
-                  exact add_le_add_left hmul _
+                  exact add_le_add_left hmul (‖f 0‖ * ‖x i‖)
             _ = ‖f 0‖ * ‖x i‖ + Csum * ‖x‖ ^ 2 := by
                   simp [pow_two, mul_comm, mul_left_comm, mul_assoc]
         have hterm1 :
@@ -861,12 +861,17 @@ theorem gaussianStd_ibp_coord
                 simp [sub_eq_add_neg, add_assoc, add_left_comm, add_comm]
               _ ≤ ‖g t - g 0‖ + ‖g 0‖ := by
                 simpa using (norm_add_le (g t - g 0) (g 0))
-          have hsum : ‖g t - g 0‖ + ‖g 0‖ ≤ Ci * ‖t‖ + ‖g 0‖ :=
-            add_le_add hsub' le_rfl
-            have hsum' : Ci * ‖t‖ + ‖g 0‖ = ‖g 0‖ + Ci * ‖t‖ := by
-              simp [add_comm, add_left_comm, add_assoc]
+          have hsum : ‖g t - g 0‖ + ‖g 0‖ ≤ Ci * ‖t‖ + ‖g 0‖ := by
+            exact add_le_add hsub' le_rfl
+          have hsum' : Ci * ‖t‖ + ‖g 0‖ = ‖g 0‖ + Ci * ‖t‖ := by
+            simp [add_comm, add_left_comm, add_assoc]
+          have hsum'' : ‖g t - g 0‖ + ‖g 0‖ ≤ ‖g 0‖ + Ci * ‖t‖ := by
+            calc
+              ‖g t - g 0‖ + ‖g 0‖ ≤ Ci * ‖t‖ + ‖g 0‖ := hsum
+              _ = ‖g 0‖ + Ci * ‖t‖ := by
+                    simpa [hsum']
           have hgt : ‖g t‖ ≤ ‖g 0‖ + Ci * ‖t‖ :=
-            htri.trans (by simpa [hsum'] using hsum)
+            htri.trans hsum''
           calc
             ‖t * g t‖ = ‖t‖ * ‖g t‖ := by
               simpa [norm_mul, mul_comm, mul_left_comm, mul_assoc]
@@ -1420,7 +1425,7 @@ theorem gaussianLin_ibp_coord
                     have hmul :
                         (Csum * ‖L‖) * ‖x‖ * ‖x k‖ ≤ (Csum * ‖L‖) * ‖x‖ * ‖x‖ := by
                       exact mul_le_mul_of_nonneg_left hxk (mul_nonneg hCL_nonneg (norm_nonneg _))
-                    exact add_le_add_left hmul _
+                    exact add_le_add_left hmul (‖f 0‖ * ‖x k‖)
               _ = ‖f 0‖ * ‖x k‖ + (Csum * ‖L‖) * ‖x‖ ^ 2 := by
                     simp [pow_two, mul_comm, mul_left_comm, mul_assoc]
           have hterm1 :
@@ -1840,7 +1845,7 @@ theorem gaussianLin_ibp_coord
               have hmul :
                   (Csum * ‖L‖) * ‖z‖ * ‖z k‖ ≤ (Csum * ‖L‖) * ‖z‖ * ‖z‖ := by
                 exact mul_le_mul_of_nonneg_left hzk (mul_nonneg hCL_nonneg (norm_nonneg _))
-              exact add_le_add_left hmul _
+              exact add_le_add_left hmul (‖f 0‖ * ‖z k‖)
             _ = ‖f 0‖ * ‖z k‖ + (Csum * ‖L‖) * ‖z‖ ^ 2 := by
               simp [pow_two, mul_comm, mul_left_comm, mul_assoc]
         have hterm1 :
