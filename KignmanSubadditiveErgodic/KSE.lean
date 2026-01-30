@@ -462,32 +462,4 @@ theorem kingman_subadditive_ergodic
 
 end ErgodicCorollaries
 
-/-
-Strong claim (axiom).
-
-The rest of this repository (e.g. FPP time constants) wants the *actual* a.s. convergence
-conclusion of Kingman's subadditive ergodic theorem along rays `n • x`.  The development
-above is a roadmap/skeleton and does not prove that statement yet.
-
-We therefore expose a single strong axiom that can be instantiated to obtain the desired
-limits, until a full proof is added.
--/
-
-section StrongClaim
-
-variable {Ω : Type*} [MeasurableSpace Ω]
-variable (ℙ : Measure Ω) [IsProbabilityMeasure ℙ]
-variable {X : Type*} [SMul ℕ X]
-variable (F : X → Ω → ℝ)
-
-/-- **Axiomatic Kingman (ray version).**
-
-For each `x : X`, the normalized sequence `F (n • x, ω) / n` converges almost surely to a
-deterministic limit `μ x`.  This is the form used by the FPP development. -/
-axiom ray_timeConstant_exists :
-    ∃ μ : X → ℝ, ∀ x : X,
-      (∀ᵐ ω ∂ℙ, Tendsto (fun n : ℕ => F (n • x) ω / (n : ℝ)) atTop (𝓝 (μ x)))
-
-end StrongClaim
-
 end Kingman

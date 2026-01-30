@@ -454,11 +454,7 @@ theorem timeConstant_exists
       (∀ᵐ ω ∂ℙ, Filter.Tendsto (fun n : ℕ =>
           (Trd (d := d) (ℙ := ℙ) τ 0 (n • x) ω).toReal / (n : ℝ))
         Filter.atTop (𝓝 (μ x))) := by
-  classical
-  -- Apply the (axiomatic) Kingman ray statement to `F y ω = (Trd 0 y ω).toReal`.
-  simpa [Trd] using
-    (Kingman.ray_timeConstant_exists (ℙ := ℙ)
-      (F := fun (y : Rd d) (ω : Ω) => (Trd (d := d) (ℙ := ℙ) τ 0 y ω).toReal))
+  sorry
 
 /-- Event: there exists a self-avoiding path starting at `0` of edge-length `n`
 with passage time strictly smaller than `c n`. -/

@@ -1457,6 +1457,12 @@ lemma cylinder_mono {ω : Ω ι α} {s t : Finset ι} (hst : s ⊆ t) :
   intro i hi
   exact hω' i (hst hi)
 
+lemma Witness_mono {A : Set (Ω ι α)} {ω : Ω ι α} {s t : Finset ι} (hst : s ⊆ t) :
+    Witness (ι := ι) (α := α) A ω s → Witness (ι := ι) (α := α) A ω t := by
+  intro hA
+  exact Set.Subset.trans
+    (cylinder_mono (ι := ι) (α := α) (ω := ω) (s := s) (t := t) hst) hA
+
 lemma disjointOccur_subset_inter (A B : Set (Ω ι α)) : (A ⊠ B) ⊆ A ∩ B := by
   intro ω hω
   rcases hω with ⟨s, t, _hst, hA, hB⟩
@@ -1490,6 +1496,27 @@ lemma disjointOccur_mono_right {A B B' : Set (Ω ι α)} (hBB' : B ⊆ B') :
   intro ω' hω'
   exact hBB' (hB hω')
 
+lemma disjointOccur_eq_exists_witness_sdiff (A B : Set (Ω ι α)) :
+    (A ⊠ B) = {ω | ∃ s : Finset ι,
+      Witness (ι := ι) (α := α) A ω s ∧
+      Witness (ι := ι) (α := α) B ω (Finset.univ \ s)} := by
+  ext ω
+  constructor
+  · intro h
+    rcases h with ⟨s, t, hst, hA, hB⟩
+    refine ⟨s, hA, ?_⟩
+    have ht : t ⊆ Finset.univ \ s := by
+      intro i hi
+      refine (Finset.mem_sdiff).2 ⟨Finset.mem_univ i, ?_⟩
+      exact (Finset.disjoint_left.1 hst.symm) hi
+    exact Witness_mono (ι := ι) (α := α) (ω := ω) (A := B) ht hB
+  · rintro ⟨s, hA, hB⟩
+    refine ⟨s, Finset.univ \ s, ?_, hA, hB⟩
+    refine (Finset.disjoint_left).2 ?_
+    intro i hi
+    intro hi'
+    exact (Finset.mem_sdiff.1 hi').2 hi
+
 end Definitions
 
 section Measure
@@ -1499,6 +1526,34 @@ open MeasureTheory
 variable {ι : Type*} [Fintype ι] [DecidableEq ι]
 variable {α : ι → Type*} [∀ i, MeasurableSpace (α i)]
 
+/-- BKR inequality for product probability measures on *finite discrete* coordinate spaces.
+
+This is the output of Blueprint Layers I–II (Reimer's inequality on `{0,1}^n` plus the
+van den Berg–Fiebig reduction). -/
+theorem measure_disjointOccur_le_mul_finite_discrete
+    {β : ι → Type*} [∀ i, Fintype (β i)] [∀ i, MeasurableSpace (β i)]
+    [∀ i, DiscreteMeasurableSpace (β i)]
+    (μ : (i : ι) → Measure (β i)) [∀ i, IsProbabilityMeasure (μ i)]
+    (A B : Set ((i : ι) → β i)) :
+    (Measure.pi μ) (A ⊠ B) ≤ (Measure.pi μ) A * (Measure.pi μ) B := by
+  classical
+  -- TODO (Blueprint Layer I): combinatorial proof on `{0,1}^n` (Reimer main lemma + Fishburn–Shepp).
+  -- TODO (Blueprint Layer II): reduce general finite product measures to the uniform cube.
+  sorry
+
+/-- BKR inequality for product probability measures on general measurable spaces (finite index set).
+
+This is Blueprint Layer III: discretize each coordinate by finite measurable partitions,
+reduce to `measure_disjointOccur_le_mul_finite_discrete`, then take limits using the outer
+measure definition of `Measure`. -/
+theorem measure_disjointOccur_le_mul_aux
+    (μ : (i : ι) → Measure (α i)) [∀ i, IsProbabilityMeasure (μ i)]
+    (A B : Set ((i : ι) → α i)) :
+    (Measure.pi μ) (A ⊠ B) ≤ (Measure.pi μ) A * (Measure.pi μ) B := by
+  classical
+  -- TODO (Blueprint Layer III): discretization by finite partitions + limit.
+  sorry
+
 /-- BKR inequality on a finite product space.
 
 `Measure.pi μ` is the product measure associated to the family of measures `μ`.
@@ -1506,13 +1561,11 @@ variable {α : ι → Type*} [∀ i, MeasurableSpace (α i)]
 This is the full van den Berg-Kesten-Reimer inequality in the form used in percolation.
 -/
 theorem measure_disjointOccur_le_mul
-    (μ : (i : ι) → Measure (α i)) [∀ i, SigmaFinite (μ i)]
+    (μ : (i : ι) → Measure (α i)) [∀ i, IsProbabilityMeasure (μ i)]
     (A B : Set ((i : ι) → α i)) :
     (Measure.pi μ) (A ⊠ B) ≤ (Measure.pi μ) A * (Measure.pi μ) B := by
   classical
-  -- TODO: formalize Reimer's combinatorial proof, or import an existing development
-  -- once it is available in Mathlib.
-  sorry
+  simpa using measure_disjointOccur_le_mul_aux (ι := ι) (α := α) (μ := μ) (A := A) (B := B)
 
 end Measure
 
