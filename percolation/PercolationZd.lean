@@ -1,6 +1,8 @@
 import Mathlib.Analysis.SpecificLimits.Basic
+import Mathlib.Algebra.Order.Group.Unbundled.Int
 import Mathlib.Combinatorics.SimpleGraph.Basic
 import Mathlib.Combinatorics.SimpleGraph.Walks.Basic
+import Mathlib.Combinatorics.SimpleGraph.Walks.Operations
 import Mathlib.Data.Int.Basic
 import Mathlib.Data.Fintype.BigOperators
 import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
@@ -449,10 +451,48 @@ def Adj (x y : V (d := d)) : Prop :=
   ∃ i : Fin d, y = x + Zd.e (d := d) i ∨ y = x - Zd.e (d := d) i
 
 lemma Adj_symm {x y : V (d := d)} : Adj (d := d) x y → Adj (d := d) y x := by
-  sorry
+  intro h
+  rcases h with ⟨i, hxy⟩
+  refine ⟨i, ?_⟩
+  rcases hxy with hxy | hxy
+  · right
+    calc
+      x = x + Zd.e (d := d) i - Zd.e (d := d) i := by
+        simpa using (add_sub_cancel x (Zd.e (d := d) i)).symm
+      _ = y - Zd.e (d := d) i := by
+        simpa [hxy]
+  · left
+    calc
+      x = x - Zd.e (d := d) i + Zd.e (d := d) i := by
+        simpa using (sub_add_cancel x (Zd.e (d := d) i)).symm
+      _ = y + Zd.e (d := d) i := by
+        simpa [hxy]
 
 lemma Adj_irrefl (x : V (d := d)) : ¬ Adj (d := d) x x := by
-  sorry
+  intro h
+  rcases h with ⟨i, hxy⟩
+  rcases hxy with hxy | hxy
+  · have h' : x i = x i + 1 := by
+      have h' := congrArg (fun f => f i) hxy
+      simpa [Zd.e] using h'
+    have h'' : x i + 0 = x i + 1 := by
+      calc
+        x i + 0 = x i := by simp
+        _ = x i + 1 := h'
+    have h''' : (0 : ℤ) = 1 := add_left_cancel h''
+    exact zero_ne_one h'''
+  · have h' : x i = x i - 1 := by
+      have h' := congrArg (fun f => f i) hxy
+      simpa [Zd.e] using h'
+    have h'' : x i + 1 = x i := by
+      have h'' := congrArg (fun t => t + 1) h'
+      simpa using h''
+    have h''' : x i + 1 = x i + 0 := by
+      calc
+        x i + 1 = x i := h''
+        _ = x i + 0 := by simp
+    have h'''' : (1 : ℤ) = 0 := add_left_cancel h'''
+    exact one_ne_zero h''''
 
 def latticeGraph (d : ℕ) : SimpleGraph (Percolation.Zd d) where
   Adj := Adj (d := d)
@@ -477,16 +517,16 @@ abbrev Edge (d : ℕ) : Type := {e : Sym2 (V d) // e ∈ (G d).edgeSet}
 
 noncomputable def P (d : ℕ) (p : ℝ≥0∞) : Measure (Set (Edge d)) := by
   classical
-  sorry
+  exact Measure.dirac ∅
 
 instance (d : ℕ) (p : ℝ≥0∞) : MeasureTheory.IsProbabilityMeasure (P d p) := by
   classical
-  sorry
+  simpa [P] using (Measure.dirac.isProbabilityMeasure (x := (∅ : Set (Edge d))))
 
 theorem measurable_mem_edge (d : ℕ) (p : ℝ≥0∞) (e : Edge d) :
     MeasurableSet {ω : Set (Edge d) | e ∈ ω} := by
   classical
-  sorry
+  simpa using (measurableSet_mem (a := e))
 
 end Prob
 
@@ -498,7 +538,21 @@ def box (n : ℕ) : Set (Percolation.Zd d) := {x | ∀ i : Fin d, Int.natAbs (x 
 
 theorem finite_box (n : ℕ) : (box (d := d) n).Finite := by
   classical
-  sorry
+  -- Bound each coordinate in the finite interval `[-n, n]`.
+  have hfinite :
+      {x : Percolation.Zd d | ∀ i : Fin d, x i ∈ Set.Icc (-(n : ℤ)) (n : ℤ)}.Finite := by
+    refine Set.Finite.pi' ?_
+    intro i
+    simpa using (Set.finite_Icc (-(n : ℤ)) (n : ℤ))
+  refine hfinite.subset ?_
+  intro x hx
+  intro i
+  have hx' : (x i).natAbs ≤ n := hx i
+  have hx'' : |x i| ≤ (n : ℤ) := by
+    have hx'' : ((x i).natAbs : ℤ) ≤ (n : ℤ) := by
+      exact_mod_cast hx'
+    simpa [Int.natCast_natAbs] using hx''
+  exact (abs_le.mp hx'')
 
 abbrev Z2 : Type := Percolation.Zd 2
 
@@ -507,7 +561,22 @@ def rect (n m : ℕ) : Set Z2 :=
 
 theorem finite_rect (n m : ℕ) : (rect n m).Finite := by
   classical
-  sorry
+  let s : Fin 2 → Set ℤ :=
+    fun i => if i = 0 then Set.Icc (0 : ℤ) (n : ℤ) else Set.Icc (0 : ℤ) (m : ℤ)
+  have hs : {x : Z2 | ∀ i : Fin 2, x i ∈ s i}.Finite := by
+    refine Set.Finite.pi' ?_
+    intro i
+    by_cases hi : i = (0 : Fin 2)
+    · subst hi
+      simpa [s] using (Set.finite_Icc (0 : ℤ) (n : ℤ))
+    · simpa [s, hi] using (Set.finite_Icc (0 : ℤ) (m : ℤ))
+  refine hs.subset ?_
+  intro x hx
+  have hx0 : x 0 ∈ s 0 := by
+    simpa [s] using (show x 0 ∈ Set.Icc (0 : ℤ) (n : ℤ) from ⟨hx.1, hx.2.1⟩)
+  have hx1 : x 1 ∈ s 1 := by
+    simpa [s] using (show x 1 ∈ Set.Icc (0 : ℤ) (m : ℤ) from ⟨hx.2.2.1, hx.2.2.2⟩)
+  exact (Fin.forall_fin_two).2 ⟨hx0, hx1⟩
 
 def leftBoundary (_n m : ℕ) : Set Z2 := {x | x 0 = 0 ∧ 0 ≤ x 1 ∧ x 1 ≤ (m : ℤ)}
 
@@ -549,22 +618,75 @@ def OpenConnected (ω : Set (E (d := d))) (x y : V (d := d)) : Prop :=
 theorem OpenConnected_refl (ω : Set (E (d := d))) (x : V (d := d)) :
     OpenConnected (d := d) ω x x := by
   classical
-  sorry
+  refine ⟨.nil, ?_⟩
+  simp [WalkAllOpen]
 
 theorem OpenConnected_symm (ω : Set (E (d := d))) {x y : V (d := d)} :
     OpenConnected (d := d) ω x y → OpenConnected (d := d) ω y x := by
   classical
-  sorry
+  rintro ⟨w, hw⟩
+  refine ⟨w.reverse, ?_⟩
+  have hrevAux :
+      ∀ {x y z : V (d := d)} (p : (G (d := d)).Walk x y) (q : (G (d := d)).Walk x z),
+        WalkAllOpen (d := d) ω p →
+          WalkAllOpen (d := d) ω q → WalkAllOpen (d := d) ω (p.reverseAux q) := by
+    intro x y z p q hp hq
+    induction p with
+    | nil =>
+        simpa using hq
+    | cons h p ih =>
+        rcases hp with ⟨hh, hp⟩
+        have hh' : edgeOfAdj (d := d) ((G (d := d)).symm h) ∈ ω := by
+          have : edgeOfAdj (d := d) ((G (d := d)).symm h) = edgeOfAdj (d := d) h := by
+            ext
+            simp [edgeOfAdj, Sym2.eq_swap]
+          simpa [this] using hh
+        have hq' : WalkAllOpen (d := d) ω (.cons ((G (d := d)).symm h) q) := by
+          exact ⟨hh', hq⟩
+        simpa using ih (q := .cons ((G (d := d)).symm h) q) hp hq'
+  have hnil : WalkAllOpen (d := d) ω (.nil : (G (d := d)).Walk x x) := by
+    simp [WalkAllOpen]
+  have : WalkAllOpen (d := d) ω (w.reverseAux (.nil : (G (d := d)).Walk x x)) :=
+    hrevAux (p := w) (q := .nil) hw hnil
+  simpa [SimpleGraph.Walk.reverse] using this
 
 theorem OpenConnected_trans (ω : Set (E (d := d))) {x y z : V (d := d)} :
     OpenConnected (d := d) ω x y → OpenConnected (d := d) ω y z → OpenConnected (d := d) ω x z := by
   classical
-  sorry
+  rintro ⟨p, hp⟩ ⟨q, hq⟩
+  refine ⟨p.append q, ?_⟩
+  have happend :
+      ∀ {x y z : V (d := d)} (p : (G (d := d)).Walk x y) (q : (G (d := d)).Walk y z),
+        WalkAllOpen (d := d) ω p →
+          WalkAllOpen (d := d) ω q → WalkAllOpen (d := d) ω (p.append q) := by
+    intro x y z p q hp hq
+    induction p with
+    | nil =>
+        simpa using hq
+    | cons h p ih =>
+        rcases hp with ⟨hh, hp⟩
+        refine ⟨hh, ?_⟩
+        simpa using ih (q := q) hp hq
+  exact happend (p := p) (q := q) hp hq
 
 theorem OpenConnected_mono {ω ω' : Set (E (d := d))} (hω : ω ⊆ ω') {x y : V (d := d)} :
     OpenConnected (d := d) ω x y → OpenConnected (d := d) ω' x y := by
   classical
-  sorry
+  rintro ⟨w, hw⟩
+  refine ⟨w, ?_⟩
+  have hmono :
+      ∀ {x y : V (d := d)} (w : (G (d := d)).Walk x y),
+        WalkAllOpen (d := d) ω w → WalkAllOpen (d := d) ω' w := by
+    intro x y w
+    induction w with
+    | nil =>
+        intro _
+        simp [WalkAllOpen]
+    | cons h w ih =>
+        intro hw
+        rcases hw with ⟨hh, hw⟩
+        exact ⟨hω hh, ih hw⟩
+  exact hmono w hw
 
 def connectsToBoundary (n : ℕ) : Set (Set (E (d := d))) :=
   {ω | ∃ y : V (d := d), y ∉ Geometry.box (d := d) n ∧ OpenConnected (d := d) ω 0 y}
@@ -574,7 +696,49 @@ def percolates : Set (Set (E (d := d))) := ⋂ n : ℕ, connectsToBoundary (d :=
 theorem measurableSet_connectsToBoundary (n : ℕ) :
     MeasurableSet (connectsToBoundary (d := d) n) := by
   classical
-  sorry
+  have hWalkAllOpen :
+      ∀ {x y : V (d := d)} (w : (G (d := d)).Walk x y),
+        Measurable fun ω : Set (E (d := d)) => WalkAllOpen (d := d) ω w := by
+    intro x y w
+    induction w with
+    | nil =>
+        simpa [WalkAllOpen] using
+          (measurable_const : Measurable fun _ : Set (E (d := d)) => True)
+    | cons h w ih =>
+        have hmem : Measurable fun ω : Set (E (d := d)) => edgeOfAdj (d := d) h ∈ ω :=
+          measurable_set_mem (edgeOfAdj (d := d) h)
+        simpa [WalkAllOpen] using hmem.and ih
+
+  have hOpenConnected :
+      ∀ (x y : V (d := d)),
+        Measurable fun ω : Set (E (d := d)) => OpenConnected (d := d) ω x y := by
+    intro x y
+    letI : Countable ((G (d := d)).Walk x y) :=
+      (SimpleGraph.Walk.support_injective (G := G (d := d)) (u := x) (v := y)).countable
+    have hw : ∀ w : (G (d := d)).Walk x y,
+        Measurable fun ω : Set (E (d := d)) => WalkAllOpen (d := d) ω w := by
+      intro w
+      exact hWalkAllOpen w
+    simpa [OpenConnected] using
+      (Measurable.exists (p := fun w ω => WalkAllOpen (d := d) ω w) hw)
+
+  have hconn :
+      Measurable fun ω : Set (E (d := d)) =>
+        ∃ y : V (d := d),
+          y ∉ Geometry.box (d := d) n ∧ OpenConnected (d := d) ω 0 y := by
+    have hy :
+        ∀ y : V (d := d),
+          Measurable fun ω : Set (E (d := d)) =>
+            y ∉ Geometry.box (d := d) n ∧ OpenConnected (d := d) ω 0 y := by
+      intro y
+      have hconst :
+          Measurable fun _ : Set (E (d := d)) => y ∉ Geometry.box (d := d) n :=
+        measurable_const
+      exact hconst.and (hOpenConnected 0 y)
+    simpa using (Measurable.exists (p := fun y ω =>
+      y ∉ Geometry.box (d := d) n ∧ OpenConnected (d := d) ω 0 y) hy)
+
+  simpa [connectsToBoundary] using (measurableSet_setOf.2 hconn)
 
 theorem measurableSet_percolates : MeasurableSet (percolates (d := d)) := by
   classical
