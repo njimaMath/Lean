@@ -1,11 +1,14 @@
 import Mathlib.Analysis.SpecificLimits.Basic
 import Mathlib.Analysis.Calculus.Deriv.Basic
+import Mathlib.Analysis.Calculus.Deriv.Add
+import Mathlib.Analysis.Calculus.Deriv.Mul
 import Mathlib.Algebra.Order.Group.Unbundled.Int
 import Mathlib.Combinatorics.SimpleGraph.Basic
 import Mathlib.Combinatorics.SimpleGraph.Walks.Basic
 import Mathlib.Combinatorics.SimpleGraph.Walks.Operations
 import Mathlib.Data.Int.Basic
 import Mathlib.Data.Fintype.BigOperators
+import Mathlib.Data.ENNReal.BigOperators
 import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
 import Mathlib.Topology.Order.OrderClosed
 import Mathlib.MeasureTheory.Constructions.Pi
@@ -771,6 +774,108 @@ lemma clamp01_le_one (q : ℝ) : clamp01 q ≤ 1 := by
 noncomputable def probReal (q : ℝ) (A : Set (Ω ι)) : ℝ :=
   prob (p := clamp01 q) (hp := clamp01_le_one q) A
 
+/-! ### A finite-sum expansion (`ι` finite) -/
+
+/-- Algebraic weight of a configuration `ω : ι → Bool` under parameter `q`. -/
+noncomputable def weight (q : ℝ) (ω : Ω ι) : ℝ :=
+  ∏ e : ι, (if ω e then q else (1 - q))
+
+/-- `probReal` on `(0,1)` agrees with this finite polynomial expression. -/
+noncomputable def probPoly (q : ℝ) (A : Set (Ω ι)) : ℝ := by
+  classical
+  exact ∑ ω : Ω ι, if ω ∈ A then weight (ι := ι) q ω else 0
+
+/-!
+### Russo formula (finite) — proof skeleton
+
+The actual proof is not filled in yet; we introduce a few intermediate lemmas so the main theorem
+can be proved by a short chain of reductions.
+-/
+
+/-- On the open interval `(0,1)`, the clamp does not change the parameter (as a real number). -/
+lemma clamp01_coe_eq_of_lt {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1) :
+    (clamp01 p : ℝ) = p := by
+  simp [clamp01, min_eq_left (le_of_lt hp1), max_eq_right hp0.le]
+
+/-- Convenient `NNReal` parameter corresponding to `p ∈ (0,1)`. -/
+noncomputable def pNNReal (p : ℝ) (hp0 : 0 < p) : NNReal :=
+  ⟨p, le_of_lt hp0⟩
+
+/-- For `p ∈ (0,1)`, the `NNReal` parameter `pNNReal p` is ≤ 1. -/
+lemma pNNReal_le_one {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1) :
+    pNNReal p hp0 ≤ (1 : NNReal) := by
+  -- Compare in `ℝ`.
+  apply (NNReal.coe_le_coe).1
+  change p ≤ (1 : ℝ)
+  exact le_of_lt hp1
+
+/-- Inside `(0,1)`, `probReal` agrees with `prob` at the unclamped parameter `p`. -/
+lemma probReal_eq_prob_of_lt (A : Set (Ω ι)) {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1) :
+    probReal (ι := ι) p A =
+      prob (ι := ι) (p := pNNReal p hp0) (hp := pNNReal_le_one (p := p) hp0 hp1) A := by
+  classical
+  have hclamp : clamp01 p = pNNReal p hp0 := by
+    ext
+    simpa [pNNReal] using (clamp01_coe_eq_of_lt (p := p) hp0 hp1)
+  have hhp :
+      (by
+          simpa [hclamp] using (clamp01_le_one p)) =
+        pNNReal_le_one (p := p) hp0 hp1 := by
+    exact Subsingleton.elim _ _
+  simpa [probReal, hclamp, hhp]
+
+/-- For `p ∈ (0,1)`, the measure-based probability `prob` agrees with the explicit finite-sum polynomial. -/
+lemma prob_eq_probPoly_of_lt (A : Set (Ω ι)) {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1) :
+    prob (ι := ι) (p := pNNReal p hp0) (hp := pNNReal_le_one (p := p) hp0 hp1) A =
+      probPoly (ι := ι) p A := by
+  classical
+  -- Expand `prob` as a finite sum over point masses.
+  set p₀ : NNReal := pNNReal p hp0
+  have hp₀ : p₀ ≤ (1 : NNReal) := by
+    simpa [p₀] using (pNNReal_le_one (p := p) hp0 hp1)
+  let μ : Measure (Ω ι) := bernoulliProd (ι := ι) (p := p₀) (hp := hp₀)
+  have hμA :
+      μ A = ∑ ω ∈ (Finset.univ.filter fun ω : Ω ι => ω ∈ A), μ {ω} := by
+    have hset :
+        (↑(Finset.univ.filter fun ω : Ω ι => ω ∈ A) : Set (Ω ι)) = A := by
+      ext ω
+      simp
+    -- `μ` on a finite type is the sum of its singleton masses.
+    have hsum :
+        (∑ ω ∈ (Finset.univ.filter fun ω : Ω ι => ω ∈ A), μ {ω}) =
+          μ (↑(Finset.univ.filter fun ω : Ω ι => ω ∈ A) : Set (Ω ι)) := by
+      simpa using
+        (MeasureTheory.sum_measure_singleton (μ := μ)
+          (s := (Finset.univ.filter fun ω : Ω ι => ω ∈ A)))
+    simpa [hset] using hsum.symm
+  have hμsingleton (ω : Ω ι) :
+      μ {ω} =
+        ∏ e : ι, (cond (ω e) p₀ (1 - p₀) : ℝ≥0∞) := by
+    -- Use the product-measure formula for singletons.
+    have : μ {ω} = ∏ e : ι, (bernoulliMeasure (p := p₀) (hp := hp₀) {ω e}) := by
+      simp [μ, bernoulliProd, Measure.pi_singleton]
+    -- And evaluate the Bernoulli singleton masses.
+    simpa [bernoulliMeasure, PMF.toMeasure_apply_singleton, PMF.bernoulli_apply] using this
+  -- Move `toReal` inside the finite sum and simplify the singleton weights.
+  have hne_top :
+      ∀ ω ∈ (Finset.univ.filter fun ω : Ω ι => ω ∈ A), μ {ω} ≠ ∞ := by
+    intro ω hω
+    -- `μ` is finite (in fact a probability measure).
+    simpa using (measure_ne_top μ {ω})
+  -- Finish by rewriting everything in terms of `weight` and `probPoly`.
+  simp [prob, probPoly, weight, hμA, ENNReal.toReal_sum hne_top, hμsingleton, p₀, hp₀,
+    NNReal.coe_sub (pNNReal_le_one (p := p) hp0 hp1), Finset.sum_filter, Finset.mem_univ, and_true,
+    Finset.prod_erase] -- `Finset.prod_erase` helps simp the product decomposition
+
+/-- Core Russo formula (to be proved): derivative of `prob` equals sum of pivotal probabilities. -/
+lemma russo_formula_finite_core
+    (A : Set (Ω ι)) (hA : Increasing A)
+    {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1) :
+    deriv (fun q : ℝ => probReal (ι := ι) q A) p =
+      ∑ e : ι,
+        prob (ι := ι) (p := pNNReal p hp0) (hp := pNNReal_le_one (p := p) hp0 hp1) (Pivotal A e) := by
+  sorry
+
 /--
 Russo's formula (finite, claim): for an increasing event `A` depending on finitely many coordinates
 (here automatic since `ι` is finite), the derivative w.r.t. `p` equals the sum of pivotal probabilities.
@@ -783,8 +888,23 @@ theorem russo_formula_finite
     {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1) :
     deriv (fun q : ℝ => probReal q A) p = ∑ e : ι, probReal p (Pivotal A e) := by
   classical
-  -- Standard Russo formula (influence identity for product Bernoulli).
-  sorry
+  -- Reduce to the unclamped parameterization and apply the core Russo formula.
+  -- (All key steps are isolated as lemmas above.)
+  have hprob : probReal (ι := ι) p A =
+      prob (ι := ι) (p := pNNReal p hp0) (hp := pNNReal_le_one (p := p) hp0 hp1) A :=
+    probReal_eq_prob_of_lt (ι := ι) (A := A) hp0 hp1
+  have hpiv : (fun e : ι => probReal (ι := ι) p (Pivotal A e)) =
+      fun e : ι =>
+        prob (ι := ι) (p := pNNReal p hp0) (hp := pNNReal_le_one (p := p) hp0 hp1) (Pivotal A e) := by
+    funext e
+    simpa using (probReal_eq_prob_of_lt (ι := ι) (A := Pivotal A e) hp0 hp1)
+  -- Replace the function under `deriv` by the unclamped one at the point `p`.
+  -- TODO: use `clamp01_coe_eq_of_lt` + `probReal_eq_prob_of_lt` to justify this as an equality of germs.
+  -- For now, we directly use the core statement as a placeholder.
+  have hcore := russo_formula_finite_core (ι := ι) (A := A) hA hp0 hp1
+  -- Finish by rewriting the RHS back into `probReal`.
+  -- TODO: `simp [hpiv]` after the derivative reduction step is fully implemented.
+  simpa [hpiv] using hcore
 
 end Russo
 
