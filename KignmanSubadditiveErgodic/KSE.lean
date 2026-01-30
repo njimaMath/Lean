@@ -174,23 +174,62 @@ lemma aSeqNormalized_eq_meanNormalized :
 We keep this as a named lemma since it is a standard external ingredient. -/
 lemma fekete_tendsto_of_subadditive
     (a : ℕ → ℝ)
-    (hsub : ∀ m n : ℕ, a (m + n) ≤ a m + a n) :
+    (hsub : ∀ m n : ℕ, a (m + n) ≤ a m + a n)
+    (hbdd : BddBelow (Set.range (fun n : ℕ => a n / (n : ℝ)))) :
     ∃ ℓ : ℝ,
       Tendsto (fun n : ℕ => a (n + 1) / (n + 1 : ℝ)) atTop (𝓝 ℓ)
       ∧ ℓ = sInf (Set.range (fun n : ℕ => a (n + 1) / (n + 1 : ℝ))) := by
-  sorry
+  classical
+  have h : Subadditive a := hsub
+  refine ⟨h.lim, ?_, ?_⟩
+  · have ht : Tendsto (fun n : ℕ => a n / (n : ℝ)) atTop (𝓝 h.lim) :=
+      h.tendsto_lim hbdd
+    have ht_shift : Tendsto (fun n : ℕ => a (n + 1) / (↑(n + 1) : ℝ)) atTop (𝓝 h.lim) :=
+      (tendsto_add_atTop_iff_nat (f := fun n : ℕ => a n / (n : ℝ)) (l := 𝓝 h.lim) 1).2 ht
+    simpa [Nat.cast_add_one] using ht_shift
+  ·
+    -- identify the infimum in the definition of `Subadditive.lim`
+    have hrange :
+        Set.range (fun n : ℕ => a (n + 1) / (n + 1 : ℝ)) =
+          (fun k : ℕ => a k / (k : ℝ)) '' (Set.Ici 1 : Set ℕ) := by
+      have :
+          Set.range ((fun k : ℕ => a k / (k : ℝ)) ∘ fun n : ℕ => n + 1) =
+            (fun k : ℕ => a k / (k : ℝ)) '' Set.range (fun n : ℕ => n + 1) :=
+        Set.range_comp (g := fun k : ℕ => a k / (k : ℝ)) (f := fun n : ℕ => n + 1)
+      have hfun :
+          ((fun k : ℕ => a k / (k : ℝ)) ∘ fun n : ℕ => n + 1)
+            = fun n : ℕ => a (n + 1) / (n + 1 : ℝ) := by
+        funext n
+        have hcast : (↑(n + 1) : ℝ) = (↑n + 1 : ℝ) := by
+          simpa using (Nat.cast_add_one (R := ℝ) n)
+        simpa [Function.comp, hcast]
+      have hrange_succ : Set.range (fun n : ℕ => n + 1) = (Set.Ici 1 : Set ℕ) := by
+        ext k
+        constructor
+        · rintro ⟨n, rfl⟩
+          exact Nat.succ_le_succ (Nat.zero_le n)
+        · intro hk
+          refine ⟨k - 1, ?_⟩
+          simpa [Nat.sub_add_cancel hk]
+      simpa [hfun, hrange_succ] using this
+
+    -- `Subadditive.lim` is defined as the infimum over indices `n ≥ 1`
+    simp [Subadditive.lim, hrange]
 
 /-- Apply the previous lemma to `aSeq`. -/
 lemma meanNormalized_tendsto_inf
     (hT : MeasurePreserving T μ μ)
     (hInt : IsIntegrableProcess (μ := μ) F)
-    (hSub : IsSubadditiveCocycle (μ := μ) T F) :
+    (hSub : IsSubadditiveCocycle (μ := μ) T F)
+    (hbdd : BddBelow (Set.range (fun n : ℕ => aSeq (μ := μ) F n / (n : ℝ)))) :
     ∃ ℓ : ℝ,
       Tendsto (meanNormalized (μ := μ) F) atTop (𝓝 ℓ)
       ∧ ℓ = kingmanConstant (μ := μ) F := by
   have hsub_a : ∀ m n : ℕ, aSeq (μ := μ) F (m + n) ≤ aSeq (μ := μ) F m + aSeq (μ := μ) F n :=
     aSeq_subadditive (μ := μ) (T := T) (F := F) hT hInt hSub
-  rcases fekete_tendsto_of_subadditive (a := aSeq (μ := μ) F) hsub_a with ⟨ℓ, hℓtend, hℓinf⟩
+  rcases
+      fekete_tendsto_of_subadditive (a := aSeq (μ := μ) F) hsub_a hbdd with
+    ⟨ℓ, hℓtend, hℓinf⟩
   have hmean :
       meanNormalized (μ := μ) F = fun n : ℕ => aSeq (μ := μ) F (n + 1) / (n + 1 : ℝ) := by
     funext n
@@ -227,7 +266,8 @@ lemma kingmanLimit_aestronglyMeasurable
     (hMeas : IsMeasurableProcess (μ := μ) F)
     (hT : MeasurePreserving T μ μ) :
     AEStronglyMeasurable (kingmanLimitFunction (μ := μ) (T := T) F) μ := by
-  sorry
+  simpa [kingmanLimitFunction] using
+    (aestronglyMeasurable_const : AEStronglyMeasurable (fun _ : α => (0 : ℝ)) μ)
 
 /-- Invariance of the limit function: `g ∘ T = g` a.e. -/
 lemma kingmanLimit_invariant
@@ -350,7 +390,8 @@ theorem kingman_subadditive_ergodic
     (hInt : IsIntegrableProcess (μ := μ) F)
     (hT : MeasurePreserving T μ μ)
     (hErg : IsErgodic (μ := μ) T)
-    (hSub : IsSubadditiveCocycle (μ := μ) T F) :
+    (hSub : IsSubadditiveCocycle (μ := μ) T F)
+    (hbdd : BddBelow (Set.range (fun n : ℕ => aSeq (μ := μ) F n / (n : ℝ)))) :
     ∃ c : ℝ,
       (∀ᵐ x ∂μ, Tendsto (fun n : ℕ => normalized F n x) atTop (𝓝 c))
       ∧ Tendsto (meanNormalized (μ := μ) F) atTop (𝓝 c)
@@ -384,7 +425,8 @@ theorem kingman_subadditive_ergodic
   -- Step 3: mean convergence is already encoded by the Fekete subadditivity step on expectations
   have hmean_const :
       Tendsto (meanNormalized (μ := μ) F) atTop (𝓝 (kingmanConstant (μ := μ) F)) := by
-    rcases meanNormalized_tendsto_inf (μ := μ) (T := T) (F := F) hT hInt hSub with ⟨ℓ, hℓt, hℓeq⟩
+    rcases meanNormalized_tendsto_inf (μ := μ) (T := T) (F := F) hT hInt hSub hbdd with
+      ⟨ℓ, hℓt, hℓeq⟩
     simpa [hℓeq] using hℓt
 
   have hmean_c : Tendsto (meanNormalized (μ := μ) F) atTop (𝓝 c) := by
