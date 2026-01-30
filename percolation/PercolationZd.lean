@@ -862,7 +862,7 @@ lemma prob_eq_probPoly_of_lt (A : Set (Ω ι)) {p : ℝ} (hp0 : 0 < p) (hp1 : p 
         (Measure.pi_singleton (μ := fun _ : ι => bernoulliMeasure (p := p₀) (hp := hp₀)) ω)
     have hb (b : Bool) :
         bernoulliMeasure (p := p₀) (hp := hp₀) {b} = (cond b p₀ (1 - p₀) : ℝ≥0∞) := by
-      simpa [bernoulliMeasure, PMF.bernoulli_apply] using
+      simpa [bernoulliMeasure, PMF.bernoulli_apply, Bool.apply_cond, ENNReal.coe_sub] using
         (PMF.toMeasure_apply_singleton (p := PMF.bernoulli p₀ hp₀) b (MeasurableSet.singleton b))
     simpa [hb] using hpi
   have hne_top :
@@ -882,8 +882,7 @@ lemma prob_eq_probPoly_of_lt (A : Set (Ω ι)) {p : ℝ} (hp0 : 0 < p) (hp1 : p 
   have hweight (ω : Ω ι) : (μ {ω}).toReal = weight (ι := ι) p ω := by
     have hfactor (e : ι) :
         ((cond (ω e) p₀ (1 - p₀) : ℝ≥0∞).toReal) = (if ω e then p else (1 - p)) := by
-      by_cases h : ω e
-      · simp [h, p₀, pNNReal]
+      cases h : ω e
       ·
         have hp₀' : (p₀ : ℝ≥0∞) ≤ (1 : ℝ≥0∞) := by
           exact_mod_cast hp₀
@@ -891,7 +890,11 @@ lemma prob_eq_probPoly_of_lt (A : Set (Ω ι)) {p : ℝ} (hp0 : 0 < p) (hp1 : p 
             ((1 : ℝ≥0∞) - (p₀ : ℝ≥0∞)).toReal =
               (1 : ℝ≥0∞).toReal - (p₀ : ℝ≥0∞).toReal := by
           simpa using (ENNReal.toReal_sub_of_le hp₀' (by simp))
-        simp [h, hsub, p₀, pNNReal]
+        simp [h] at *
+        -- LHS is now `((1 : ℝ≥0∞) - (p₀ : ℝ≥0∞)).toReal`.
+        rw [hsub]
+        simp [p₀, pNNReal]
+      · simp [h, p₀, pNNReal]
     have hstart :
         (μ {ω}).toReal =
           ENNReal.toReal (∏ e ∈ (Finset.univ : Finset ι), (cond (ω e) p₀ (1 - p₀) : ℝ≥0∞)) := by
@@ -935,7 +938,440 @@ lemma russo_formula_finite_core
     deriv (fun q : ℝ => probReal (ι := ι) q A) p =
       ∑ e : ι,
         prob (ι := ι) (p := pNNReal p hp0) (hp := pNNReal_le_one (p := p) hp0 hp1) (Pivotal A e) := by
-  sorry
+  classical
+  -- On a neighborhood of `p` contained in `(0,1)`, `probReal` agrees with the polynomial `probPoly`.
+  have hEq :
+      (fun q : ℝ => probReal (ι := ι) q A) =ᶠ[𝓝 p] fun q : ℝ => probPoly (ι := ι) q A := by
+    have hIoo : Set.Ioo (0 : ℝ) 1 ∈ 𝓝 p := Ioo_mem_nhds hp0 hp1
+    refine Filter.eventually_of_mem hIoo ?_
+    intro q hq
+    have hq0 : 0 < q := hq.1
+    have hq1 : q < 1 := hq.2
+    calc
+      probReal (ι := ι) q A =
+          prob (ι := ι) (p := pNNReal q hq0) (hp := pNNReal_le_one (p := q) hq0 hq1) A := by
+            simpa using (probReal_eq_prob_of_lt (ι := ι) (A := A) hq0 hq1)
+      _ = probPoly (ι := ι) q A := prob_eq_probPoly_of_lt (ι := ι) (A := A) hq0 hq1
+
+  have hderiv_probReal :
+      deriv (fun q : ℝ => probReal (ι := ι) q A) p =
+        deriv (fun q : ℝ => probPoly (ι := ι) q A) p := by
+    simpa using hEq.deriv_eq
+
+  -- Compute the derivative of the finite polynomial `probPoly`.
+  have hderiv_probPoly :
+      deriv (fun q : ℝ => probPoly (ι := ι) q A) p =
+        ∑ e : ι, probPoly (ι := ι) p (Pivotal A e) := by
+    classical
+    -- Filtered finite sum representation.
+    let sA : Finset (Ω ι) := (Finset.univ : Finset (Ω ι)).filter fun ω : Ω ι => ω ∈ A
+    let base : ι → Ω ι → ℝ := fun e ω =>
+      ∏ j ∈ (Finset.univ.erase e : Finset ι), (if ω j then p else (1 - p))
+
+    have hprobPoly (q : ℝ) :
+        probPoly (ι := ι) q A = ∑ ω ∈ sA, weight (ι := ι) q ω := by
+      simpa [probPoly, sA] using
+        (Finset.sum_filter (s := (Finset.univ : Finset (Ω ι)))
+          (p := fun ω : Ω ι => ω ∈ A) (f := fun ω : Ω ι => weight (ι := ι) q ω)).symm
+
+    -- Derivative of one factor `(if ω e then q else (1 - q))`.
+    have hfactor (ω : Ω ι) (e : ι) :
+        HasDerivAt (fun q : ℝ => (if ω e then q else (1 - q)))
+          (if ω e then 1 else -1) p := by
+      cases h : ω e
+      ·
+        -- `ω e = false`: factor is `1 - q`.
+        simpa [h] using (hasDerivAt_id p).const_sub (1 : ℝ)
+      ·
+        -- `ω e = true`: factor is `q`.
+        simpa [h] using (hasDerivAt_id p)
+
+    -- Derivative of the weight of a configuration.
+    have hweight (ω : Ω ι) :
+        HasDerivAt (fun q : ℝ => weight (ι := ι) q ω)
+          (∑ e : ι, base e ω * (if ω e then 1 else -1)) p := by
+      have h :=
+        HasDerivAt.fun_finset_prod (x := p) (u := (Finset.univ : Finset ι))
+          (f := fun e : ι => fun q : ℝ => (if ω e then q else (1 - q)))
+          (f' := fun e : ι => (if ω e then 1 else -1))
+          (hf := by
+            intro e he
+            simpa using hfactor ω e)
+      simpa [weight, base, mul_assoc, mul_left_comm, mul_comm] using h
+
+    -- Differentiate the filtered sum.
+    have hderiv_sum :
+        HasDerivAt (fun q : ℝ => ∑ ω ∈ sA, weight (ι := ι) q ω)
+          (∑ ω ∈ sA, ∑ e : ι, base e ω * (if ω e then 1 else -1)) p := by
+      refine HasDerivAt.fun_sum (x := p) (u := sA)
+        (A := fun ω : Ω ι => fun q : ℝ => weight (ι := ι) q ω)
+        (A' := fun ω : Ω ι => ∑ e : ι, base e ω * (if ω e then 1 else -1)) ?_
+      intro ω hω
+      simpa using hweight ω
+
+    have hprobPolyFun :
+        (fun q : ℝ => probPoly (ι := ι) q A) =
+          fun q : ℝ => ∑ ω ∈ sA, weight (ι := ι) q ω := by
+      funext q
+      simpa using hprobPoly q
+
+    have hderiv_poly :
+        deriv (fun q : ℝ => probPoly (ι := ι) q A) p =
+          ∑ ω ∈ sA, ∑ e : ι, base e ω * (if ω e then 1 else -1) := by
+      have : deriv (fun q : ℝ => ∑ ω ∈ sA, weight (ι := ι) q ω) p =
+          ∑ ω ∈ sA, ∑ e : ι, base e ω * (if ω e then 1 else -1) := by
+        exact hderiv_sum.deriv
+      simpa [hprobPolyFun] using this
+
+    -- Key combinatorial identification for each coordinate.
+    have hinner (e₀ : ι) :
+        (∑ ω ∈ sA, base e₀ ω * (if ω e₀ then 1 else -1)) =
+          probPoly (ι := ι) p (Pivotal A e₀) := by
+      classical
+      let U0 : Finset (Ω ι) :=
+        (Finset.univ : Finset (Ω ι)).filter fun ω : Ω ι => ω e₀ = false
+      let A0 : Finset (Ω ι) := U0.filter fun ω : Ω ι => ω ∈ A
+      let B0 : Finset (Ω ι) := U0.filter fun ω : Ω ι => flip ω e₀ true ∈ A
+      let C0 : Finset (Ω ι) := B0 \ A0
+
+      have base_flip (ω : Ω ι) (b : Bool) :
+          base e₀ (flip ω e₀ b) = base e₀ ω := by
+        -- only coordinates in `univ.erase e₀` appear
+        simp [base]
+        refine Finset.prod_congr rfl ?_
+        intro j hj
+        have jne : j ≠ e₀ := (Finset.mem_erase.mp hj).1
+        simp [flip, jne]
+
+      have flip_eq_self (ω : Ω ι) (b : Bool) (h : ω e₀ = b) : flip ω e₀ b = ω := by
+        funext j
+        by_cases hj : j = e₀
+        · subst hj
+          simpa [flip, h]
+        · simp [flip, hj]
+
+      have flip_false_true (ω : Ω ι) (h : ω e₀ = true) :
+          flip (flip ω e₀ false) e₀ true = ω := by
+        funext j
+        by_cases hj : j = e₀
+        · subst hj
+          simpa [flip, h]
+        · simp [flip, hj]
+
+      have flip_true_false (ω : Ω ι) (h : ω e₀ = false) :
+          flip (flip ω e₀ true) e₀ false = ω := by
+        funext j
+        by_cases hj : j = e₀
+        · subst hj
+          simpa [flip, h]
+        · simp [flip, hj]
+
+      -- `A0 ⊆ B0` by monotonicity of `A`.
+      have hA0sub : A0 ⊆ B0 := by
+        intro ω hω
+        have hω' : ω e₀ = false ∧ ω ∈ A := by
+          simpa [A0, U0] using hω
+        have hωe : ω e₀ = false := hω'.1
+        have hωA : ω ∈ A := hω'.2
+        have hωA' : flip ω e₀ true ∈ A := by
+          apply hA (ω := ω) (ω' := flip ω e₀ true) ?_ hωA
+          intro i hi
+          by_cases hie : i = e₀
+          · subst hie
+            simpa [hωe] using hi
+          · simpa [flip, hie] using hi
+        -- show `ω ∈ B0`
+        refine Finset.mem_filter.mpr ?_
+        constructor
+        · -- in `U0`
+          refine Finset.mem_filter.mpr ?_
+          constructor <;> simp [U0, hωe]
+        · exact hωA'
+
+      -- Rewrite the LHS as a base-sum over `C0`.
+      have hLHS :
+          (∑ ω ∈ sA, base e₀ ω * (if ω e₀ then 1 else -1)) =
+            ∑ ω ∈ C0, base e₀ ω := by
+        -- Split into `e₀ = true` and `e₀ = false`.
+        have hterm (ω : Ω ι) :
+            base e₀ ω * (if ω e₀ then 1 else -1) =
+              if ω e₀ = true then base e₀ ω else -base e₀ ω := by
+          cases h : ω e₀ <;> simp [h]
+        have hsplit :
+            (∑ ω ∈ sA, base e₀ ω * (if ω e₀ then 1 else -1)) =
+              (∑ ω ∈ sA.filter (fun ω : Ω ι => ω e₀ = true), base e₀ ω) -
+                ∑ ω ∈ sA.filter (fun ω : Ω ι => ω e₀ = false), base e₀ ω := by
+          calc
+            (∑ ω ∈ sA, base e₀ ω * (if ω e₀ then 1 else -1)) =
+                ∑ ω ∈ sA, if ω e₀ = true then base e₀ ω else -base e₀ ω := by
+                  refine Finset.sum_congr rfl ?_
+                  intro ω hω
+                  simpa using hterm ω
+            _ =
+                (∑ ω ∈ sA.filter (fun ω : Ω ι => ω e₀ = true), base e₀ ω) +
+                  ∑ ω ∈ sA.filter (fun ω : Ω ι => ¬ω e₀ = true), -base e₀ ω := by
+                  simpa using
+                    (Finset.sum_ite (s := sA) (p := fun ω : Ω ι => ω e₀ = true)
+                      (f := fun ω : Ω ι => base e₀ ω) (g := fun ω : Ω ι => -base e₀ ω))
+            _ =
+                (∑ ω ∈ sA.filter (fun ω : Ω ι => ω e₀ = true), base e₀ ω) -
+                  ∑ ω ∈ sA.filter (fun ω : Ω ι => ω e₀ = false), base e₀ ω := by
+                  have hfilter :
+                      sA.filter (fun ω : Ω ι => ¬ω e₀ = true) =
+                        sA.filter (fun ω : Ω ι => ω e₀ = false) := by
+                    ext ω
+                    cases h : ω e₀ <;> simp [h]
+                  simp [hfilter, sub_eq_add_neg, Finset.sum_neg_distrib]
+        -- Convert the `e₀ = true` part to `B0` via bijection.
+        have hsum_true :
+            (∑ ω ∈ sA.filter (fun ω : Ω ι => ω e₀ = true), base e₀ ω) =
+              ∑ ω ∈ B0, base e₀ ω := by
+          refine
+            (Finset.sum_nbij' (s := sA.filter fun ω : Ω ι => ω e₀ = true) (t := B0)
+              (f := fun ω : Ω ι => base e₀ ω) (g := fun ω : Ω ι => base e₀ ω)
+              (i := fun ω : Ω ι => flip ω e₀ false) (j := fun ω : Ω ι => flip ω e₀ true)
+              ?_ ?_ ?_ ?_ ?_)
+          · intro ω hω
+            have hωA : ω ∈ A := (Finset.mem_filter.mp (Finset.mem_filter.mp hω).1).2
+            have hωe : ω e₀ = true := (Finset.mem_filter.mp hω).2
+            -- show `flip ω e₀ false ∈ B0`
+            refine Finset.mem_filter.mpr ?_
+            constructor
+            · -- in `U0`
+              refine Finset.mem_filter.mpr ?_
+              constructor <;> simp [U0, flip]
+            · have hcomp : flip (flip ω e₀ false) e₀ true = ω := flip_false_true ω hωe
+              simpa [hcomp] using hωA
+          · intro ω hω
+            -- ω ∈ B0 → flip ω e₀ true ∈ sA.filter (e₀=true)
+            have hω1A : flip ω e₀ true ∈ A := (Finset.mem_filter.mp hω).2
+            refine Finset.mem_filter.mpr ?_
+            constructor
+            · refine Finset.mem_filter.mpr ?_
+              constructor
+              · simp [sA]
+              · exact hω1A
+            · simp [flip]
+          · intro ω hω
+            have hωe : ω e₀ = true := (Finset.mem_filter.mp hω).2
+            exact flip_false_true ω hωe
+          · intro ω hω
+            have hωe : ω e₀ = false := by
+              have : ω ∈ U0 := (Finset.mem_filter.mp hω).1
+              exact (Finset.mem_filter.mp this).2
+            exact flip_true_false ω hωe
+          · intro ω hω
+            simpa using (base_flip ω false).symm
+        -- The `e₀ = false` sum is exactly over `A0`.
+        have hsum_false :
+            (∑ ω ∈ sA.filter (fun ω : Ω ι => ω e₀ = false), base e₀ ω) =
+              ∑ ω ∈ A0, base e₀ ω := by
+          have hs : sA.filter (fun ω : Ω ι => ω e₀ = false) = A0 := by
+            ext ω
+            simp [sA, A0, U0, and_left_comm, and_assoc, and_comm]
+          simpa [hs]
+        have hsdiff :
+            (∑ ω ∈ C0, base e₀ ω) = (∑ ω ∈ B0, base e₀ ω) - ∑ ω ∈ A0, base e₀ ω := by
+          simpa [C0] using (Finset.sum_sdiff_eq_sub (s₁ := A0) (s₂ := B0) (f := fun ω : Ω ι => base e₀ ω) hA0sub)
+        calc
+          (∑ ω ∈ sA, base e₀ ω * (if ω e₀ then 1 else -1)) =
+              (∑ ω ∈ sA.filter (fun ω : Ω ι => ω e₀ = true), base e₀ ω) -
+                ∑ ω ∈ sA.filter (fun ω : Ω ι => ω e₀ = false), base e₀ ω := hsplit
+          _ = (∑ ω ∈ B0, base e₀ ω) - ∑ ω ∈ A0, base e₀ ω := by
+                simp [hsum_true, hsum_false]
+          _ = ∑ ω ∈ C0, base e₀ ω := by
+                simpa [hsdiff]
+
+      -- Compute `probPoly p (Pivotal A e₀)` as the same base-sum.
+      have hRHS :
+          probPoly (ι := ι) p (Pivotal A e₀) = ∑ ω ∈ C0, base e₀ ω := by
+        let sP : Finset (Ω ι) :=
+          (Finset.univ : Finset (Ω ι)).filter fun ω : Ω ι => ω ∈ Pivotal A e₀
+        have hprobP :
+            probPoly (ι := ι) p (Pivotal A e₀) = ∑ ω ∈ sP, weight (ι := ι) p ω := by
+          simpa [probPoly, sP] using
+            (Finset.sum_filter (s := (Finset.univ : Finset (Ω ι)))
+              (p := fun ω : Ω ι => ω ∈ Pivotal A e₀) (f := fun ω : Ω ι => weight (ι := ι) p ω)).symm
+
+        have hsPfalse : sP.filter (fun ω : Ω ι => ω e₀ = false) = C0 := by
+          ext ω
+          by_cases hωe : ω e₀ = false
+          · have hflipF : flip ω e₀ false = ω := flip_eq_self ω false hωe
+            simp [sP, C0, B0, A0, U0, Pivotal, hωe, hflipF]
+          · simp [sP, C0, B0, A0, U0, hωe]
+
+        -- Bijection for the `e₀ = true` part.
+        have hsum_trueP :
+            (∑ ω ∈ sP.filter (fun ω : Ω ι => ω e₀ = true), weight (ι := ι) p ω) =
+              ∑ ω ∈ C0, weight (ι := ι) p (flip ω e₀ true) := by
+          refine
+            (Finset.sum_nbij' (s := sP.filter fun ω : Ω ι => ω e₀ = true) (t := C0)
+              (f := fun ω : Ω ι => weight (ι := ι) p ω)
+              (g := fun ω : Ω ι => weight (ι := ι) p (flip ω e₀ true))
+              (i := fun ω : Ω ι => flip ω e₀ false) (j := fun ω : Ω ι => flip ω e₀ true)
+              ?_ ?_ ?_ ?_ ?_)
+          · intro ω hω
+            have hωPiv : ω ∈ Pivotal A e₀ := (Finset.mem_filter.mp (Finset.mem_filter.mp hω).1).2
+            have hωe : ω e₀ = true := (Finset.mem_filter.mp hω).2
+            -- show `flip ω e₀ false ∈ C0`
+            refine Finset.mem_sdiff.mpr ?_
+            refine ⟨?_, ?_⟩
+            · -- in `B0`
+              refine Finset.mem_filter.mpr ?_
+              refine ⟨?_, ?_⟩
+              · -- in `U0`
+                refine Finset.mem_filter.mpr ?_
+                constructor <;> simp [U0, flip]
+              · -- `flip (flip ω e₀ false) e₀ true ∈ A`
+                have hωA : ω ∈ A := by
+                  have hflipT : flip ω e₀ true = ω := flip_eq_self ω true hωe
+                  simpa [Pivotal, hflipT] using hωPiv.1
+                have hcomp : flip (flip ω e₀ false) e₀ true = ω := flip_false_true ω hωe
+                simpa [hcomp] using hωA
+            · -- not in `A0`
+              intro hA0
+              have hInA : flip ω e₀ false ∈ A := (Finset.mem_filter.mp hA0).2
+              have hNotInA : flip ω e₀ false ∉ A := by
+                simpa [Pivotal] using hωPiv.2
+              exact hNotInA hInA
+          · intro ω hω
+            -- ω ∈ C0 → flip ω e₀ true ∈ sP.filter (e₀=true)
+            have hωB : ω ∈ B0 := (Finset.mem_sdiff.mp hω).1
+            have hωA0 : ω ∉ A0 := (Finset.mem_sdiff.mp hω).2
+            have hωe : ω e₀ = false := (Finset.mem_filter.mp (Finset.mem_filter.mp hωB).1).2
+            have hω1A : flip ω e₀ true ∈ A := (Finset.mem_filter.mp hωB).2
+            have hωnotA : ω ∉ A := by
+              intro hAω
+              exact hωA0 (Finset.mem_filter.mpr ⟨(Finset.mem_filter.mp hωB).1, hAω⟩)
+            have hPiv : flip ω e₀ true ∈ Pivotal A e₀ := by
+              refine ⟨?_, ?_⟩
+              · have hflipT : flip (flip ω e₀ true) e₀ true = flip ω e₀ true := by
+                  funext j
+                  by_cases hj : j = e₀
+                  · subst hj; simp [flip]
+                  · simp [flip, hj]
+                simpa [Pivotal, hflipT] using hω1A
+              · have hflipF : flip (flip ω e₀ true) e₀ false = ω := flip_true_false ω hωe
+                simpa [Pivotal, hflipF] using hωnotA
+            refine Finset.mem_filter.mpr ?_
+            constructor
+            · refine Finset.mem_filter.mpr ?_
+              constructor
+              · simp [sP]
+              · exact hPiv
+            · simp [flip]
+          · intro ω hω
+            have hωe : ω e₀ = true := (Finset.mem_filter.mp hω).2
+            exact flip_false_true ω hωe
+          · intro ω hω
+            have hωe : ω e₀ = false := by
+              have : ω ∈ C0 := hω
+              have : ω ∈ B0 := (Finset.mem_sdiff.mp this).1
+              exact (Finset.mem_filter.mp (Finset.mem_filter.mp this).1).2
+            exact flip_true_false ω hωe
+          · intro ω hω
+            have hωe : ω e₀ = true := (Finset.mem_filter.mp hω).2
+            have hcomp : flip (flip ω e₀ false) e₀ true = ω := flip_false_true ω hωe
+            simpa [hcomp]
+
+        -- Decompose weights as `(factor at e₀) * base`.
+        have hweight_decomp (ω : Ω ι) :
+            weight (ι := ι) p ω = (if ω e₀ then p else (1 - p)) * base e₀ ω := by
+          have h :=
+            Finset.mul_prod_erase (s := (Finset.univ : Finset ι))
+              (f := fun i : ι => (if ω i then p else (1 - p))) (a := e₀) (h := by simp)
+          simpa [weight, base] using h.symm
+
+        -- Split the pivotal sum and rewrite both parts over `C0`.
+        have hsplitP :
+            (∑ ω ∈ sP, weight (ι := ι) p ω) =
+              (∑ ω ∈ C0, weight (ι := ι) p ω) + ∑ ω ∈ C0, weight (ι := ι) p (flip ω e₀ true) := by
+          have h := Finset.sum_filter_add_sum_filter_not (s := sP) (p := fun ω : Ω ι => ω e₀ = false)
+            (f := fun ω : Ω ι => weight (ι := ι) p ω)
+          have hfilter :
+              sP.filter (fun ω : Ω ι => ¬ω e₀ = false) =
+                sP.filter (fun ω : Ω ι => ω e₀ = true) := by
+            ext ω
+            cases hω : ω e₀ <;> simp [hω]
+          -- Rewrite `sum (sP)` as `sum false + sum true`.
+          have : (∑ ω ∈ sP, weight (ι := ι) p ω) =
+              (∑ ω ∈ sP.filter (fun ω : Ω ι => ω e₀ = false), weight (ι := ι) p ω) +
+                ∑ ω ∈ sP.filter (fun ω : Ω ι => ω e₀ = true), weight (ι := ι) p ω := by
+            simpa [hfilter] using h.symm
+          -- Replace the two finsets/sums by the `C0` versions.
+          simpa [hsPfalse] using
+            (by
+              simpa [hsPfalse] using
+                (by
+                  -- use `hsum_trueP` for the true part
+                  simpa [hsPfalse, hsum_trueP] using this))
+
+        calc
+          probPoly (ι := ι) p (Pivotal A e₀) = ∑ ω ∈ sP, weight (ι := ι) p ω := hprobP
+          _ = ∑ ω ∈ C0, (weight (ι := ι) p ω + weight (ι := ι) p (flip ω e₀ true)) := by
+                -- combine the split sums
+                have := hsplitP
+                -- use `sum_add_distrib` to merge
+                simpa [Finset.sum_add_distrib] using this
+          _ = ∑ ω ∈ C0, base e₀ ω := by
+                refine Finset.sum_congr rfl ?_
+                intro ω hω
+                have hωe : ω e₀ = false := by
+                  have : ω ∈ B0 := (Finset.mem_sdiff.mp hω).1
+                  exact (Finset.mem_filter.mp (Finset.mem_filter.mp this).1).2
+                have hω1 : base e₀ (flip ω e₀ true) = base e₀ ω := base_flip ω true
+                -- expand both weights and simplify
+                calc
+                  weight (ι := ι) p ω + weight (ι := ι) p (flip ω e₀ true)
+                      = (1 - p) * base e₀ ω + p * base e₀ (Function.update ω e₀ true) := by
+                          simp [hweight_decomp, hωe, flip]
+                  _ = (1 - p) * base e₀ ω + p * base e₀ ω := by
+                          have hω1' : base e₀ (Function.update ω e₀ true) = base e₀ ω := by
+                            simpa [flip] using hω1
+                          simp [hω1']
+                  _ = ((1 - p) + p) * base e₀ ω := by
+                          rw [← add_mul]
+                  _ = base e₀ ω := by
+                          simp [sub_add_cancel, one_mul]
+
+      -- Combine both sides.
+      exact (hLHS.trans hRHS.symm)
+
+    -- Swap sums and apply `hinner`.
+    have hswap :
+        (∑ ω ∈ sA, ∑ e : ι, base e ω * (if ω e then 1 else -1)) =
+          ∑ e : ι, ∑ ω ∈ sA, base e ω * (if ω e then 1 else -1) := by
+      simpa using
+        (Finset.sum_comm (s := sA) (t := (Finset.univ : Finset ι))
+          (f := fun ω e => base e ω * (if ω e then 1 else -1)))
+
+    calc
+      deriv (fun q : ℝ => probPoly (ι := ι) q A) p =
+          ∑ ω ∈ sA, ∑ e : ι, base e ω * (if ω e then 1 else -1) := hderiv_poly
+      _ = ∑ e : ι, ∑ ω ∈ sA, base e ω * (if ω e then 1 else -1) := hswap
+      _ = ∑ e : ι, probPoly (ι := ι) p (Pivotal A e) := by
+            classical
+            -- rewrite termwise using `hinner`
+            refine Fintype.sum_congr _ _ ?_
+            intro e
+            simpa using hinner e
+
+  -- Convert pivotal probabilities from `probPoly` back to `prob`.
+  have hpiv :
+      (fun e : ι => probPoly (ι := ι) p (Pivotal A e)) =
+        fun e : ι =>
+          prob (ι := ι) (p := pNNReal p hp0) (hp := pNNReal_le_one (p := p) hp0 hp1) (Pivotal A e) := by
+    funext e
+    -- `prob = probPoly` on `(0,1)`.
+    simpa using (prob_eq_probPoly_of_lt (ι := ι) (A := Pivotal A e) (p := p) hp0 hp1).symm
+
+  calc
+    deriv (fun q : ℝ => probReal (ι := ι) q A) p =
+        deriv (fun q : ℝ => probPoly (ι := ι) q A) p := hderiv_probReal
+    _ = ∑ e : ι, probPoly (ι := ι) p (Pivotal A e) := hderiv_probPoly
+    _ = ∑ e : ι,
+          prob (ι := ι) (p := pNNReal p hp0) (hp := pNNReal_le_one (p := p) hp0 hp1) (Pivotal A e) := by
+          simpa using congrArg (fun f : ι → ℝ => ∑ e : ι, f e) hpiv
 
 /--
 Russo's formula (finite, claim): for an increasing event `A` depending on finitely many coordinates
@@ -1242,36 +1678,359 @@ theorem crossing_disjoint (n m : ℕ) (ω : Set E) :
   have hcomp := (crossing_complement (n := n) (m := m) (ω := ω))
   exact (hcomp.mp hLR) hTB
 
+/- 
+Blueprint: Bond.TwoD.prob_crossLR_square_at_half
+
+Lean goal:
+theorem prob_crossLR_square_at_half (n : ℕ) :
+  (Prob.P (d := 2) (1 / 2) (CrossLR n n)) = (1 / 2 : ℝ≥0∞)
+
+Core idea:
+Self-duality at p = 1/2 plus square symmetry forces the crossing probability to be exactly 1/2.
+
+Concrete plan:
+
+* Convert the axiom `crossing_complement` into a set identity.
+  Let A := CrossLR n n and B := CrossTB n n.
+  From crossing_complement:
+  ω ∈ A ↔ ¬ dualConfig ω ∈ B
+  so:
+  A = {ω | ¬ (dualConfig ω ∈ B)} = (dualConfig ⁻¹' B)ᶜ
+  In Lean:
+  have hA : CrossLR n n = (dualConfig ⁻¹' CrossTB n n)ᶜ := by
+    ext ω; simpa [dualConfig] using (crossing_complement (n := n) (m := n) (ω := ω))
+
+* Use probability-measure complement formula:
+  Prob.P p (Sᶜ) = 1 - Prob.P p S
+  Apply to S := dualConfig ⁻¹' B, with p = 1/2, to rewrite Prob.P (1/2) A.
+
+* Show invariance of the law under configuration-complement at p = 1/2.
+  Needed lemma (add if not already available):
+  dualConfig_preimage_prob :
+    Prob.P (d := 2) p (dualConfig ⁻¹' S) = Prob.P (d := 2) (1 - p) S
+  Then specialize to p = 1/2 to get:
+    Prob.P (1/2) (dualConfig ⁻¹' B) = Prob.P (1/2) B
+
+  If the library already has a statement like “pushforward of Bernoulli(p) by complement is Bernoulli(1-p)”, use it.
+  Otherwise prove it by:
+  * writing Prob.P as product measure on edges,
+  * checking single-edge marginal,
+  * using independence / product-measure uniqueness.
+
+* Show square symmetry: horizontal and vertical crossing have the same probability in an n×n box.
+  Needed lemma (add if not already available):
+  prob_crossTB_eq_prob_crossLR_square :
+    Prob.P (d := 2) (1/2) (CrossTB n n) = Prob.P (d := 2) (1/2) (CrossLR n n)
+
+  Strategy:
+  * build an automorphism of the lattice graph implementing a 90-degree rotation of the square,
+  * show it maps the event CrossLR n n to CrossTB n n,
+  * show Prob measure is invariant under that automorphism (Bernoulli product measure is invariant under edge permutations induced by graph automorphisms).
+
+* Combine:
+    Prob.P(1/2) A
+    = 1 - Prob.P(1/2) (dualConfig ⁻¹' B)
+    = 1 - Prob.P(1/2) B
+    = 1 - Prob.P(1/2) A
+  hence 2 * Prob.P(1/2) A = 1 and conclude Prob.P(1/2) A = 1/2.
+
+ENNReal algebra notes:
+
+* Use a lemma like: x = 1 - x ⇒ x = 1/2 (in ℝ≥0∞).
+  If missing, prove via:
+  * rewrite to x + x = 1,
+  * use `two_mul` to get (2 : ℝ≥0∞) * x = 1,
+  * then multiply both sides by (1/2 : ℝ≥0∞), or use `ENNReal.eq_div_iff` style lemmas.
+-/
 theorem prob_crossLR_square_at_half (n : ℕ) :
     (Prob.P (d := 2) (1 / 2) (CrossLR n n)) = (1 / 2 : ℝ≥0∞) := by
   classical
   sorry
 
+/-
+Blueprint: Bond.TwoD.rsw_lower_bound_at_half
+
+Lean goal:
+theorem rsw_lower_bound_at_half (ρ : ℝ) :
+  ∃ c : ℝ≥0∞, 0 < c ∧
+    ∀ n : ℕ, c ≤ Prob.P (d := 2) (1 / 2) (CrossLR (Nat.floor (ρ * n)) n)
+
+Core idea:
+RSW at p = 1/2 gives a uniform positive lower bound for crossing probabilities of rectangles with fixed aspect ratio.
+
+Suggested structure:
+
+* Handle trivial aspect ratios.
+  For ρ ≤ 0, Nat.floor (ρ*n) = 0 for all n, so reduce to a base case for width 0.
+  You will need a lemma describing CrossLR 0 n:
+  either it is `univ` (probability 1), or at least it has probability bounded below by a positive constant.
+  Choose any positive c that works uniformly (for example, c = 1/2 if you can show prob is 1).
+
+* Reduce to ρ > 0.
+  Let k be a natural number dominating the aspect ratio, for instance:
+  k := max 1 (Nat.ceil ρ)   (with coercions handled carefully)
+  Then show:
+  Nat.floor (ρ*n) ≤ k*n for all n
+  and use monotonicity in the width:
+  if m₁ ≤ m₂ then CrossLR m₁ n ⊇ CrossLR m₂ n
+  hence:
+  Prob.P(1/2) (CrossLR (k*n) n) ≤ Prob.P(1/2) (CrossLR (Nat.floor(ρ*n)) n)
+  Since we want a lower bound, it is enough to bound Prob.P(1/2) (CrossLR (k*n) n) from below.
+
+* Prove RSW gluing lemma for integer aspect ratios.
+  For each fixed k ≥ 1, prove:
+  ∃ c(k) > 0, ∀ n, c(k) ≤ Prob.P(1/2) (CrossLR (k*n) n)
+
+  Ingredients needed:
+
+  * `CrossLR` is an increasing (monotone) event in ω.
+    Provide lemma: if ω ⊆ ω' then ω ∈ CrossLR n m → ω' ∈ CrossLR n m.
+  * FKG (Harris) inequality for product Bernoulli measure:
+    for increasing events A,B,
+    P(A ∩ B) ≥ P(A) * P(B).
+  * A geometric “gluing” statement:
+    intersection of crossings of overlapping sub-rectangles implies a crossing of the larger rectangle.
+    Typical pattern:
+
+    * cover a k*n by n rectangle with a chain of overlapping n by n squares,
+    * define events that each square has a left-right crossing,
+    * show that if all these events occur and overlaps are arranged, then the big rectangle has a left-right crossing.
+
+  Resulting bound:
+  Prob.P(1/2) (CrossLR (k*n) n) ≥ (Prob.P(1/2) (CrossLR n n))^(Ck)
+  for some Ck depending only on k (coming from the number of glued pieces).
+
+* Use prob_crossLR_square_at_half as input:
+  Prob.P(1/2) (CrossLR n n) = 1/2
+  so the lower bound becomes a fixed constant c(k) = (1/2)^(Ck), which is > 0.
+
+* Set final c:
+  Take c := c(k) with k chosen from ρ. This gives a uniform (in n) positive lower bound for the target rectangles.
+
+Notes:
+
+* If your library already has an RSW theorem for bond percolation on Z² at p = 1/2, replace the gluing development by a direct call.
+* The statement uses Nat.floor (ρ*n); you will need routine inequalities between floor/ceil and linear bounds.
+-/
 theorem rsw_lower_bound_at_half (ρ : ℝ) :
     ∃ c : ℝ≥0∞, 0 < c ∧ ∀ n : ℕ, c ≤ (Prob.P (d := 2) (1 / 2) (CrossLR (Nat.floor (ρ * n)) n)) := by
   classical
   sorry
 
 
+/-
+Blueprint: Bond.TwoD.prob_crossLR_square_tendsto_one_of_gt_half
+
+Lean goal:
+theorem prob_crossLR_square_tendsto_one_of_gt_half {p : ℝ≥0∞}
+  (hp : (1 / 2 : ℝ≥0∞) < p) :
+  Filter.Tendsto (fun n : ℕ => Prob.P (d := 2) p (CrossLR n n)) Filter.atTop (𝓝 1)
+
+Core idea:
+For p > 1/2, box-crossing probabilities of squares go to 1.
+
+Two viable proof routes (pick one, depending on available library results):
+
+Route A (sharp threshold / Friedgut–Kalai type):
+
+* Show each event A_n := CrossLR n n is:
+  * increasing in ω,
+  * “highly symmetric” under a transitive group of edge permutations coming from lattice symmetries of the n×n box,
+  * depends on finitely many edges (a finite product space), so classical sharp-threshold theorems apply.
+
+* Use an existing sharp-threshold theorem for symmetric monotone events in a product space:
+  from a nontrivial bound at p = 1/2 (here P_{1/2}(A_n) = 1/2), deduce:
+  for any fixed p > 1/2, P_p(A_n) → 1 as n → ∞.
+
+* Required inputs:
+  * symmetry lemma: for each n, the group of symmetries acts transitively on relevant edges, giving equal influences,
+  * monotonicity lemma: A_n is increasing,
+  * a ready-to-use sharp-threshold result in the library.
+
+Route B (Kesten-style differential inequality + RSW + BK/BKR):
+
+* Use Russo’s formula for product measures:
+  d/dp P_p(A_n) = ∑_e P_p(e is pivotal for A_n)
+  Formalize pivotality with your edge index type.
+
+* Prove a lower bound on the expected number of pivotal edges in the critical window:
+  when P_p(A_n) is bounded away from 0 and 1, show:
+  ∑_e P_p(pivotal) ≥ c * log n
+  The standard proof uses existence of multiple disjoint crossings and the BK inequality (your earlier BKR development is aimed at this).
+
+* Use RSW at p = 1/2 to guarantee nontrivial crossing probabilities at nearby scales, enabling the disjoint-crossing machinery.
+
+* Integrate the differential inequality from 1/2 to p:
+  Since hp : 1/2 < p is fixed, the integral grows like (p - 1/2) * c log n, forcing P_p(A_n) → 1.
+
+Minimum “to-do” lemma list for Route B:
+
+* Russo formula for A_n under Prob.P
+* Definition and measurability of pivotality
+* BK/BKR bound for disjoint occurrence of crossing events in your configuration space
+* RSW input (rsw_lower_bound_at_half) to obtain uniform crossing bounds needed in the pivotal estimate
+* Basic calculus/integration lemma to convert derivative lower bound into convergence to 1
+-/
 theorem prob_crossLR_square_tendsto_one_of_gt_half {p : ℝ≥0∞} (hp : (1 / 2 : ℝ≥0∞) < p) :
     Filter.Tendsto (fun n : ℕ => (Prob.P (d := 2) p (CrossLR n n))) Filter.atTop (𝓝 1) := by
   classical
   sorry
 
+/-
+Blueprint: Bond.TwoD.theta_pos_of_gt_half
+
+Lean goal:
+theorem theta_pos_of_gt_half {p : ℝ≥0∞}
+  (hp : (1 / 2 : ℝ≥0∞) < p) :
+  0 < CriticalProbability.theta 2 p
+
+Core idea:
+If square-crossing probabilities go to 1, then with positive probability there is an infinite open cluster, so θ(p) > 0.
+
+Suggested proof path:
+
+* Use prob_crossLR_square_tendsto_one_of_gt_half to obtain:
+  Prob.P p (CrossLR n n) → 1
+  In particular, choose a subsequence n_k such that:
+  Prob.P p (CrossLR n_k n_k) ≥ 1 - 2^(-k-2)
+
+* Build annulus/circuit events from crossings.
+  Standard construction:
+  * Use crossings of rectangles around the origin to force an open circuit in an annulus (a “ring” event).
+  * Show that if open circuits occur for infinitely many scales, then the open cluster of the origin is infinite.
+
+* Use FKG (increasing events) to lower bound probability of intersection of finitely many ring events.
+  Then take a limit (continuity from above / below) to get a positive lower bound for the probability that circuits occur at all scales.
+
+* Conclude:
+  P_p(origin connected to infinity) > 0, hence θ(2,p) > 0.
+
+Lean support lemmas that may already exist in your `CriticalProbability` namespace:
+
+* θ expressed as a limit of connection-to-boundary probabilities:
+  theta 2 p = ⨅ n, Prob.P p (OriginConnectedToBoundary n)
+  or:
+  theta 2 p = lim_{n→∞} Prob.P p (OriginConnectedToBoundary n)
+* A lemma turning “high probability of crossings at all scales” into positivity of θ.
+
+If no such lemmas exist, add intermediate statements:
+
+* crossing ⇒ existence of a path from inner to outer boundary in an annulus
+* existence of ring events at all scales ⇒ percolation of the origin
+-/
 theorem theta_pos_of_gt_half {p : ℝ≥0∞} (hp : (1 / 2 : ℝ≥0∞) < p) :
     0 < CriticalProbability.theta 2 p := by
   classical
   sorry
 
+/-
+Blueprint: Bond.TwoD.theta_eq_zero_of_lt_half
+
+Lean goal:
+theorem theta_eq_zero_of_lt_half {p : ℝ≥0∞}
+  (hp : p < (1 / 2 : ℝ≥0∞)) :
+  CriticalProbability.theta 2 p = 0
+
+Core idea:
+For p < 1/2, dual parameter q := 1 - p satisfies q > 1/2, so dual crossings occur with probability tending to 1, which forces primal crossings to tend to 0 and implies no infinite open cluster.
+
+Concrete plan:
+
+* Set q := 1 - p, show (1/2) < q.
+  This needs basic ENNReal arithmetic: p < 1/2 ⇒ 1 - p > 1/2, assuming p ≤ 1.
+  If your parameter space is already restricted to [0,1], use it. Otherwise add a lemma that Prob.P is only meaningful with p ≤ 1, or interpret as truncated.
+
+* Use the complement/duality relation for crossings at general p:
+  From crossing_complement and the measure-transform lemma for dualConfig:
+  Prob.P p (CrossLR n n)
+    = 1 - Prob.P p (dualConfig ⁻¹' CrossTB n n)
+    = 1 - Prob.P (1 - p) (CrossTB n n)
+  Then use square symmetry to replace CrossTB by CrossLR:
+  Prob.P p (CrossLR n n) = 1 - Prob.P q (CrossLR n n)
+
+* Apply prob_crossLR_square_tendsto_one_of_gt_half to q (> 1/2):
+  Prob.P q (CrossLR n n) → 1
+  hence:
+  Prob.P p (CrossLR n n) → 0
+
+* Convert vanishing crossing probabilities into θ(p) = 0.
+  Use a standard finite-size/percolation criterion:
+  if box-crossing probabilities go to 0, then probability that the origin reaches distance n goes to 0, hence θ = 0.
+
+Needed lemma (if not already present):
+
+* theta_eq_zero_of_box_crossings_tendsto_zero (or similar):
+  assumes Tendsto (n ↦ Prob.P p (CrossLR n n)) atTop (𝓝 0),
+  concludes θ(2,p) = 0.
+
+If the library instead provides a direct planar duality implication:
+
+* dual percolation at q implies primal does not percolate at p
+  then use theta_pos_of_gt_half for q and that implication to conclude θ(p)=0.
+-/
 theorem theta_eq_zero_of_lt_half {p : ℝ≥0∞} (hp : p < (1 / 2 : ℝ≥0∞)) :
     CriticalProbability.theta 2 p = 0 := by
   classical
   sorry
 
+/-
+Blueprint: Bond.TwoD.one_half_le_p_c
+
+Lean goal:
+theorem one_half_le_p_c : (1 / 2 : ℝ≥0∞) ≤ CriticalProbability.p_c 2
+
+Core idea:
+Below 1/2, θ is zero, so no parameter p < 1/2 lies in the set defining p_c. Therefore 1/2 is a lower bound of that set, hence 1/2 ≤ p_c.
+
+Concrete plan:
+
+* Unfold p_c 2.
+  It is an sInf of the set S := {p | 0 < theta 2 p} (or the analogous definition in your file).
+
+* Show (1/2) is a lower bound of S:
+  take any p ∈ S; prove (1/2) ≤ p.
+  Contrapositive is often easier:
+  if p < 1/2 then p ∉ S
+  which follows from theta_eq_zero_of_lt_half:
+  p < 1/2 ⇒ theta 2 p = 0 ⇒ ¬(0 < theta 2 p)
+
+* Apply `le_sInf` (or `le_csInf`) with that lower bound proof.
+-/
 theorem one_half_le_p_c : (1 / 2 : ℝ≥0∞) ≤ CriticalProbability.p_c 2 := by
   classical
   sorry
 
+/-
+Blueprint: Bond.TwoD.p_c_le_one_half
+
+Lean goal:
+theorem p_c_le_one_half : CriticalProbability.p_c 2 ≤ (1 / 2 : ℝ≥0∞)
+
+Core idea:
+For every p > 1/2, θ(p) > 0, hence p belongs to the defining set for p_c, so p_c ≤ p. Taking p arbitrarily close to 1/2 from above gives p_c ≤ 1/2.
+
+Concrete plan:
+
+* Let S := {p | 0 < theta 2 p}.
+  For any p with 1/2 < p, use theta_pos_of_gt_half to show p ∈ S.
+  Then use property of infimum:
+  sInf S ≤ p
+
+* Convert “≤ p for all p > 1/2” into “≤ 1/2”.
+  Two common Lean-friendly approaches:
+
+  Approach using contradiction and exists_between:
+  * Assume h : (1/2) < p_c.
+  * Pick p with (1/2) < p ∧ p < p_c using `exists_between h`.
+  * Then p ∈ S by theta_pos_of_gt_half, hence p_c ≤ p by sInf_le.
+  * Contradiction with p < p_c.
+
+  Approach using the characterization:
+  * Prove: ∀ p, (1/2) < p → p_c ≤ p
+  * Then apply `le_of_forall_lt` or a lemma that turns “≤ all strict upper bounds” into “≤ bound”.
+
+* Ensure you have `p_c < ⊤` (or at least that exists_between is applicable). If needed, show p_c ≤ 1 (typical for percolation parameters).
+-/
 theorem p_c_le_one_half : CriticalProbability.p_c 2 ≤ (1 / 2 : ℝ≥0∞) := by
   classical
   sorry
