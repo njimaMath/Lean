@@ -14,6 +14,16 @@ lean_lib PerceptronFixed where
   srcDir := "."
   globs := #[.submodules `perceptronFixed]
 
+-- Library for percolation theory files
+lean_lib percolation where
+  srcDir := "."
+  globs := #[.submodules `percolation]
+
+-- Library for Kingman Subadditive Ergodic theorem
+lean_lib KignmanSubadditiveErgodic where
+  srcDir := "."
+  globs := #[.submodules `KignmanSubadditiveErgodic]
+
 @[default_target]
 lean_exe njimaLean where
   root := `Main

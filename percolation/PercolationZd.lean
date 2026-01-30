@@ -1,4 +1,5 @@
 import Mathlib.Analysis.SpecificLimits.Basic
+import Mathlib.Analysis.Calculus.Deriv.Basic
 import Mathlib.Algebra.Order.Group.Unbundled.Int
 import Mathlib.Combinatorics.SimpleGraph.Basic
 import Mathlib.Combinatorics.SimpleGraph.Walks.Basic
@@ -7,6 +8,9 @@ import Mathlib.Data.Int.Basic
 import Mathlib.Data.Fintype.BigOperators
 import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
 import Mathlib.Topology.Order.OrderClosed
+import Mathlib.MeasureTheory.Constructions.Pi
+import Mathlib.MeasureTheory.Measure.FiniteMeasurePi
+import Mathlib.Probability.ProbabilityMassFunction.Constructions
 
 open scoped BigOperators ENNReal Topology
 
@@ -353,82 +357,6 @@ theorem prob_percolates_eq_zero
 
 end Probability
 
-section CriticalProbability
-
-open MeasureTheory
-
-variable {Ω : Type*} [MeasurableSpace Ω]
-variable {d : ℕ}
-
-/-- Percolation probability at parameter `p`: the probability of percolation (connecting to ∞).
-    Uses the correct distance-based formulation. -/
-def percolationProb (μ : ℝ≥0∞ → Measure Ω)
-    (Open : ℝ≥0∞ → ∀ {n : ℕ}, WalkSteps d n → Set Ω) (p : ℝ≥0∞) : ℝ≥0∞ :=
-  μ p (Percolates (d := d) (Open := Open p))
-
-/-- Critical probability `p_c`: the infimum of parameters where percolation has positive
-probability. -/
-noncomputable def p_c (μ : ℝ≥0∞ → Measure Ω)
-    (Open : ℝ≥0∞ → ∀ {n : ℕ}, WalkSteps d n → Set Ω) : ℝ≥0∞ :=
-  sInf {p : ℝ≥0∞ | 0 < percolationProb (d := d) μ Open p}
-
-theorem percolationProb_eq_zero_of_lt_one_div_two_mul_d
-    (μ : ℝ≥0∞ → Measure Ω)
-    (Open : ℝ≥0∞ → ∀ {n : ℕ}, WalkSteps d n → Set Ω)
-    (hprob : ∀ p {n : ℕ} (γ : WalkSteps d n), μ p (Open p γ) ≤ p ^ n)
-    {p : ℝ≥0∞} (hp : p < (1 / (2 * d : ℝ≥0∞))) :
-    percolationProb (d := d) μ Open p = 0 := by
-  have hp' : ((2 * d : ℝ≥0∞) * p) < 1 := by
-    simpa using
-      (ENNReal.mul_lt_of_lt_div' (a := p) (b := (1 : ℝ≥0∞)) (c := (2 * d : ℝ≥0∞)) hp)
-  have h :=
-    prob_percolates_eq_zero (μ := μ p) (d := d) (p := p) (Open := Open p)
-      (hprob := by
-        intro n γ
-        simpa using hprob p γ)
-      hp'
-  simpa [percolationProb] using h
-
-theorem one_div_two_mul_d_le_p_c
-    (μ : ℝ≥0∞ → Measure Ω)
-    (Open : ℝ≥0∞ → ∀ {n : ℕ}, WalkSteps d n → Set Ω)
-    (hprob : ∀ p {n : ℕ} (γ : WalkSteps d n), μ p (Open p γ) ≤ p ^ n) :
-    (1 / (2 * d : ℝ≥0∞)) ≤ p_c (d := d) μ Open := by
-  refine le_sInf ?_
-  intro p hpPos
-  have : ¬p < (1 / (2 * d : ℝ≥0∞)) := by
-    intro hpLt
-    have hz :
-        percolationProb (d := d) μ Open p = 0 :=
-      percolationProb_eq_zero_of_lt_one_div_two_mul_d (d := d) (μ := μ) (Open := Open) hprob hpLt
-    have hpPos' : 0 < percolationProb (d := d) μ Open p := by
-      simpa using hpPos
-    rw [hz] at hpPos'
-    exact (lt_irrefl _ hpPos')
-  exact not_lt.mp this
-
-theorem p_c_pos
-    (μ : ℝ≥0∞ → Measure Ω)
-    (Open : ℝ≥0∞ → ∀ {n : ℕ}, WalkSteps d n → Set Ω)
-    (hprob : ∀ p {n : ℕ} (γ : WalkSteps d n), μ p (Open p γ) ≤ p ^ n) :
-    0 < p_c (d := d) μ Open := by
-  have hle : (1 / (2 * d : ℝ≥0∞)) ≤ p_c (d := d) μ Open :=
-    one_div_two_mul_d_le_p_c (d := d) (μ := μ) (Open := Open) hprob
-  have hpos : 0 < (1 / (2 * d : ℝ≥0∞)) := by
-    refine ENNReal.div_pos (by simp) ?_
-    -- The denominator is finite.
-    simpa [Nat.cast_mul] using
-      (ENNReal.mul_ne_top (a := (2 : ℝ≥0∞)) (b := (d : ℝ≥0∞)) (by simp) (by simp))
-  exact hpos.trans_le hle
-
-end CriticalProbability
-
-section BondPercolation
-
-open MeasureTheory
-
-namespace Bond
-
 namespace Zd
 
 variable {d : ℕ}
@@ -440,6 +368,10 @@ lemma e_apply_self (i : Fin d) : e (d := d) i i = 1 := by simp [e]
 lemma e_apply_ne (i j : Fin d) (h : j ≠ i) : e (d := d) i j = 0 := by simp [e, h]
 
 end Zd
+
+namespace Bond
+
+open MeasureTheory
 
 namespace Lattice
 
@@ -767,9 +699,318 @@ theorem p_c_le_of_theta_pos {d : ℕ} {p : ℝ≥0∞} (hp : 0 < theta d p) : p_
 
 theorem le_p_c_of_theta_eq_zero {d : ℕ} {p : ℝ≥0∞} (hp : theta d p = 0) : p ≤ p_c d := by
   classical
-  sorry
+  refine le_sInf ?_
+  intro q hq
+  by_contra hpq
+  have hqp : q < p := lt_of_not_ge hpq
+  have hθ : theta d q ≤ 0 := by
+    have hθ' := theta_mono (d := d) (p := q) (q := p) (le_of_lt hqp)
+    simpa [hp] using hθ'
+  exact (lt_irrefl (0 : ℝ≥0∞)) (lt_of_lt_of_le hq hθ)
 
 end CriticalProbability
+
+end Bond
+
+open scoped BigOperators ENNReal
+open MeasureTheory
+
+namespace Russo
+
+/-
+Finite Russo formula for Bernoulli product measure on configurations `ι → Bool`.
+
+To use for Z^d bond percolation in a finite box Λ:
+  * let `ι` be the finite type of edges in Λ (or any finite edge set),
+  * let `A : Set (ι → Bool)` be an increasing event (monotone in the coordinatewise order),
+  * interpret `ω e = true` as “edge e is open”.
+-/
+
+abbrev Ω (ι : Type*) : Type _ := ι → Bool
+
+variable {ι : Type*} [Fintype ι] [DecidableEq ι]
+
+def flip (ω : Ω ι) (e : ι) (b : Bool) : Ω ι := Function.update ω e b
+
+/-- Increasing (monotone) event for the coordinatewise order on `ι → Bool`. -/
+def Increasing (A : Set (Ω ι)) : Prop :=
+  ∀ ⦃ω ω' : Ω ι⦄, (∀ e : ι, ω e = true → ω' e = true) → ω ∈ A → ω' ∈ A
+
+/-- `e` is pivotal for `A` at configuration `ω` (for increasing `A`). -/
+def Pivotal (A : Set (Ω ι)) (e : ι) : Set (Ω ι) :=
+  {ω | flip ω e true ∈ A ∧ flip ω e false ∉ A}
+
+/-- Bernoulli measure on `Bool` with parameter `p` (as `NNReal`) and `p ≤ 1`. -/
+noncomputable def bernoulliMeasure (p : NNReal) (hp : p ≤ 1) : Measure Bool :=
+  (PMF.bernoulli p hp).toMeasure
+
+/-- Product Bernoulli measure on `ι → Bool`. -/
+noncomputable def bernoulliProd (p : NNReal) (hp : p ≤ 1) : Measure (Ω ι) :=
+  Measure.pi (fun _ : ι => bernoulliMeasure p hp)
+
+/-- Real-valued probability of an event under the product Bernoulli measure. -/
+noncomputable def prob (p : NNReal) (hp : p ≤ 1) (A : Set (Ω ι)) : ℝ :=
+  ((bernoulliProd (p := p) (hp := hp)) A).toReal
+
+/-- Clamp a real `q` to `[0,1]` as a `NNReal` parameter (helper for a total `ℝ → ℝ` probability map). -/
+noncomputable def clamp01 (q : ℝ) : NNReal :=
+  ⟨max 0 (min q 1), by
+    have : 0 ≤ max 0 (min q 1) := le_max_left _ _
+    exact this⟩
+
+lemma clamp01_le_one (q : ℝ) : clamp01 q ≤ 1 := by
+  -- Compare in `ℝ`.
+  apply (NNReal.coe_le_coe).1
+  change max 0 (min q 1) ≤ (1 : ℝ)
+  refine (max_le_iff).2 ?_
+  constructor
+  · exact zero_le_one
+  · exact min_le_right _ _
+
+/-- `prob` packaged as a total map `ℝ → ℝ` by clamping the parameter to `[0,1]`. -/
+noncomputable def probReal (q : ℝ) (A : Set (Ω ι)) : ℝ :=
+  prob (p := clamp01 q) (hp := clamp01_le_one q) A
+
+/--
+Russo's formula (finite, claim): for an increasing event `A` depending on finitely many coordinates
+(here automatic since `ι` is finite), the derivative w.r.t. `p` equals the sum of pivotal probabilities.
+
+This is stated for `p : ℝ` with `0 < p < 1`. For a total function `ℝ → ℝ` we clamp parameters outside
+`[0,1]` (in applications you usually use `derivWithin` on `Set.Ioo 0 1`).
+-/
+theorem russo_formula_finite
+    (A : Set (Ω ι)) (hA : Increasing A)
+    {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1) :
+    deriv (fun q : ℝ => probReal q A) p = ∑ e : ι, probReal p (Pivotal A e) := by
+  classical
+  -- Standard Russo formula (influence identity for product Bernoulli).
+  sorry
+
+end Russo
+
+open scoped BigOperators ENNReal
+
+namespace BKR
+
+open MeasureTheory
+
+section Definitions
+
+variable {ι : Type*} [Fintype ι] [DecidableEq ι]
+variable {α : ι → Type*}
+
+/-- Configuration space for an indexed product. -/
+abbrev Ω (ι : Type*) (α : ι → Type*) : Type _ := (i : ι) → α i
+
+/-- The cylinder set at configuration `ω` determined by coordinates `s`.
+
+`ω' ∈ cylinder ω s` means that `ω'` agrees with `ω` on all coordinates in `s`. -/
+def cylinder (ω : Ω ι α) (s : Finset ι) : Set (Ω ι α) :=
+  {ω' | ∀ i, i ∈ s → ω' i = ω i}
+
+/-- `s` is a witness for event `A` at configuration `ω` if fixing the coordinates in `s`
+(as in `cylinder ω s`) forces membership in `A`. -/
+def Witness (A : Set (Ω ι α)) (ω : Ω ι α) (s : Finset ι) : Prop :=
+  cylinder (ι := ι) (α := α) ω s ⊆ A
+
+/-- Disjoint occurrence of two events `A` and `B`.
+
+`ω ∈ A ⊠ B` means that there exist disjoint finite sets of coordinates `s` and `t`
+that witness `A` and `B` at `ω`. -/
+def disjointOccur (A B : Set (Ω ι α)) : Set (Ω ι α) :=
+  {ω | ∃ s t : Finset ι, Disjoint s t ∧
+    Witness (ι := ι) (α := α) A ω s ∧
+    Witness (ι := ι) (α := α) B ω t}
+
+notation:70 A " ⊠ " B => disjointOccur (ι := _) (α := _) A B
+
+lemma mem_cylinder_self (ω : Ω ι α) (s : Finset ι) :
+    ω ∈ cylinder (ι := ι) (α := α) ω s := by
+  intro i hi
+  rfl
+
+@[simp] lemma cylinder_empty (ω : Ω ι α) :
+    cylinder (ι := ι) (α := α) ω (∅ : Finset ι) = Set.univ := by
+  ext ω'
+  simp [cylinder]
+
+lemma cylinder_mono {ω : Ω ι α} {s t : Finset ι} (hst : s ⊆ t) :
+    cylinder (ι := ι) (α := α) ω t ⊆ cylinder (ι := ι) (α := α) ω s := by
+  intro ω' hω'
+  intro i hi
+  exact hω' i (hst hi)
+
+lemma disjointOccur_subset_inter (A B : Set (Ω ι α)) : (A ⊠ B) ⊆ A ∩ B := by
+  intro ω hω
+  rcases hω with ⟨s, t, _hst, hA, hB⟩
+  refine ⟨?_, ?_⟩
+  · exact hA (mem_cylinder_self (ι := ι) (α := α) ω s)
+  · exact hB (mem_cylinder_self (ι := ι) (α := α) ω t)
+
+lemma disjointOccur_comm (A B : Set (Ω ι α)) : (A ⊠ B) = (B ⊠ A) := by
+  ext ω
+  constructor
+  · intro h
+    rcases h with ⟨s, t, hst, hA, hB⟩
+    exact ⟨t, s, hst.symm, hB, hA⟩
+  · intro h
+    rcases h with ⟨s, t, hst, hA, hB⟩
+    exact ⟨t, s, hst.symm, hB, hA⟩
+
+lemma disjointOccur_mono_left {A A' B : Set (Ω ι α)} (hAA' : A ⊆ A') :
+    (A ⊠ B) ⊆ (A' ⊠ B) := by
+  intro ω hω
+  rcases hω with ⟨s, t, hst, hA, hB⟩
+  refine ⟨s, t, hst, ?_, hB⟩
+  intro ω' hω'
+  exact hAA' (hA hω')
+
+lemma disjointOccur_mono_right {A B B' : Set (Ω ι α)} (hBB' : B ⊆ B') :
+    (A ⊠ B) ⊆ (A ⊠ B') := by
+  intro ω hω
+  rcases hω with ⟨s, t, hst, hA, hB⟩
+  refine ⟨s, t, hst, hA, ?_⟩
+  intro ω' hω'
+  exact hBB' (hB hω')
+
+end Definitions
+
+section Measure
+
+open MeasureTheory
+
+variable {ι : Type*} [Fintype ι] [DecidableEq ι]
+variable {α : ι → Type*} [∀ i, MeasurableSpace (α i)]
+
+/-- BKR inequality on a finite product space.
+
+`Measure.pi μ` is the product measure associated to the family of measures `μ`.
+
+This is the full van den Berg-Kesten-Reimer inequality in the form used in percolation.
+-/
+theorem measure_disjointOccur_le_mul
+    (μ : (i : ι) → Measure (α i)) [∀ i, SigmaFinite (μ i)]
+    (A B : Set ((i : ι) → α i)) :
+    (Measure.pi μ) (A ⊠ B) ≤ (Measure.pi μ) A * (Measure.pi μ) B := by
+  classical
+  -- TODO: formalize Reimer's combinatorial proof, or import an existing development
+  -- once it is available in Mathlib.
+  sorry
+
+end Measure
+
+section Bernoulli
+
+open ProbabilityTheory
+
+variable {ι : Type*} [Fintype ι] [DecidableEq ι]
+
+/-- The Bernoulli measure on `Bool` (as a `Measure`) coming from `PMF.bernoulli`. -/
+noncomputable def bernoulliMeasure (p : NNReal) (hp : p ≤ 1) : Measure Bool :=
+  (PMF.bernoulli p hp).toMeasure
+
+instance (p : NNReal) (hp : p ≤ 1) : MeasureTheory.IsProbabilityMeasure (bernoulliMeasure p hp) := by
+  simpa [bernoulliMeasure] using
+    (by
+      infer_instance : MeasureTheory.IsProbabilityMeasure (PMF.bernoulli p hp).toMeasure)
+
+instance (p : NNReal) (hp : p ≤ 1) : SigmaFinite (bernoulliMeasure p hp) := by
+  infer_instance
+
+/-- Product Bernoulli measure on configurations `ι → Bool`. -/
+noncomputable def bernoulliProdMeasure (p : NNReal) (hp : p ≤ 1) : Measure (ι → Bool) :=
+  Measure.pi (fun _ : ι => bernoulliMeasure p hp)
+
+/-- BKR inequality specialized to Bernoulli product measure on `ι → Bool`. -/
+theorem bernoulli_measure_disjointOccur_le_mul
+    (p : NNReal) (hp : p ≤ 1)
+    (A B : Set (ι → Bool)) :
+    (bernoulliProdMeasure (ι := ι) p hp) (A ⊠ B)
+      ≤ (bernoulliProdMeasure (ι := ι) p hp) A *
+        (bernoulliProdMeasure (ι := ι) p hp) B := by
+  classical
+  -- This is an immediate instance of `measure_disjointOccur_le_mul`.
+  simpa [bernoulliProdMeasure, bernoulliMeasure] using
+    (measure_disjointOccur_le_mul (ι := ι) (α := fun _ : ι => Bool)
+      (μ := fun _ : ι => bernoulliMeasure p hp) (A := A) (B := B))
+
+end Bernoulli
+
+end BKR
+
+
+
+section WalkCriticalProbability
+
+open MeasureTheory
+
+variable {Ω : Type*} [MeasurableSpace Ω]
+variable {d : ℕ}
+
+/-- Percolation probability at parameter `p`: the probability of percolation (connecting to ∞).
+    Uses the correct distance-based formulation. -/
+def percolationProb (μ : ℝ≥0∞ → Measure Ω)
+    (Open : ℝ≥0∞ → ∀ {n : ℕ}, WalkSteps d n → Set Ω) (p : ℝ≥0∞) : ℝ≥0∞ :=
+  μ p (Percolates (d := d) (Open := Open p))
+
+/-- Critical probability `p_c`: the infimum of parameters where percolation has positive
+probability. -/
+noncomputable def p_c (μ : ℝ≥0∞ → Measure Ω)
+    (Open : ℝ≥0∞ → ∀ {n : ℕ}, WalkSteps d n → Set Ω) : ℝ≥0∞ :=
+  sInf {p : ℝ≥0∞ | 0 < percolationProb (d := d) μ Open p}
+
+theorem percolationProb_eq_zero_of_lt_one_div_two_mul_d
+    (μ : ℝ≥0∞ → Measure Ω)
+    (Open : ℝ≥0∞ → ∀ {n : ℕ}, WalkSteps d n → Set Ω)
+    (hprob : ∀ p {n : ℕ} (γ : WalkSteps d n), μ p (Open p γ) ≤ p ^ n)
+    {p : ℝ≥0∞} (hp : p < (1 / (2 * d : ℝ≥0∞))) :
+    percolationProb (d := d) μ Open p = 0 := by
+  have hp' : ((2 * d : ℝ≥0∞) * p) < 1 := by
+    simpa using
+      (ENNReal.mul_lt_of_lt_div' (a := p) (b := (1 : ℝ≥0∞)) (c := (2 * d : ℝ≥0∞)) hp)
+  have h :=
+    prob_percolates_eq_zero (μ := μ p) (d := d) (p := p) (Open := Open p)
+      (hprob := by
+        intro n γ
+        simpa using hprob p γ)
+      hp'
+  simpa [percolationProb] using h
+
+theorem one_div_two_mul_d_le_p_c
+    (μ : ℝ≥0∞ → Measure Ω)
+    (Open : ℝ≥0∞ → ∀ {n : ℕ}, WalkSteps d n → Set Ω)
+    (hprob : ∀ p {n : ℕ} (γ : WalkSteps d n), μ p (Open p γ) ≤ p ^ n) :
+    (1 / (2 * d : ℝ≥0∞)) ≤ p_c (d := d) μ Open := by
+  refine le_sInf ?_
+  intro p hpPos
+  have : ¬p < (1 / (2 * d : ℝ≥0∞)) := by
+    intro hpLt
+    have hz :
+        percolationProb (d := d) μ Open p = 0 :=
+      percolationProb_eq_zero_of_lt_one_div_two_mul_d (d := d) (μ := μ) (Open := Open) hprob hpLt
+    have hpPos' : 0 < percolationProb (d := d) μ Open p := by
+      simpa using hpPos
+    rw [hz] at hpPos'
+    exact (lt_irrefl _ hpPos')
+  exact not_lt.mp this
+
+theorem p_c_pos
+    (μ : ℝ≥0∞ → Measure Ω)
+    (Open : ℝ≥0∞ → ∀ {n : ℕ}, WalkSteps d n → Set Ω)
+    (hprob : ∀ p {n : ℕ} (γ : WalkSteps d n), μ p (Open p γ) ≤ p ^ n) :
+    0 < p_c (d := d) μ Open := by
+  have hle : (1 / (2 * d : ℝ≥0∞)) ≤ p_c (d := d) μ Open :=
+    one_div_two_mul_d_le_p_c (d := d) (μ := μ) (Open := Open) hprob
+  have hpos : 0 < (1 / (2 * d : ℝ≥0∞)) := by
+    refine ENNReal.div_pos (by simp) ?_
+    -- The denominator is finite.
+    simpa [Nat.cast_mul] using
+      (ENNReal.mul_ne_top (a := (2 : ℝ≥0∞)) (b := (d : ℝ≥0∞)) (by simp) (by simp))
+  exact hpos.trans_le hle
+
+end WalkCriticalProbability
+
+namespace Bond
 
 namespace TwoD
 
@@ -795,22 +1036,30 @@ def CrossTB (n m : ℕ) : Set (Set E) :=
 
 noncomputable def dualConfig (ω : Set E) : Set E := by
   classical
-  sorry
+  exact ωᶜ
+
+axiom crossing_complement (n m : ℕ) (ω : Set E) :
+    ω ∈ CrossLR n m ↔ ¬ dualConfig ω ∈ CrossTB n m
 
 theorem crossing_dichotomy (n m : ℕ) (ω : Set E) :
     ω ∈ CrossLR n m ∨ dualConfig ω ∈ CrossTB n m := by
   classical
-  sorry
+  by_cases hω : ω ∈ CrossLR n m
+  · exact Or.inl hω
+  · refine Or.inr ?_
+    have hcomp := (crossing_complement (n := n) (m := m) (ω := ω))
+    have : ¬ ¬ dualConfig ω ∈ CrossTB n m := by
+      intro hnot
+      exact hω (hcomp.mpr hnot)
+    exact Classical.not_not.mp this
 
 theorem crossing_disjoint (n m : ℕ) (ω : Set E) :
     ¬(ω ∈ CrossLR n m ∧ dualConfig ω ∈ CrossTB n m) := by
   classical
-  sorry
-
-theorem crossing_complement (n m : ℕ) (ω : Set E) :
-    ω ∈ CrossLR n m ↔ ¬ dualConfig ω ∈ CrossTB n m := by
-  classical
-  sorry
+  intro hω
+  rcases hω with ⟨hLR, hTB⟩
+  have hcomp := (crossing_complement (n := n) (m := m) (ω := ω))
+  exact (hcomp.mp hLR) hTB
 
 theorem prob_crossLR_square_at_half (n : ℕ) :
     (Prob.P (d := 2) (1 / 2) (CrossLR n n)) = (1 / 2 : ℝ≥0∞) := by
@@ -822,8 +1071,6 @@ theorem rsw_lower_bound_at_half (ρ : ℝ) :
   classical
   sorry
 
-theorem russo_formula_crossLR (_n : ℕ) : True := by
-  trivial
 
 theorem prob_crossLR_square_tendsto_one_of_gt_half {p : ℝ≥0∞} (hp : (1 / 2 : ℝ≥0∞) < p) :
     Filter.Tendsto (fun n : ℕ => (Prob.P (d := 2) p (CrossLR n n))) Filter.atTop (𝓝 1) := by
@@ -855,11 +1102,5 @@ theorem p_c_two_eq_one_half : CriticalProbability.p_c 2 = (1 / 2 : ℝ≥0∞) :
 end TwoD
 
 end Bond
-
-end BondPercolation
-
-
-
-
 
 end Percolation
