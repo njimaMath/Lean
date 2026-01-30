@@ -45,6 +45,11 @@ namespace ProbabilityTheory
 
 noncomputable section
 
+set_option linter.unnecessarySimpa false
+set_option linter.unusedSimpArgs false
+set_option linter.unnecessarySeqFocus false
+set_option linter.unusedTactic false
+
 /-! Basic ambient types and notations -/
 
 abbrev E (n : ℕ) := Fin n → ℝ
@@ -552,10 +557,11 @@ theorem gaussianStd_ibp_coord
         have h :=
           Convex.norm_image_sub_le_of_norm_fderiv_le (s := (Set.univ : Set (E (n + 1))))
             (f := f) (C := Csum)
+            (x := (0 : E (n + 1))) (y := x)
             (hf := fun x _ => (hf.differentiable le_rfl x))
             (bound := fun x _ => h_fderiv_bound x)
             (hs := convex_univ) (xs := by simp) (ys := by simp)
-        simpa using h
+        simpa [sub_zero] using h
 
       have h_f_bound : ∀ x : E (n + 1), ‖f x‖ ≤ ‖f 0‖ + Csum * ‖x‖ := by
         intro x
@@ -623,11 +629,24 @@ theorem gaussianStd_ibp_coord
       have hsum_memLp2 :
           MemLp (fun x : E (n + 1) => ∑ k : Fin (n + 1), ‖x k‖) 2 (gaussianStd (n + 1)) := by
         classical
-        simpa [Finset.sum_apply] using
-          (memLp_finset_sum' (s := (Finset.univ : Finset (Fin (n + 1))))
-            (f := fun k x => ‖x k‖) (p := (2 : ℝ≥0∞)) (μ := gaussianStd (n + 1)) (by
-              intro k _hk
-              simpa using (hcoord_memLp2 k).norm))
+        have h :
+            MemLp
+              ((Finset.univ : Finset (Fin (n + 1))).sum
+                (fun k : Fin (n + 1) => fun x : E (n + 1) => ‖x k‖))
+              2 (gaussianStd (n + 1)) := by
+          simpa using
+            (memLp_finset_sum' (s := (Finset.univ : Finset (Fin (n + 1))))
+              (f := fun k x => ‖x k‖) (p := (2 : ℝ≥0∞)) (μ := gaussianStd (n + 1)) (by
+                intro k _hk
+                simpa using (hcoord_memLp2 k).norm))
+        have hsum_fun :
+            ((Finset.univ : Finset (Fin (n + 1))).sum
+                (fun k : Fin (n + 1) => fun x : E (n + 1) => ‖x k‖))
+              =
+              (fun x : E (n + 1) => ∑ k : Fin (n + 1), ‖x k‖) := by
+          funext x
+          simp [Finset.sum_apply]
+        exact hsum_fun ▸ h
 
       have hsum_sq_int :
           Integrable (fun x : E (n + 1) => (∑ k : Fin (n + 1), ‖x k‖) ^ 2)
@@ -696,7 +715,8 @@ theorem gaussianStd_ibp_coord
                   have hmul :
                       Csum * ‖x‖ * ‖x i‖ ≤ Csum * ‖x‖ * ‖x‖ := by
                     exact mul_le_mul_of_nonneg_left hxi hCsumx_nonneg
-                  exact add_le_add_left hmul (‖f 0‖ * ‖x i‖)
+                  simpa [add_comm, add_left_comm, add_assoc] using
+                    (add_le_add_left hmul (‖f 0‖ * ‖x i‖))
             _ = ‖f 0‖ * ‖x i‖ + Csum * ‖x‖ ^ 2 := by
                   simp [pow_two, mul_comm, mul_left_comm, mul_assoc]
         have hterm1 :
@@ -715,13 +735,12 @@ theorem gaussianStd_ibp_coord
         have hx : Continuous (fun x : (Fin (n + 1) → ℝ) => (x, e (n + 1) i)) := by fun_prop
         simpa [gR, partialDeriv] using h.comp hx
       have hgR_int : Integrable gR (gaussianStd (n + 1)) := by
-        obtain ⟨Ci, hCi⟩ := hbound_partial i
         have hmeas : AEStronglyMeasurable gR (gaussianStd (n + 1)) := by
           exact (hcont_gR.measurable.aemeasurable).aestronglyMeasurable
-        have hbd : ∀ᵐ x ∂gaussianStd (n + 1), ‖gR x‖ ≤ Ci := by
+        have hbd : ∀ᵐ x ∂gaussianStd (n + 1), ‖gR x‖ ≤ C i := by
           refine ae_of_all _ (fun x => ?_)
-          simpa [gR] using hCi x
-        exact Integrable.of_bound hmeas Ci hbd
+          simpa [gR] using hC i x
+        exact Integrable.of_bound hmeas (C i) hbd
 
       let hLpair : (ℝ × (Fin n → ℝ)) → ℝ := gL ∘ split.symm
       let hRpair : (ℝ × (Fin n → ℝ)) → ℝ := gR ∘ split.symm
@@ -776,14 +795,18 @@ theorem gaussianStd_ibp_coord
           hfderiv.comp_hasDerivAt t hupd
         simpa [g, partialDeriv, e] using hcomp.deriv
 
-      obtain ⟨Ci, hCi⟩ := hbound_partial i
+      let Ci : ℝ := C i
+
       have hCi0 : 0 ≤ Ci := by
-        have h := hCi (Function.update x0 i 0)
-        exact (norm_nonneg _).trans h
+        have h := hC i (Function.update x0 i 0)
+        have : 0 ≤ C i := (norm_nonneg _).trans h
+        simpa [Ci] using this
 
       have hderiv_bound : ∀ t : ℝ, ‖deriv g t‖ ≤ Ci := by
         intro t
-        simpa [hderiv t] using hCi (Function.update x0 i t)
+        have : ‖deriv g t‖ ≤ C i := by
+          simpa [hderiv t] using hC i (Function.update x0 i t)
+        simpa [Ci] using this
 
       have hg_diff : Differentiable ℝ g := hg_contdiff.differentiable le_rfl
 
@@ -805,13 +828,14 @@ theorem gaussianStd_ibp_coord
             ∀ᵐ t ∂γ, ‖g t‖ ≤ ‖g 0‖ + Ci * ‖t‖ := by
           refine ae_of_all _ (fun t => ?_)
           have hsub :=
-            norm_image_sub_le_of_norm_deriv_le (s := (Set.univ : Set ℝ))
+            Convex.norm_image_sub_le_of_norm_deriv_le (s := (Set.univ : Set ℝ))
               (f := g) (C := Ci)
+              (x := (0 : ℝ)) (y := t)
               (hf := fun x _ => hg_diff x)
               (bound := fun x _ => hderiv_bound x)
               (hs := convex_univ) (xs := by simp) (ys := by simp)
           have hsub' : ‖g t - g 0‖ ≤ Ci * ‖t‖ := by
-            simpa using hsub
+            simpa [sub_zero] using hsub
           have htri : ‖g t‖ ≤ ‖g t - g 0‖ + ‖g 0‖ := by
             calc
               ‖g t‖ = ‖(g t - g 0) + g 0‖ := by
@@ -822,7 +846,11 @@ theorem gaussianStd_ibp_coord
             add_le_add hsub' le_rfl
           have hsum' : Ci * ‖t‖ + ‖g 0‖ = ‖g 0‖ + Ci * ‖t‖ := by
             simp [add_comm, add_left_comm, add_assoc]
-          exact htri.trans (by simpa [hsum'] using hsum)
+          have hsum'' : ‖g t - g 0‖ + ‖g 0‖ ≤ ‖g 0‖ + Ci * ‖t‖ := by
+            calc
+              ‖g t - g 0‖ + ‖g 0‖ ≤ Ci * ‖t‖ + ‖g 0‖ := hsum
+              _ = ‖g 0‖ + Ci * ‖t‖ := by simpa using hsum'
+          exact htri.trans hsum''
         have hsum_int :
             Integrable (fun t : ℝ => ‖g 0‖ + Ci * ‖t‖) γ := by
           have hconst : Integrable (fun _ : ℝ => ‖g 0‖) γ := by
@@ -848,13 +876,14 @@ theorem gaussianStd_ibp_coord
             ∀ᵐ t ∂γ, ‖t * g t‖ ≤ ‖g 0‖ * ‖t‖ + Ci * ‖t‖ ^ 2 := by
           refine ae_of_all _ (fun t => ?_)
           have hsub :=
-            norm_image_sub_le_of_norm_deriv_le (s := (Set.univ : Set ℝ))
+            Convex.norm_image_sub_le_of_norm_deriv_le (s := (Set.univ : Set ℝ))
               (f := g) (C := Ci)
+              (x := (0 : ℝ)) (y := t)
               (hf := fun x _ => hg_diff x)
               (bound := fun x _ => hderiv_bound x)
               (hs := convex_univ) (xs := by simp) (ys := by simp)
           have hsub' : ‖g t - g 0‖ ≤ Ci * ‖t‖ := by
-            simpa using hsub
+            simpa [sub_zero] using hsub
           have htri : ‖g t‖ ≤ ‖g t - g 0‖ + ‖g 0‖ := by
             calc
               ‖g t‖ = ‖(g t - g 0) + g 0‖ := by
@@ -873,8 +902,8 @@ theorem gaussianStd_ibp_coord
           have hgt : ‖g t‖ ≤ ‖g 0‖ + Ci * ‖t‖ :=
             htri.trans hsum''
           calc
-            ‖t * g t‖ = ‖t‖ * ‖g t‖ := by
-              simpa [norm_mul, mul_comm, mul_left_comm, mul_assoc]
+              ‖t * g t‖ = ‖t‖ * ‖g t‖ := by
+                simpa [norm_mul, mul_comm, mul_left_comm, mul_assoc]
             _ ≤ ‖t‖ * (‖g 0‖ + Ci * ‖t‖) := by
               exact mul_le_mul_of_nonneg_left hgt (norm_nonneg _)
             _ = ‖g 0‖ * ‖t‖ + Ci * ‖t‖ ^ 2 := by
@@ -892,8 +921,11 @@ theorem gaussianStd_ibp_coord
             = ∫ t, partialDeriv (n + 1) i f
                 (i.insertNth (α := fun _ : Fin (n + 1) => ℝ) t y) ∂γ := by
         have hibp0 :=
+          have htg_int' :
+              Integrable (fun t : ℝ => (t - (0 : ℝ)) * g t) (gaussianReal (0 : ℝ) (1 : NNReal)) := by
+            simpa [γ, sub_zero] using htg_int
           gaussianReal_ibp_integrable (μ := (0 : ℝ)) (v := (1 : NNReal)) hv1
-            (f := g) hg_diff hg_int hg'_int htg_int
+            (f := g) hg_diff hg_int hg'_int htg_int'
         have hibp1 :
             (∫ t, t * f (i.insertNth (α := fun _ : Fin (n + 1) => ℝ) t y) ∂γ)
               = ∫ t, deriv g t ∂γ := by
@@ -1099,6 +1131,7 @@ lemma covCoord_gaussianLin
   simp [covariance_const_mul_left, covariance_const_mul_right, hcov_coord, mul_assoc, mul_left_comm,
     mul_comm, eq_comm]
 
+set_option maxHeartbeats 1000000 in
 /-- Full coordinate Stein identity for the correlated Gaussian `gaussianLin A`. -/
 theorem gaussianLin_ibp_coord
     {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ) (i : Fin n)
@@ -1191,10 +1224,11 @@ theorem gaussianLin_ibp_coord
         have h :=
           Convex.norm_image_sub_le_of_norm_fderiv_le (s := (Set.univ : Set (E (n + 1))))
             (f := f) (C := Csum)
+            (x := (0 : E (n + 1))) (y := x)
             (hf := fun x _ => (hf.differentiable le_rfl x))
             (bound := fun x _ => h_fderiv_bound x)
             (hs := convex_univ) (xs := by simp) (ys := by simp)
-        simpa using h
+        simpa [sub_zero] using h
 
       have h_f_bound : ∀ x : E (n + 1), ‖f x‖ ≤ ‖f 0‖ + Csum * ‖x‖ := by
         intro x
@@ -1264,11 +1298,24 @@ theorem gaussianLin_ibp_coord
       have hsum_memLp2 :
           MemLp (fun z : E (n + 1) => ∑ k : Fin (n + 1), ‖z k‖) 2 (gaussianStd (n + 1)) := by
         classical
-        simpa [Finset.sum_apply] using
-          (memLp_finset_sum' (s := (Finset.univ : Finset (Fin (n + 1))))
-            (f := fun k z => ‖z k‖) (p := (2 : ℝ≥0∞)) (μ := gaussianStd (n + 1)) (by
-              intro k _hk
-              simpa using (hcoord_memLp2 k).norm))
+        have h :
+            MemLp
+              ((Finset.univ : Finset (Fin (n + 1))).sum
+                (fun k : Fin (n + 1) => fun z : E (n + 1) => ‖z k‖))
+              2 (gaussianStd (n + 1)) := by
+          simpa using
+            (memLp_finset_sum' (s := (Finset.univ : Finset (Fin (n + 1))))
+              (f := fun k z => ‖z k‖) (p := (2 : ℝ≥0∞)) (μ := gaussianStd (n + 1)) (by
+                intro k _hk
+                simpa using (hcoord_memLp2 k).norm))
+        have hsum_fun :
+            ((Finset.univ : Finset (Fin (n + 1))).sum
+                (fun k : Fin (n + 1) => fun z : E (n + 1) => ‖z k‖))
+              =
+              (fun z : E (n + 1) => ∑ k : Fin (n + 1), ‖z k‖) := by
+          funext z
+          simp [Finset.sum_apply]
+        exact hsum_fun ▸ h
 
       have hsum_sq_int :
           Integrable (fun z : E (n + 1) => (∑ k : Fin (n + 1), ‖z k‖) ^ 2)
@@ -1393,8 +1440,9 @@ theorem gaussianLin_ibp_coord
           have hfx : ‖f (A.mulVec x)‖ ≤ ‖f 0‖ + Csum * ‖A.mulVec x‖ := h_f_bound (A.mulVec x)
           have hAx : Csum * ‖A.mulVec x‖ ≤ Csum * ‖L‖ * ‖x‖ := by
             have hAx' : ‖A.mulVec x‖ ≤ ‖L‖ * ‖x‖ := hL_bound x
-            exact mul_le_mul_of_nonneg_left hAx' hCsum_nonneg
-          exact hfx.trans (by exact add_le_add_left hAx _)
+            simpa [mul_assoc] using (mul_le_mul_of_nonneg_left hAx' hCsum_nonneg)
+          exact hfx.trans (by
+            simpa [add_comm, add_left_comm, add_assoc] using (add_le_add_left hAx ‖f 0‖))
 
         have hgL_int : Integrable gL (gaussianStd (n + 1)) := by
           have hmeas : AEStronglyMeasurable gL (gaussianStd (n + 1)) := by
@@ -1425,7 +1473,8 @@ theorem gaussianLin_ibp_coord
                     have hmul :
                         (Csum * ‖L‖) * ‖x‖ * ‖x k‖ ≤ (Csum * ‖L‖) * ‖x‖ * ‖x‖ := by
                       exact mul_le_mul_of_nonneg_left hxk (mul_nonneg hCL_nonneg (norm_nonneg _))
-                    exact add_le_add_left hmul (‖f 0‖ * ‖x k‖)
+                    simpa [add_comm, add_left_comm, add_assoc] using
+                      (add_le_add_left hmul (‖f 0‖ * ‖x k‖))
               _ = ‖f 0‖ * ‖x k‖ + (Csum * ‖L‖) * ‖x‖ ^ 2 := by
                     simp [pow_two, mul_comm, mul_left_comm, mul_assoc]
           have hterm1 :
@@ -1449,16 +1498,15 @@ theorem gaussianLin_ibp_coord
                 Integrable (fun x : E (n + 1) => A j k * partialDeriv (n + 1) j f (A.mulVec x))
                   (gaussianStd (n + 1)) := by
             intro j
-            obtain ⟨Cj, hCj⟩ := hbound_partial j
             have hmeas : Measurable (fun x : E (n + 1) => partialDeriv (n + 1) j f (A.mulVec x)) :=
               (hcont_partial j).measurable.comp hmeasA
             have hassm : AEStronglyMeasurable (fun x : E (n + 1) => partialDeriv (n + 1) j f (A.mulVec x))
                 (gaussianStd (n + 1)) := (hmeas.aemeasurable).aestronglyMeasurable
-            have hbd : ∀ᵐ x ∂gaussianStd (n + 1), ‖partialDeriv (n + 1) j f (A.mulVec x)‖ ≤ Cj :=
-              ae_of_all _ (fun x => hCj (A.mulVec x))
+            have hbd : ∀ᵐ x ∂gaussianStd (n + 1), ‖partialDeriv (n + 1) j f (A.mulVec x)‖ ≤ C j :=
+              ae_of_all _ (fun x => hC j (A.mulVec x))
             have hint : Integrable (fun x : E (n + 1) => partialDeriv (n + 1) j f (A.mulVec x))
                 (gaussianStd (n + 1)) :=
-              Integrable.of_bound (μ := gaussianStd (n + 1)) hassm Cj hbd
+              Integrable.of_bound (μ := gaussianStd (n + 1)) hassm (C j) hbd
             simpa [mul_assoc] using (hint.const_mul (A j k))
 
           have hsum_int :
@@ -1613,13 +1661,14 @@ theorem gaussianLin_ibp_coord
               ∀ᵐ t ∂γ, ‖g t‖ ≤ ‖g 0‖ + Ck * ‖t‖ := by
             refine ae_of_all _ (fun t => ?_)
             have hsub :=
-              norm_image_sub_le_of_norm_deriv_le (s := (Set.univ : Set ℝ))
+              Convex.norm_image_sub_le_of_norm_deriv_le (s := (Set.univ : Set ℝ))
                 (f := g) (C := Ck)
+                (x := (0 : ℝ)) (y := t)
                 (hf := fun x _ => hg_diff x)
                 (bound := fun x _ => hderiv_bound x)
                 (hs := convex_univ) (xs := by simp) (ys := by simp)
             have hsub' : ‖g t - g 0‖ ≤ Ck * ‖t‖ := by
-              simpa using hsub
+              simpa [sub_zero] using hsub
             have htri : ‖g t‖ ≤ ‖g t - g 0‖ + ‖g 0‖ := by
               calc
                 ‖g t‖ = ‖(g t - g 0) + g 0‖ := by
@@ -1630,7 +1679,11 @@ theorem gaussianLin_ibp_coord
               add_le_add hsub' le_rfl
             have hsum' : Ck * ‖t‖ + ‖g 0‖ = ‖g 0‖ + Ck * ‖t‖ := by
               simp [add_comm, add_left_comm, add_assoc]
-            exact htri.trans (by simpa [hsum'] using hsum)
+            have hsum'' : ‖g t - g 0‖ + ‖g 0‖ ≤ ‖g 0‖ + Ck * ‖t‖ := by
+              calc
+                ‖g t - g 0‖ + ‖g 0‖ ≤ Ck * ‖t‖ + ‖g 0‖ := hsum
+                _ = ‖g 0‖ + Ck * ‖t‖ := by simpa using hsum'
+            exact htri.trans hsum''
           have hsum_int :
               Integrable (fun t : ℝ => ‖g 0‖ + Ck * ‖t‖) γ := by
             have hconst : Integrable (fun _ : ℝ => ‖g 0‖) γ := by
@@ -1656,13 +1709,14 @@ theorem gaussianLin_ibp_coord
               ∀ᵐ t ∂γ, ‖t * g t‖ ≤ ‖g 0‖ * ‖t‖ + Ck * ‖t‖ ^ 2 := by
             refine ae_of_all _ (fun t => ?_)
             have hsub :=
-              norm_image_sub_le_of_norm_deriv_le (s := (Set.univ : Set ℝ))
+              Convex.norm_image_sub_le_of_norm_deriv_le (s := (Set.univ : Set ℝ))
                 (f := g) (C := Ck)
+                (x := (0 : ℝ)) (y := t)
                 (hf := fun x _ => hg_diff x)
                 (bound := fun x _ => hderiv_bound x)
                 (hs := convex_univ) (xs := by simp) (ys := by simp)
             have hsub' : ‖g t - g 0‖ ≤ Ck * ‖t‖ := by
-              simpa using hsub
+              simpa [sub_zero] using hsub
             have htri : ‖g t‖ ≤ ‖g t - g 0‖ + ‖g 0‖ := by
               calc
                 ‖g t‖ = ‖(g t - g 0) + g 0‖ := by
@@ -1673,8 +1727,12 @@ theorem gaussianLin_ibp_coord
               add_le_add hsub' le_rfl
             have hsum' : Ck * ‖t‖ + ‖g 0‖ = ‖g 0‖ + Ck * ‖t‖ := by
               simp [add_comm, add_left_comm, add_assoc]
+            have hsum'' : ‖g t - g 0‖ + ‖g 0‖ ≤ ‖g 0‖ + Ck * ‖t‖ := by
+              calc
+                ‖g t - g 0‖ + ‖g 0‖ ≤ Ck * ‖t‖ + ‖g 0‖ := hsum
+                _ = ‖g 0‖ + Ck * ‖t‖ := by simpa using hsum'
             have hgt : ‖g t‖ ≤ ‖g 0‖ + Ck * ‖t‖ :=
-              htri.trans (by simpa [hsum'] using hsum)
+              htri.trans hsum''
             calc
               ‖t * g t‖ = ‖t‖ * ‖g t‖ := by
                 simpa [norm_mul, mul_comm, mul_left_comm, mul_assoc]
@@ -1740,8 +1798,11 @@ theorem gaussianLin_ibp_coord
             Fin.insertNthEquiv] using hibp
 
         · have hibp0 :=
+            have htg_int' :
+                Integrable (fun t : ℝ => (t - (0 : ℝ)) * g t) (gaussianReal (0 : ℝ) (1 : NNReal)) := by
+              simpa [γ, sub_zero] using htg_int
             gaussianReal_ibp_integrable (μ := (0 : ℝ)) (v := (1 : NNReal)) hv1
-              (f := g) hg_diff hg_int hg'_int htg_int
+              (f := g) hg_diff hg_int hg'_int htg_int'
 
           have hibp1 :
               (∫ t, t * f (A.mulVec (k.insertNth (α := fun _ : Fin (n + 1) => ℝ) t y)) ∂γ)
@@ -1815,8 +1876,9 @@ theorem gaussianLin_ibp_coord
         have hfx : ‖f (A.mulVec z)‖ ≤ ‖f 0‖ + Csum * ‖A.mulVec z‖ := h_f_bound (A.mulVec z)
         have hAz : Csum * ‖A.mulVec z‖ ≤ Csum * ‖L‖ * ‖z‖ := by
           have hAz' : ‖A.mulVec z‖ ≤ ‖L‖ * ‖z‖ := hL_bound z
-          exact mul_le_mul_of_nonneg_left hAz' hCsum_nonneg
-        exact hfx.trans (by exact add_le_add_left hAz _)
+          simpa [mul_assoc] using (mul_le_mul_of_nonneg_left hAz' hCsum_nonneg)
+        exact hfx.trans (by
+          simpa [add_comm, add_left_comm, add_assoc] using (add_le_add_left hAz ‖f 0‖))
 
       have hzk_int :
           ∀ k : Fin (n + 1), Integrable (fun z : E (n + 1) => z k * f (A.mulVec z)) μ := by
@@ -1845,7 +1907,8 @@ theorem gaussianLin_ibp_coord
               have hmul :
                   (Csum * ‖L‖) * ‖z‖ * ‖z k‖ ≤ (Csum * ‖L‖) * ‖z‖ * ‖z‖ := by
                 exact mul_le_mul_of_nonneg_left hzk (mul_nonneg hCL_nonneg (norm_nonneg _))
-              exact add_le_add_left hmul (‖f 0‖ * ‖z k‖)
+              simpa [add_comm, add_left_comm, add_assoc] using
+                (add_le_add_left hmul (‖f 0‖ * ‖z k‖))
             _ = ‖f 0‖ * ‖z k‖ + (Csum * ‖L‖) * ‖z‖ ^ 2 := by
               simp [pow_two, mul_comm, mul_left_comm, mul_assoc]
         have hterm1 :
@@ -1910,15 +1973,14 @@ theorem gaussianLin_ibp_coord
         have hterm_int' : ∀ j : Fin (n + 1),
             Integrable (fun z : E (n + 1) => A j k * partialDeriv (n + 1) j f (A.mulVec z)) μ := by
           intro j
-          obtain ⟨Cj, hCj⟩ := hbound_partial j
           have hmeas : Measurable (fun z : E (n + 1) => partialDeriv (n + 1) j f (A.mulVec z)) :=
             (hcont_partial j).measurable.comp hmeasA
           have hassm : AEStronglyMeasurable (fun z : E (n + 1) => partialDeriv (n + 1) j f (A.mulVec z)) μ :=
             (hmeas.aemeasurable).aestronglyMeasurable
-          have hbd : ∀ᵐ z ∂μ, ‖partialDeriv (n + 1) j f (A.mulVec z)‖ ≤ Cj :=
-            ae_of_all _ (fun z => hCj (A.mulVec z))
+          have hbd : ∀ᵐ z ∂μ, ‖partialDeriv (n + 1) j f (A.mulVec z)‖ ≤ C j :=
+            ae_of_all _ (fun z => hC j (A.mulVec z))
           have hint : Integrable (fun z : E (n + 1) => partialDeriv (n + 1) j f (A.mulVec z)) μ :=
-            Integrable.of_bound (μ := μ) hassm Cj hbd
+            Integrable.of_bound (μ := μ) hassm (C j) hbd
           simpa [mul_assoc] using (hint.const_mul (A j k))
 
         calc
