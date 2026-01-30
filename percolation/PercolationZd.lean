@@ -747,6 +747,13 @@ def Pivotal (A : Set (Ω ι)) (e : ι) : Set (Ω ι) :=
 noncomputable def bernoulliMeasure (p : NNReal) (hp : p ≤ 1) : Measure Bool :=
   (PMF.bernoulli p hp).toMeasure
 
+instance (p : NNReal) (hp : p ≤ 1) : MeasureTheory.IsProbabilityMeasure (bernoulliMeasure (p := p) hp) := by
+  simpa [bernoulliMeasure] using
+    (by infer_instance : MeasureTheory.IsProbabilityMeasure (PMF.bernoulli p hp).toMeasure)
+
+instance (p : NNReal) (hp : p ≤ 1) : SigmaFinite (bernoulliMeasure (p := p) hp) := by
+  infer_instance
+
 /-- Product Bernoulli measure on `ι → Bool`. -/
 noncomputable def bernoulliProd (p : NNReal) (hp : p ≤ 1) : Measure (Ω ι) :=
   Measure.pi (fun _ : ι => bernoulliMeasure p hp)
@@ -829,7 +836,7 @@ lemma prob_eq_probPoly_of_lt (A : Set (Ω ι)) {p : ℝ} (hp0 : 0 < p) (hp1 : p 
     prob (ι := ι) (p := pNNReal p hp0) (hp := pNNReal_le_one (p := p) hp0 hp1) A =
       probPoly (ι := ι) p A := by
   classical
-  -- Expand `prob` as a finite sum over point masses.
+  -- Expand `prob` as a finite sum over point masses, and identify each point mass with `weight`.
   set p₀ : NNReal := pNNReal p hp0
   have hp₀ : p₀ ≤ (1 : NNReal) := by
     simpa [p₀] using (pNNReal_le_one (p := p) hp0 hp1)
@@ -840,7 +847,6 @@ lemma prob_eq_probPoly_of_lt (A : Set (Ω ι)) {p : ℝ} (hp0 : 0 < p) (hp1 : p 
         (↑(Finset.univ.filter fun ω : Ω ι => ω ∈ A) : Set (Ω ι)) = A := by
       ext ω
       simp
-    -- `μ` on a finite type is the sum of its singleton masses.
     have hsum :
         (∑ ω ∈ (Finset.univ.filter fun ω : Ω ι => ω ∈ A), μ {ω}) =
           μ (↑(Finset.univ.filter fun ω : Ω ι => ω ∈ A) : Set (Ω ι)) := by
@@ -849,23 +855,78 @@ lemma prob_eq_probPoly_of_lt (A : Set (Ω ι)) {p : ℝ} (hp0 : 0 < p) (hp1 : p 
           (s := (Finset.univ.filter fun ω : Ω ι => ω ∈ A)))
     simpa [hset] using hsum.symm
   have hμsingleton (ω : Ω ι) :
-      μ {ω} =
-        ∏ e : ι, (cond (ω e) p₀ (1 - p₀) : ℝ≥0∞) := by
-    -- Use the product-measure formula for singletons.
-    have : μ {ω} = ∏ e : ι, (bernoulliMeasure (p := p₀) (hp := hp₀) {ω e}) := by
-      simp [μ, bernoulliProd, Measure.pi_singleton]
-    -- And evaluate the Bernoulli singleton masses.
-    simpa [bernoulliMeasure, PMF.toMeasure_apply_singleton, PMF.bernoulli_apply] using this
-  -- Move `toReal` inside the finite sum and simplify the singleton weights.
+      μ {ω} = ∏ e : ι, (cond (ω e) p₀ (1 - p₀) : ℝ≥0∞) := by
+    have hpi :
+        μ {ω} = ∏ e : ι, (bernoulliMeasure (p := p₀) (hp := hp₀) {ω e}) := by
+      simpa [μ, bernoulliProd] using
+        (Measure.pi_singleton (μ := fun _ : ι => bernoulliMeasure (p := p₀) (hp := hp₀)) ω)
+    have hb (b : Bool) :
+        bernoulliMeasure (p := p₀) (hp := hp₀) {b} = (cond b p₀ (1 - p₀) : ℝ≥0∞) := by
+      simpa [bernoulliMeasure, PMF.bernoulli_apply] using
+        (PMF.toMeasure_apply_singleton (p := PMF.bernoulli p₀ hp₀) b (MeasurableSet.singleton b))
+    simpa [hb] using hpi
   have hne_top :
       ∀ ω ∈ (Finset.univ.filter fun ω : Ω ι => ω ∈ A), μ {ω} ≠ ∞ := by
     intro ω hω
-    -- `μ` is finite (in fact a probability measure).
-    simpa using (measure_ne_top μ {ω})
-  -- Finish by rewriting everything in terms of `weight` and `probPoly`.
-  simp [prob, probPoly, weight, hμA, ENNReal.toReal_sum hne_top, hμsingleton, p₀, hp₀,
-    NNReal.coe_sub (pNNReal_le_one (p := p) hp0 hp1), Finset.sum_filter, Finset.mem_univ, and_true,
-    Finset.prod_erase] -- `Finset.prod_erase` helps simp the product decomposition
+    -- `ω ∈ A` is irrelevant; singleton masses are finite.
+    clear hω
+    rw [hμsingleton ω]
+    -- Rewrite the `Fintype` product as a `Finset` product to use `ENNReal.prod_ne_top`.
+    simpa using
+      (ENNReal.prod_ne_top (s := (Finset.univ : Finset ι))
+        (f := fun e : ι => (cond (ω e) p₀ (1 - p₀) : ℝ≥0∞))
+        (by
+          intro e he
+          by_cases h : ω e <;> simp [h]))
+  -- Convert the singleton weights to `weight p ω` (as real numbers), and repackage as `probPoly`.
+  have hweight (ω : Ω ι) : (μ {ω}).toReal = weight (ι := ι) p ω := by
+    have hfactor (e : ι) :
+        ((cond (ω e) p₀ (1 - p₀) : ℝ≥0∞).toReal) = (if ω e then p else (1 - p)) := by
+      by_cases h : ω e
+      · simp [h, p₀, pNNReal]
+      ·
+        have hp₀' : (p₀ : ℝ≥0∞) ≤ (1 : ℝ≥0∞) := by
+          exact_mod_cast hp₀
+        have hsub :
+            ((1 : ℝ≥0∞) - (p₀ : ℝ≥0∞)).toReal =
+              (1 : ℝ≥0∞).toReal - (p₀ : ℝ≥0∞).toReal := by
+          simpa using (ENNReal.toReal_sub_of_le hp₀' (by simp))
+        simp [h, hsub, p₀, pNNReal]
+    have hstart :
+        (μ {ω}).toReal =
+          ENNReal.toReal (∏ e ∈ (Finset.univ : Finset ι), (cond (ω e) p₀ (1 - p₀) : ℝ≥0∞)) := by
+      -- Rewrite the singleton mass using `hμsingleton`.
+      simpa [hμsingleton ω] using congrArg ENNReal.toReal (hμsingleton ω)
+    have htoRealProd :
+        ENNReal.toReal (∏ e ∈ (Finset.univ : Finset ι), (cond (ω e) p₀ (1 - p₀) : ℝ≥0∞)) =
+          ∏ e ∈ (Finset.univ : Finset ι), ((cond (ω e) p₀ (1 - p₀) : ℝ≥0∞).toReal) := by
+      simpa using (ENNReal.toReal_prod (s := (Finset.univ : Finset ι))
+        (f := fun e : ι => (cond (ω e) p₀ (1 - p₀) : ℝ≥0∞)))
+    -- Put everything together.
+    have : (μ {ω}).toReal = ∏ e ∈ (Finset.univ : Finset ι), ((cond (ω e) p₀ (1 - p₀) : ℝ≥0∞).toReal) := by
+      simpa [hstart] using Eq.trans hstart htoRealProd
+    simpa [weight, hfactor] using this
+  -- Finish by rewriting `prob` and summing over configurations in `A`.
+  have hsum_filter :
+      (∑ ω ∈ (Finset.univ.filter fun ω : Ω ι => ω ∈ A), weight (ι := ι) p ω) = probPoly (ι := ι) p A := by
+    -- `probPoly` is `∑ ω, if ω ∈ A then weight p ω else 0`, which is the usual `sum_filter` form.
+    simpa [probPoly] using
+      (Finset.sum_filter (s := (Finset.univ : Finset (Ω ι)))
+        (p := fun ω : Ω ι => ω ∈ A) (f := fun ω : Ω ι => weight (ι := ι) p ω))
+  calc
+    prob (ι := ι) (p := pNNReal p hp0) (hp := pNNReal_le_one (p := p) hp0 hp1) A
+        = (μ A).toReal := by
+            simp [prob, μ, p₀, hp₀]
+    _ = (∑ ω ∈ (Finset.univ.filter fun ω : Ω ι => ω ∈ A), μ {ω}).toReal := by
+            simpa using congrArg ENNReal.toReal hμA
+    _ = ∑ ω ∈ (Finset.univ.filter fun ω : Ω ι => ω ∈ A), (μ {ω}).toReal := by
+            simpa using (ENNReal.toReal_sum (s := (Finset.univ.filter fun ω : Ω ι => ω ∈ A))
+              (f := fun ω : Ω ι => μ {ω}) hne_top)
+    _ = ∑ ω ∈ (Finset.univ.filter fun ω : Ω ι => ω ∈ A), weight (ι := ι) p ω := by
+            refine Finset.sum_congr rfl ?_
+            intro ω hω
+            simp [hweight]
+    _ = probPoly (ι := ι) p A := hsum_filter
 
 /-- Core Russo formula (to be proved): derivative of `prob` equals sum of pivotal probabilities. -/
 lemma russo_formula_finite_core
