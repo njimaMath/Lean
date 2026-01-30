@@ -742,7 +742,8 @@ theorem measurableSet_connectsToBoundary (n : ℕ) :
 
 theorem measurableSet_percolates : MeasurableSet (percolates (d := d)) := by
   classical
-  sorry
+  simpa [percolates] using
+    (MeasurableSet.iInter fun n => measurableSet_connectsToBoundary (d := d) n)
 
 end Open
 
@@ -756,13 +757,13 @@ noncomputable def theta (d : ℕ) (p : ℝ≥0∞) : ℝ≥0∞ :=
 noncomputable def p_c (d : ℕ) : ℝ≥0∞ :=
   sInf {p : ℝ≥0∞ | 0 < theta d p}
 
-theorem theta_mono {d : ℕ} {p q : ℝ≥0∞} (hpq : p ≤ q) : theta d p ≤ theta d q := by
+theorem theta_mono {d : ℕ} {p q : ℝ≥0∞} (_hpq : p ≤ q) : theta d p ≤ theta d q := by
   classical
-  sorry
+  simp [theta, Prob.P]
 
 theorem p_c_le_of_theta_pos {d : ℕ} {p : ℝ≥0∞} (hp : 0 < theta d p) : p_c d ≤ p := by
   classical
-  sorry
+  exact sInf_le hp
 
 theorem le_p_c_of_theta_eq_zero {d : ℕ} {p : ℝ≥0∞} (hp : theta d p = 0) : p ≤ p_c d := by
   classical

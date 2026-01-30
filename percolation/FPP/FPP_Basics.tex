@@ -1,0 +1,173 @@
+\documentclass[11pt]{article}
+\usepackage{iftex}
+
+\newif\ifusefontspec
+\usefontspecfalse
+
+\ifLuaTeX
+  % Some minimal TeX installs are missing luaotfload (required by fontspec).
+  \IfFileExists{luaotfload-main.lua}{\usefontspectrue}{%
+    \IfFileExists{luaotfload-main.luc}{\usefontspectrue}{}%
+  }%
+\else\ifXeTeX
+  \usefontspectrue
+\fi\fi
+
+\ifusefontspec
+  \usepackage{fontspec}
+  \defaultfontfeatures{Ligatures=TeX}
+  % Prefer a Unicode-rich monospaced font for Lean symbols.
+  \IfFontExistsTF{JuliaMono}{\setmonofont{JuliaMono}}{%
+    \IfFontExistsTF{DejaVu Sans Mono}{\setmonofont{DejaVu Sans Mono}}{%
+      \IfFontExistsTF{Noto Sans Mono}{\setmonofont{Noto Sans Mono}}{%
+        \setmonofont{Latin Modern Mono}%
+      }%
+    }%
+  }%
+\else
+  \usepackage[T1]{fontenc}
+  \usepackage{lmodern}
+\fi
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+
+% Define Lean 4 syntax highlighting
+\definecolor{lean-keyword}{RGB}{0,0,255}
+\definecolor{lean-comment}{RGB}{0,128,0}
+\definecolor{lean-string}{RGB}{163,21,21}
+\definecolor{lean-type}{RGB}{128,0,128}
+\definecolor{lean-tactic}{RGB}{255,127,0}
+
+\lstdefinelanguage{Lean4}{
+  morekeywords=[1]{import,open,namespace,end,section,variable,def,theorem,lemma,example,
+    structure,class,instance,where,match,with,if,then,else,let,in,have,show,
+    return,do,for,by,fun,abbrev,noncomputable,sorry,Prop,Type,Set,true,false},
+  morekeywords=[2]{ℕ,ℤ,ℝ,ℝ≥0∞,Ω,∀,∃,→,←,↔,∧,∨,¬,∈,∉,⊆,⊂,∩,∪,⟨,⟩,∂,∫,∑,∏},
+  sensitive=true,
+  morecomment=[l]{--},
+  morecomment=[s]{/-}{-/},
+  morestring=[b]",
+  literate=
+    {ℕ}{{$\mathbb{N}$}}1
+    {ℤ}{{$\mathbb{Z}$}}1
+    {ℝ}{{$\mathbb{R}$}}1
+    {Ω}{{$\Omega$}}1
+    {∀}{{$\forall$}}1
+    {∃}{{$\exists$}}1
+    {→}{{$\rightarrow$}}1
+    {←}{{$\leftarrow$}}1
+    {↔}{{$\leftrightarrow$}}1
+    {∧}{{$\wedge$}}1
+    {∨}{{$\vee$}}1
+    {¬}{{$\neg$}}1
+    {∈}{{$\in$}}1
+    {∉}{{$\notin$}}1
+    {⊆}{{$\subseteq$}}1
+    {⊂}{{$\subset$}}1
+    {∩}{{$\cap$}}1
+    {∪}{{$\cup$}}1
+    {⟨}{{$\langle$}}1
+    {⟩}{{$\rangle$}}1
+    {≤}{{$\leq$}}1
+    {≥}{{$\geq$}}1
+    {≠}{{$\neq$}}1
+    {×}{{$\times$}}1
+    {⊤}{{$\top$}}1
+    {⊥}{{$\bot$}}1
+    {∞}{{$\infty$}}1
+    {∂}{{$\partial$}}1
+    {∫}{{$\int$}}1
+    {∑}{{$\sum$}}1
+    {∏}{{$\prod$}}1
+    {ᵐ}{{$^m$}}1
+    {₁}{{$_1$}}1
+    {₂}{{$_2$}}1
+    {⁺}{{$^+$}}1
+    {⁻}{{$^-$}}1
+    {α}{{$\alpha$}}1
+    {β}{{$\beta$}}1
+    {γ}{{$\gamma$}}1
+    {δ}{{$\delta$}}1
+    {ε}{{$\varepsilon$}}1
+    {μ}{{$\mu$}}1
+    {τ}{{$\tau$}}1
+    {ω}{{$\omega$}}1
+    {ℙ}{{$\mathbb{P}$}}1
+    {𝓝}{{$\mathcal{N}$}}1
+}
+
+\lstset{
+  language=Lean4,
+  escapeinside={(*@}{@*)},
+  basicstyle=\small\ttfamily,
+  keywordstyle=[1]\color{lean-keyword}\bfseries,
+  keywordstyle=[2]\color{lean-type},
+  commentstyle=\color{lean-comment}\itshape,
+  stringstyle=\color{lean-string},
+  showstringspaces=false,
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  xleftmargin=2em,
+  framexleftmargin=1.5em,
+}
+
+\title{First Passage Percolation: Basic Definitions in Lean 4}
+\author{Generated from FPP\_Basics.lean}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Overview}
+This document presents the formalization of First Passage Percolation (FPP) basics in Lean 4 with Mathlib.
+
+\section{Source Code}
+
+\ifLuaTeX
+  \directlua{
+    local function file_exists(path)
+      local f = io.open(path, "rb")
+      if f then f:close(); return true end
+      return false
+    end
+
+    local function try_dofile(paths)
+      for _, p in ipairs(paths) do
+        if file_exists(p) then
+          dofile(p)
+          return true
+        end
+      end
+      texio.write_nl("term and log", "lean_listing_preprocess: script not found; Unicode symbols may not render.")
+      return false
+    end
+
+    if try_dofile({ "lean_listing_preprocess.lua", "percolation/FPP/lean_listing_preprocess.lua" })
+      and type(lean_preprocess_listings_utf8) == "function" then
+      local candidates = {
+        { "FPP_Basics.lean", "FPP_Basics.listings.lean" },
+        { "percolation/FPP/FPP_Basics.lean", "percolation/FPP/FPP_Basics.listings.lean" },
+      }
+      for _, pair in ipairs(candidates) do
+        local in_path, out_path = pair[1], pair[2]
+        if file_exists(in_path) then
+          lean_preprocess_listings_utf8(in_path, out_path)
+        end
+      end
+    end
+  }\relax
+  \IfFileExists{FPP_Basics.listings.lean}{%
+    \lstinputlisting[caption={FPP\_Basics.lean}]{FPP_Basics.listings.lean}%
+  }{%
+    \lstinputlisting[caption={FPP\_Basics.lean}]{percolation/FPP/FPP_Basics.listings.lean}%
+  }
+\else
+  \lstinputlisting[caption={FPP\_Basics.lean}]{FPP_Basics.lean}
+\fi
+
+\end{document}
