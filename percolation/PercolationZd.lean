@@ -22,6 +22,19 @@ namespace Percolation
 /-- The integer lattice `ℤ^d` as functions `Fin d → ℤ`. -/
 abbrev Zd (d : ℕ) : Type := Fin d → ℤ
 
+namespace Zd
+
+variable {d : ℕ}
+
+/-- The `i`th standard basis vector in `ℤ^d`. -/
+def e (i : Fin d) : Percolation.Zd d := fun j => if j = i then (1 : ℤ) else 0
+
+lemma e_apply_self (i : Fin d) : e (d := d) i i = 1 := by simp [e]
+
+lemma e_apply_ne (i j : Fin d) (h : j ≠ i) : e (d := d) i j = 0 := by simp [e, h]
+
+end Zd
+
 /-- Directions in `ℤ^d`: a coordinate `i : Fin d` and a sign (`true` = `+eᵢ`, `false` = `-eᵢ`). -/
 abbrev Dir (d : ℕ) : Type := Fin d × Bool
 
@@ -360,18 +373,6 @@ theorem prob_percolates_eq_zero
 
 end Probability
 
-namespace Zd
-
-variable {d : ℕ}
-
-def e (i : Fin d) : Percolation.Zd d := fun j => if j = i then (1 : ℤ) else 0
-
-lemma e_apply_self (i : Fin d) : e (d := d) i i = 1 := by simp [e]
-
-lemma e_apply_ne (i j : Fin d) (h : j ≠ i) : e (d := d) i j = 0 := by simp [e, h]
-
-end Zd
-
 namespace Bond
 
 open MeasureTheory
@@ -483,6 +484,17 @@ theorem measurable_mem_edge (d : ℕ) (p : ℝ≥0∞) (e : Edge d) :
 
 end Prob
 
+/-! ### Basic `ℤ^d` objects for bond percolation -/
+
+/-- Vertices of the lattice graph `ℤ^d`. -/
+abbrev V (d : ℕ) : Type := Percolation.Zd d
+
+/-- The nearest-neighbor lattice graph on `ℤ^d`. -/
+abbrev G (d : ℕ) : SimpleGraph (V d) := Lattice.latticeGraph d
+
+/-- Edges of the lattice graph on `ℤ^d`. -/
+abbrev E (d : ℕ) : Type := Prob.Edge d
+
 namespace Geometry
 
 variable {d : ℕ}
@@ -547,9 +559,9 @@ open Lattice Prob Geometry
 
 variable {d : ℕ}
 
-abbrev V : Type := Percolation.Zd d
-abbrev G : SimpleGraph (V (d := d)) := Lattice.latticeGraph d
-abbrev E : Type := Prob.Edge d
+abbrev V : Type := Bond.V d
+abbrev G : SimpleGraph (V (d := d)) := Bond.G d
+abbrev E : Type := Bond.E d
 
 def edgeOfAdj {x y : V (d := d)} (h : (G (d := d)).Adj x y) : E (d := d) := by
   refine ⟨s(x, y), ?_⟩
@@ -1771,9 +1783,9 @@ namespace TwoD
 
 open Prob Open Geometry CriticalProbability
 
-abbrev V : Type := Percolation.Zd 2
-abbrev G : SimpleGraph V := Lattice.latticeGraph 2
-abbrev E : Type := Prob.Edge 2
+abbrev V : Type := Bond.V 2
+abbrev G : SimpleGraph V := Bond.G 2
+abbrev E : Type := Bond.E 2
 
 def CrossLR (n m : ℕ) : Set (Set E) :=
   if n = 0 ∧ m = 0 then
@@ -2486,8 +2498,183 @@ theorem p_c_two_eq_one_half : CriticalProbability.p_c 2 = (1 / 2 : ℝ≥0∞) :
 
 end TwoD
 
+namespace supercritical
+
+/-!
+## Blueprint: supercritical percolation facts (not yet formalized here)
+
+Assume i.i.d. Bernoulli bond (or site) percolation on `ℤ^d` with `d ≥ 2`, parameter `p > p_c`,
+and write `0 ↔ x` for open connectivity.
+
+• `0 < p_c(ℤ^d) < 1` for `d ≥ 2`.
+• For `p > p_c`, `θ(p) := 𝔓_p(0 ↔ ∞) > 0`.
+• For `p > p_c`, an infinite open cluster exists almost surely.
+• For `p > p_c` on `ℤ^d`, the infinite open cluster is almost surely unique.
+• On `ℤ^d`, at `p = p_c` there is no infinite open cluster almost surely.
+• On any transitive graph, the number of infinite clusters is almost surely in `{0,1,∞}`.
+• On any amenable transitive graph, for all `p`, the number of infinite clusters is almost surely in `{0,1}`.
+• On some nonamenable transitive graphs there exist `p` with infinitely many infinite clusters almost surely.
+• `θ(p) = lim_{n→∞} 𝔓_p(0 ↔ ∂B(n))`, where `B(n)` is a box/ball of radius `n`.
+• For `p > p_c` on `ℤ^d`, the indicator field `(𝟙_{x ↔ ∞})_{x ∈ ℤ^d}` is stationary and ergodic under translations.
+• For `p > p_c` on `ℤ^d`, the infinite cluster has positive density:
+  `(1 / |[-n,n]^d|) * |C_∞ ∩ [-n,n]^d| → θ(p)` almost surely.
+• For `p > p_c` on `ℤ^d`, conditioned on `{0 ↔ ∞}`, the cluster of `0` is infinite almost surely.
+• For `p > p_c` on `ℤ^d`, the infinite cluster has one end almost surely.
+• For `p > p_c` on `ℤ^d`, removing any finite set of vertices from the infinite cluster leaves exactly one infinite component almost surely.
+• For `p > p_c` on `ℤ^d`, every vertex in the infinite cluster lies on an infinite self avoiding open path.
+• For `p > p_c` on `ℤ^d`, `𝔓_p(0 ↔ x, 0 ↮ ∞)` decays exponentially in `|x|`.
+• For `p > p_c` on `ℤ^d`, there exist `c,C > 0` such that
+  `𝔓_p(0 ↔ ∂B(n), 0 ↮ ∞) ≤ C * exp(-c n)`.
+• For `p > p_c` on `ℤ^d`, conditioned on `{0 ↮ ∞}`, the radius (graph or Euclidean) of `C(0)` has an exponential tail.
+• For `p > p_c` on `ℤ^d`, the truncated two point function `x ↦ 𝔓_p(0 ↔ x, 0 ↮ ∞)` has a strictly positive inverse correlation length.
+• For `p > p_c` on `ℤ^d`, the probability that a large box is disconnected by closed edges has stretched exponential or surface order decay (depending on the precise disconnection event).
+• For `p > p_c` on `ℤ^d`, for any fixed aspect ratio, the probability of an open crossing of an `n` scale rectangle tends to `1` as `n → ∞`.
+• For `p > p_c` on `ℤ^d`, the probability that a large box has open crossings simultaneously in all coordinate directions tends to `1` as the side length grows.
+• For `p > p_c` on `ℤ^d`, there is local uniqueness of macroscopic clusters: in a large box, with probability tending to `1` there is at most one open cluster of diameter comparable to the box size.
+• For `p > p_c` on `ℤ^d`, the unique macroscopic cluster in a large box typically connects to the infinite cluster.
+• For `p > p_c` on `ℤ^d`, the largest open cluster inside a box of side `n` has volume of order `n^d` with high probability.
+• For `p > p_c` on `ℤ^d`, all other open clusters in that box have much smaller volume with high probability (submacroscopic compared to `n^d`).
+• For `p > p_c` on `ℤ^d`, there exist coarse graining scales at which “good” boxes percolate on a renormalized lattice.
+• For `p > p_c` on `ℤ^d`, there exists a slab thickness `L < ∞` such that percolation occurs in `ℤ^{d-1} × {1,…,L}`.
+• For `d ≥ 3`, the slab critical values decrease to `p_c(ℤ^d)` as the slab thickness tends to `∞`.
+• For `p > p_c` on `ℤ^d`, the half space `ℤ^{d-1} × ℤ_{≥0}` percolates.
+• For `p > p_c` on `ℤ^d`, the supercritical infinite cluster intersects large boxes in a connected way after a bounded enlargement with high probability.
+
+Chemical distance and intrinsic geometry (for `p > p_c` on `ℤ^d`):
+
+• If `D(x,y)` is the open path (chemical) distance, then `D(x,y) ≥ |x-y|_1` on `{x ↔ y}`.
+• There exist constants `ρ,c > 0` such that for all `x`,
+  `𝔓_p(0 ↔ x; D(0,x) ≥ ρ|x|_1) ≤ exp(-c|x|_1)`.
+• Conditioned on `{0 ↔ x}`, the typical order of `D(0,x)` is linear in `|x|`.
+• There exists a deterministic norm `μ_p` on `ℝ^d` such that along lattice directions, `D(0,nx)/n → μ_p(x)` almost surely on the event of eventual connectivity along the sequence.
+• The intrinsic ball `{y ∈ C_∞ : D(0,y) ≤ n}` has an asymptotic deterministic shape after scaling by `1/n`.
+• The chemical metric on the infinite cluster is asymptotically comparable to Euclidean distance up to deterministic constants (upper bound nontrivial, lower bound trivial).
+
+Random walk on the infinite cluster (for `p > p_c` on `ℤ^d`):
+
+• Simple random walk on `C_∞` is recurrent almost surely when `d = 2`.
+• Simple random walk on `C_∞` is transient almost surely when `d ≥ 3`.
+• A quenched invariance principle holds: rescaled simple random walk on `C_∞` converges to Brownian motion.
+• The limiting covariance matrix in the invariance principle is nondegenerate.
+• There are quenched two sided Gaussian type heat kernel bounds for large times (with random constants and on suitable scales).
+• Parabolic Harnack inequalities hold on large scales for the random walk on `C_∞`.
+• The on diagonal heat kernel decays like `t^{-d/2}` at large `t` (up to constants), matching `ℤ^d`.
+• The spectral dimension of `C_∞` equals `d`.
+• The Green function asymptotics on `C_∞` match those of `ℤ^d` at large distances (in the transient case, up to constants).
+
+Planar specializations:
+
+• For bond percolation on `ℤ^2`, `p_c = 1/2`.
+• For `p > 1/2` on `ℤ^2`, there is an infinite open cluster almost surely.
+• For `p > 1/2` on `ℤ^2`, there is almost surely no infinite dual closed cluster.
+• For `p > 1/2` on `ℤ^2`, probabilities of dual closed crossings of long rectangles decay exponentially in the long direction.
+• For `p > 1/2` on `ℤ^2`, open crossing probabilities of rectangles with fixed aspect ratio tend to `1` as the scale grows.
+• For `p > 1/2` on `ℤ^2`, the probability of a closed dual circuit separating the origin from infinity decays exponentially in the circuit scale.
+
+High dimensional and mean field regime (supercritical side near `p_c`):
+
+• In the lace expansion regime (spread out models in `d > 6`, and nearest neighbor models in sufficiently high `d`), critical exponents take their mean field values.
+• In that regime, as `p ↓ p_c` from above, `θ(p)` is of order `p - p_c`.
+• In that regime, the supercritical correlation length scales like `(p - p_c)^{-1/2}` (mean field value).
+• In that regime, the critical two point function behaves like `|x|^{2-d}`, and the supercritical truncated two point function has Ornstein–Zernike type asymptotics.
+
+Finite volume supercritical behavior (boxes or tori, `p > p_c(ℤ^d)`):
+
+• In a large box with wired boundary conditions, with high probability there is a unique macroscopic open cluster.
+• On a large discrete torus, for `p > p_c` fixed, the largest open cluster occupies a positive fraction of the vertices with high probability.
+• On a large torus for `p > p_c` fixed, the second largest cluster is negligible compared to the volume with high probability.
+• For `p > p_c` fixed, macroscopic connectivity events in large boxes have probabilities tending to `1` as the box size grows.
+-/
+
+end supercritical
+
 namespace subcritical
 
+/-!
+## Blueprint: standard percolation facts (not yet formalized here)
+
+Assume i.i.d. Bernoulli bond (or site) percolation on `ℤ^d` with `d ≥ 2`, parameter `p > p_c`,
+and write `0 ↔ x` for open connectivity.
+
+• `0 < p_c(ℤ^d) < 1` for `d ≥ 2`.
+• For `p > p_c`, `θ(p) := 𝔓_p(0 ↔ ∞) > 0`.
+• For `p > p_c`, an infinite open cluster exists almost surely.
+• For `p > p_c` on `ℤ^d`, the infinite open cluster is almost surely unique.
+• On `ℤ^d`, at `p = p_c` there is no infinite open cluster almost surely.
+• On any transitive graph, the number of infinite clusters is almost surely in `{0,1,∞}`.
+• On any amenable transitive graph, for all `p`, the number of infinite clusters is almost surely in `{0,1}`.
+• On some nonamenable transitive graphs there exist `p` with infinitely many infinite clusters almost surely.
+• `θ(p) = lim_{n→∞} 𝔓_p(0 ↔ ∂B(n))`, where `B(n)` is a box/ball of radius `n`.
+• For `p > p_c` on `ℤ^d`, the indicator field `(𝟙_{x ↔ ∞})_{x ∈ ℤ^d}` is stationary and ergodic under translations.
+• For `p > p_c` on `ℤ^d`, the infinite cluster has positive density:
+  `(1 / |[-n,n]^d|) * |C_∞ ∩ [-n,n]^d| → θ(p)` almost surely.
+• For `p > p_c` on `ℤ^d`, conditioned on `{0 ↔ ∞}`, the cluster of `0` is infinite almost surely.
+• For `p > p_c` on `ℤ^d`, the infinite cluster has one end almost surely.
+• For `p > p_c` on `ℤ^d`, removing any finite set of vertices from the infinite cluster leaves exactly one infinite component almost surely.
+• For `p > p_c` on `ℤ^d`, every vertex in the infinite cluster lies on an infinite self avoiding open path.
+• For `p > p_c` on `ℤ^d`, `𝔓_p(0 ↔ x, 0 ↮ ∞)` decays exponentially in `|x|`.
+• For `p > p_c` on `ℤ^d`, there exist `c,C > 0` such that
+  `𝔓_p(0 ↔ ∂B(n), 0 ↮ ∞) ≤ C * exp(-c n)`.
+• For `p > p_c` on `ℤ^d`, conditioned on `{0 ↮ ∞}`, the radius (graph or Euclidean) of `C(0)` has an exponential tail.
+• For `p > p_c` on `ℤ^d`, the truncated two point function `x ↦ 𝔓_p(0 ↔ x, 0 ↮ ∞)` has a strictly positive inverse correlation length.
+• For `p > p_c` on `ℤ^d`, the probability that a large box is disconnected by closed edges has stretched exponential or surface order decay (depending on the precise disconnection event).
+• For `p > p_c` on `ℤ^d`, for any fixed aspect ratio, the probability of an open crossing of an `n` scale rectangle tends to `1` as `n → ∞`.
+• For `p > p_c` on `ℤ^d`, the probability that a large box has open crossings simultaneously in all coordinate directions tends to `1` as the side length grows.
+• For `p > p_c` on `ℤ^d`, there is local uniqueness of macroscopic clusters: in a large box, with probability tending to `1` there is at most one open cluster of diameter comparable to the box size.
+• For `p > p_c` on `ℤ^d`, the unique macroscopic cluster in a large box typically connects to the infinite cluster.
+• For `p > p_c` on `ℤ^d`, the largest open cluster inside a box of side `n` has volume of order `n^d` with high probability.
+• For `p > p_c` on `ℤ^d`, all other open clusters in that box have much smaller volume with high probability (submacroscopic compared to `n^d`).
+• For `p > p_c` on `ℤ^d`, there exist coarse graining scales at which “good” boxes percolate on a renormalized lattice.
+• For `p > p_c` on `ℤ^d`, there exists a slab thickness `L < ∞` such that percolation occurs in `ℤ^{d-1} × {1,…,L}`.
+• For `d ≥ 3`, the slab critical values decrease to `p_c(ℤ^d)` as the slab thickness tends to `∞`.
+• For `p > p_c` on `ℤ^d`, the half space `ℤ^{d-1} × ℤ_{≥0}` percolates.
+• For `p > p_c` on `ℤ^d`, the supercritical infinite cluster intersects large boxes in a connected way after a bounded enlargement with high probability.
+
+Chemical distance and intrinsic geometry (for `p > p_c` on `ℤ^d`):
+
+• If `D(x,y)` is the open path (chemical) distance, then `D(x,y) ≥ |x-y|_1` on `{x ↔ y}`.
+• There exist constants `ρ,c > 0` such that for all `x`,
+  `𝔓_p(0 ↔ x; D(0,x) ≥ ρ|x|_1) ≤ exp(-c|x|_1)`.
+• Conditioned on `{0 ↔ x}`, the typical order of `D(0,x)` is linear in `|x|`.
+• There exists a deterministic norm `μ_p` on `ℝ^d` such that along lattice directions, `D(0,nx)/n → μ_p(x)` almost surely on the event of eventual connectivity along the sequence.
+• The intrinsic ball `{y ∈ C_∞ : D(0,y) ≤ n}` has an asymptotic deterministic shape after scaling by `1/n`.
+• The chemical metric on the infinite cluster is asymptotically comparable to Euclidean distance up to deterministic constants (upper bound nontrivial, lower bound trivial).
+
+Random walk on the infinite cluster (for `p > p_c` on `ℤ^d`):
+
+• Simple random walk on `C_∞` is recurrent almost surely when `d = 2`.
+• Simple random walk on `C_∞` is transient almost surely when `d ≥ 3`.
+• A quenched invariance principle holds: rescaled simple random walk on `C_∞` converges to Brownian motion.
+• The limiting covariance matrix in the invariance principle is nondegenerate.
+• There are quenched two sided Gaussian type heat kernel bounds for large times (with random constants and on suitable scales).
+• Parabolic Harnack inequalities hold on large scales for the random walk on `C_∞`.
+• The on diagonal heat kernel decays like `t^{-d/2}` at large `t` (up to constants), matching `ℤ^d`.
+• The spectral dimension of `C_∞` equals `d`.
+• The Green function asymptotics on `C_∞` match those of `ℤ^d` at large distances (in the transient case, up to constants).
+
+Planar specializations:
+
+• For bond percolation on `ℤ^2`, `p_c = 1/2`.
+• For `p > 1/2` on `ℤ^2`, there is an infinite open cluster almost surely.
+• For `p > 1/2` on `ℤ^2`, there is almost surely no infinite dual closed cluster.
+• For `p > 1/2` on `ℤ^2`, probabilities of dual closed crossings of long rectangles decay exponentially in the long direction.
+• For `p > 1/2` on `ℤ^2`, open crossing probabilities of rectangles with fixed aspect ratio tend to `1` as the scale grows.
+• For `p > 1/2` on `ℤ^2`, the probability of a closed dual circuit separating the origin from infinity decays exponentially in the circuit scale.
+
+High dimensional and mean field regime (supercritical side near `p_c`):
+
+• In the lace expansion regime (spread out models in `d > 6`, and nearest neighbor models in sufficiently high `d`), critical exponents take their mean field values.
+• In that regime, as `p ↓ p_c` from above, `θ(p)` is of order `p - p_c`.
+• In that regime, the supercritical correlation length scales like `(p - p_c)^{-1/2}` (mean field value).
+• In that regime, the critical two point function behaves like `|x|^{2-d}`, and the supercritical truncated two point function has Ornstein–Zernike type asymptotics.
+
+Finite volume supercritical behavior (boxes or tori, `p > p_c(ℤ^d)`):
+
+• In a large box with wired boundary conditions, with high probability there is a unique macroscopic open cluster.
+• On a large discrete torus, for `p > p_c` fixed, the largest open cluster occupies a positive fraction of the vertices with high probability.
+• On a large torus for `p > p_c` fixed, the second largest cluster is negligible compared to the volume with high probability.
+• For `p > p_c` fixed, macroscopic connectivity events in large boxes have probabilities tending to `1` as the box size grows.
+-/
 
 end subcritical
 
