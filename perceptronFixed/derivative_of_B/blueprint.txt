@@ -1,0 +1,124 @@
+Blueprint: proof that B'(t) = 𝔼[g(U_t)]
+
+Settings
+--------
+Fix κ ∈ ℝ and t ∈ (0,1). Let Z ~ N(0,1), and write 𝔼[·] for expectation with
+respect to Z.
+
+Definitions (matching main.tex)
+-------------------------------
+1) Standard normal quantities:
+   - φ(u) := (1/√(2π)) exp(-u^2/2)
+   - Φ(u) := ∫_{-∞}^u φ(s) ds
+   - Φ̄(u) := 1 - Φ(u) = ∫_u^∞ φ(s) ds
+
+2) Inverse Mills ratio:
+   - E(u) := φ(u) / Φ̄(u).
+
+3) Random change of variables:
+   - Z ~ N(0,1)
+   - U_t := (κ - √t Z) / √(1 - t).
+
+4) The function B:
+   - B(t) := (1 - t) · 𝔼[ E(U_t)^2 ].
+
+5) Auxiliary functions:
+   - h(u) := E(u)^2
+   - g(u) := E(u)^2\bigl(3E(u)^2-4u\,E(u)+u^2-2\bigr).
+
+
+Dependencies / facts used
+-------------------------
+A) Differentiation facts for the inverse Mills ratio (from differentiating E(u)=φ/Φ̄):
+   - φ'(u) = -u φ(u), and Φ̄'(u) = -φ(u).
+   - E'(u) = E(u)^2 - u E(u).
+   - E''(u) = 2 E(u)E'(u) - E(u) - u E'(u).
+
+B) Gaussian integration by parts (IBP):
+   If Z ~ N(0,1) and ψ is smooth with suitable integrability, then
+     𝔼[ Z ψ(Z) ] = 𝔼[ ψ'(Z) ].
+
+C) Justification step (analytic):
+   To differentiate B(t) under the expectation, show an integrable domination for
+   the relevant random variables (e.g. h(U_t), h'(U_t)∂_t U_t). In main.tex this is
+   handled using growth bounds on E(u) (Mills bound) plus Gaussian moments.
+
+
+Goal
+----
+For t in (0,1), prove the derivative identity
+
+  B'(t) = 𝔼[g(U_t)].
+
+
+Proof steps
+-----------
+Step 1: Rewrite B(t) with h.
+  B(t) = (1 - t) · 𝔼[ h(U_t) ].
+
+Step 2: Differentiate B(t).
+  Using the product rule and differentiation under the expectation,
+    B'(t) = -𝔼[h(U_t)] + (1 - t) · 𝔼[ h'(U_t) · ∂_t U_t ].
+
+Step 3: Compute ∂_t U_t explicitly.
+  U_t = (κ - √t Z) / √(1 - t).
+  A direct calculation gives
+    ∂_t U_t = U_t / (2(1 - t)) - Z / (2√t √(1 - t)).
+
+  Substitute this into Step 2 and simplify:
+    B'(t) = 𝔼[ -h(U_t) + (1/2) U_t h'(U_t) ]
+            - ( √(1 - t) / (2√t) ) · 𝔼[ Z h'(U_t) ].
+
+Step 4: Eliminate the Z-term by Gaussian IBP.
+  Define, for z in ℝ,
+    ψ(z) := h'( (κ - √t z)/√(1 - t) ) = h'(U_t(z)).
+
+  Then d/dz U_t(z) = -√( t / (1 - t) ), so by the chain rule,
+    ψ'(z) = -√( t / (1 - t) ) · h''(U_t(z)).
+
+  Apply IBP (Fact B):
+    𝔼[ Z h'(U_t) ] = 𝔼[ Z ψ(Z) ] = 𝔼[ ψ'(Z) ]
+                   = -√( t / (1 - t) ) · 𝔼[ h''(U_t) ].
+
+  Substitute back into Step 3:
+    -( √(1 - t) / (2√t) ) · 𝔼[ Z h'(U_t) ]
+      = +(1/2) · 𝔼[ h''(U_t) ].
+
+  Therefore,
+    B'(t) = 𝔼[ -h(U_t) + (1/2) U_t h'(U_t) + (1/2) h''(U_t) ].
+
+Step 5: Express h', h'' in terms of E, E', E''.
+  Since h(u) = E(u)^2,
+    h'(u) = 2 E(u)E'(u),
+    h''(u) = 2(E'(u))^2 + 2E(u)E''(u).
+
+  Substitute into the formula from Step 4 to get
+    B'(t) = 𝔼[ -(E(U_t))^2
+               + U_t E(U_t)E'(U_t)
+               + (E'(U_t))^2
+               + E(U_t)E''(U_t) ].
+
+Step 6: Use the identity for E'' to simplify the combination
+        U_t E E' + E E'' - E^2.
+  With u = U_t and E = E(u), E' = E'(u), E'' = E''(u),
+  plug Fact A (E''(u) = 2EE' - E - uE') into:
+    uEE' + EE'' - E^2
+      = uEE' + E(2EE' - E - uE') - E^2
+      = 2E^2E' - 2E^2
+      = 2E^2 (E' - 1).
+
+  Hence the integrand in Step 5 becomes
+    (E')^2 + 2E^2(E' - 1).
+
+  Therefore,
+    B'(t) = 𝔼[ (E'(U_t))^2 + 2E(U_t)^2 (E'(U_t) - 1) ].
+
+Step 7: Identify the integrand as g(U_t).
+  By definition of g(u),
+    g(u) = E'(u)^2 + 2E(u)^2(E'(u) - 1) = E'(u)^2 - 2(1 - E'(u))E(u)^2.
+
+  So the identity from Step 6 is exactly
+    B'(t) = 𝔼[ g(U_t) ].
+
+
+End of blueprint.

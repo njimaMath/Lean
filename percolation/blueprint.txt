@@ -1,0 +1,817 @@
+A reality check first: the theorem $p_c(2)=1/2$ is Kesten’s theorem and its standard proofs depend on a large stack (planar duality for crossings, Harris-FKG type correlation, RSW estimates, Russo’s formula and a sharp-threshold style argument, then a finite-size criterion to infer an infinite cluster). None of that is “one lemma” in Lean. The value of a blueprint is that you can start formalizing low-level pieces immediately, and you always know what the next lemma is supposed to buy you.
+
+I will propose a file structure, core definitions, and a very fine-grained lemma dependency tree. I will also point out where mathlib already gives you a big shortcut: there is already a “product Bernoulli measure on random subsets” called `ProbabilityTheory.setBernoulli`, built from infinite product measures. ([Lean Community][1])
+
+Part A. Core model: the lattice graph on $\mathbb{Z}^d$
+
+A.1. Types and the graph
+
+Use `Zd d := Fin d → ℤ` as the vertex type. This is convenient because it is already an additive commutative group, coordinatewise.
+
+Lean skeleton:
+
+```lean
+import Mathlib.Combinatorics.SimpleGraph.Basic
+import Mathlib.Data.Int.Basic
+import Mathlib.Data.Finset.Basic
+import Mathlib.Data.Sym2
+
+open scoped BigOperators
+
+namespace Percolation
+
+abbrev Zd (d : ℕ) := Fin d → ℤ
+```
+
+Define the standard basis vector $e_i$.
+
+```lean
+namespace Zd
+
+variable {d : ℕ}
+
+def e (i : Fin d) : Zd d := fun j => if j = i then (1 : ℤ) else 0
+
+lemma e_apply_self (i : Fin d) : e (d:=d) i i = 1 := by simp [e]
+lemma e_apply_ne (i j : Fin d) (h : j ≠ i) : e (d:=d) i j = 0 := by simp [e, h]
+
+lemma e_ne_zero (i : Fin d) : e (d:=d) i ≠ 0 := by
+  intro h
+  have : (e (d:=d) i i) = (0 : Zd d) i := by simpa [h]
+  simpa [e_apply_self] using this
+
+end Zd
+```
+
+Define adjacency “L1-distance 1” in a way that is pleasant for proofs: $x \sim y$ iff $\exists i, y = x + e_i$ or $y = x - e_i$.
+
+```lean
+namespace Lattice
+
+variable {d : ℕ}
+
+abbrev V := Zd d
+
+def Adj (x y : V) : Prop :=
+  ∃ i : Fin d, y = x + Zd.e i ∨ y = x - Zd.e i
+
+lemma Adj_symm {x y : V} : Adj (d:=d) x y → Adj (d:=d) y x := by
+  rintro ⟨i, hy | hy⟩
+  · refine ⟨i, ?_⟩
+    right
+    -- x = y - e_i
+    simpa [hy, sub_eq_add_neg, add_assoc, add_left_comm, add_comm] 
+  · refine ⟨i, ?_⟩
+    left
+    -- x = y + e_i
+    simpa [hy, sub_eq_add_neg, add_assoc, add_left_comm, add_comm]
+
+lemma Adj_irrefl (x : V) : ¬ Adj (d:=d) x x := by
+  intro h
+  rcases h with ⟨i, h | h⟩
+  · have : Zd.e (d:=d) i = 0 := by
+      -- x = x + e_i implies e_i = 0
+      simpa [h] using (add_left_cancel (a:=x) (b:=x) (c:=Zd.e (d:=d) i) ?_)  -- you can also do `by simpa [h] using (eq_sub_iff_add_eq).2 rfl` style
+    exact (Zd.e_ne_zero (d:=d) i) this
+  · have : Zd.e (d:=d) i = 0 := by
+      -- x = x - e_i
+      -- rearrange similarly
+      sorry
+    exact (Zd.e_ne_zero (d:=d) i) this
+
+def latticeGraph (d : ℕ) : SimpleGraph (V (d:=d)) where
+  Adj := Adj (d:=d)
+  symm := Adj_symm (d:=d)
+  loopless := Adj_irrefl (d:=d)
+
+end Lattice
+```
+
+This gives you `Gd := Lattice.latticeGraph d`.
+
+Key low-level lemmas to queue up (these are all “infrastructure lemmas” you will use everywhere):
+
+* `Countable (Zd d)` and `Countable (Sym2 (Zd d))`, hence countable edge types.
+* `DecidableEq (Zd d)` and `DecidableEq (Sym2 (Zd d))` (these exist for `Fin d → ℤ` given instances).
+* “Edge of adjacency”: given `h : G.Adj x y`, build a canonical edge `Sym2.mk x y` in `G.edgeSet`.
+* Basic translation invariance: define `τ z : Zd d → Zd d := fun x => x + z`, prove it is a graph automorphism.
+
+In Lean terms, helpful lemmas:
+
+```lean
+lemma countable_Zd (d : ℕ) : Countable (Zd d) := by
+  -- `Fin d` is finite, ℤ is countable, function space over finite index is countable
+  infer_instance
+
+lemma countable_edges (d : ℕ) :
+    Countable {e : Sym2 (Zd d) // e ∈ (Lattice.latticeGraph d).edgeSet} := by
+  -- subtype of countable
+  infer_instance
+```
+
+You may need small glue lemmas about `Countable` for subtypes; mathlib usually has instances.
+
+A.2. Finite boxes and rectangles
+
+You need finite subgraphs to define crossing events as cylinder events. Define a box:
+
+* In $\mathbb{Z}^d$: $B(n)={x: \forall i, |x_i| \le n}$.
+* In $\mathbb{Z}^2$: rectangles $R(n,m)={(x,y): 0 \le x \le n, 0 \le y \le m}$ or centered versions.
+
+Lean definition (set-level, not `Finset` yet):
+
+```lean
+namespace Geometry
+
+open Lattice
+
+variable {d : ℕ}
+
+def box (n : ℕ) : Set (Zd d) :=
+  {x | ∀ i : Fin d, Int.natAbs (x i) ≤ n}
+
+-- For d = 2
+abbrev Z2 := Zd 2
+
+def rect (n m : ℕ) : Set Z2 :=
+  {x | 0 ≤ x 0 ∧ x 0 ≤ (n : ℤ) ∧ 0 ≤ x 1 ∧ x 1 ≤ (m : ℤ)}
+```
+
+Now prove finiteness of boxes/rectangles as sets:
+
+* `box n` is finite.
+* The induced edge set `edgesIn (box n)` is finite.
+
+You will repeatedly need: if `S : Set V` is finite then the set of edges with both endpoints in `S` is finite.
+
+Suggested lemma list:
+
+* `finite_box : (box (d:=d) n).Finite`
+* `finite_rect : (rect n m).Finite`
+* `finite_edges_restrict (S : Set V) (hS : S.Finite) : {e // e ∈ G.edgeSet ∧ endpoints e ⊆ S}.Finite`
+
+To make “endpoints of an edge” usable, define:
+
+```lean
+def endpoints {α} : Sym2 α → Set α := fun e =>
+  {a | ∃ b, e = Sym2.mk a b ∨ e = Sym2.mk b a}  -- or use existing Sym2 API if present
+```
+
+Often it is better to use existing `Sym2.mem_...` lemmas. The exact best definition depends on what lemmas `Mathlib/Data/Sym2` gives you.
+
+For rectangles you will also want boundary sets:
+
+* `leftBoundary rect`, `rightBoundary rect`, `topBoundary`, `bottomBoundary`.
+* Prove they are finite and nonempty when dimensions are positive.
+* Prove adjacency stays inside rect when you restrict to induced subgraph, etc.
+
+These boundaries are used in crossing events.
+
+Part B. Probability space: Bernoulli percolation as a random subset of edges
+
+B.1. Use `setBernoulli` as the percolation measure
+
+Mathlib already defines the product Bernoulli measure on subsets: for index type `ι`, set `u : Set ι`, and parameter `p : unitInterval`, `ProbabilityTheory.setBernoulli u p` is a probability measure on `Set ι` such that each element of `u` is included independently with probability `p`, and elements outside `u` are never included. ([Lean Community][1])
+
+This is almost exactly “bond percolation configuration = random set of open edges”. So choose your index type as the edge type of your graph.
+
+A clean choice:
+
+* `Edge d := {e : Sym2 (Zd d) // e ∈ (latticeGraph d).edgeSet}`.
+* A configuration is `ω : Set (Edge d)`, interpreted as the set of open edges.
+
+Then percolation at parameter `p` is the probability space `(Set (Edge d), setBernoulli Set.univ p)`.
+
+Lean snippet:
+
+```lean
+import Mathlib.Probability.Distributions.SetBernoulli
+
+namespace Prob
+
+open Lattice
+
+variable (d : ℕ)
+
+abbrev Edge := {e : Sym2 (Zd d) // e ∈ (Lattice.latticeGraph d).edgeSet}
+
+-- configuration space is `Set (Edge d)`
+
+noncomputable def P (p : unitInterval) : Measure (Set (Edge d)) :=
+  ProbabilityTheory.setBernoulli (Set.univ : Set (Edge d)) p
+
+instance (p : unitInterval) : MeasureTheory.IsProbabilityMeasure (P (d:=d) p) := by
+  -- already an instance for setBernoulli
+  dsimp [P]
+  infer_instance
+
+end Prob
+```
+
+This avoids constructing `Measure.infinitePi` yourself. Still, knowing that `setBernoulli` is built from infinite products and comes with independence facts is useful, and the relevant infrastructure is in the `MeasureTheory.Measure.infinitePi` and “independence of an infinite family” files. ([Lean Community][2])
+
+B.2. Basic measurable events and cylinder structure
+
+You will constantly use:
+
+* For a fixed edge `e`, the event `{ω | e ∈ ω}` is measurable.
+* For a finite set of edges `F`, any event depending only on membership on `F` is measurable.
+* In particular, “there exists an open path inside a fixed finite box” is measurable.
+
+This is where the “finite restriction” is helpful. Define restriction map:
+
+```lean
+def restrictTo (F : Finset (Edge d)) : Set (Edge d) → (Edge d → Prop) := fun ω e => e ∈ ω
+-- or map ω to ω ∩ F as a finset
+```
+
+Better: map `ω : Set E` to `ω ∩ F` as `Finset E` (since `F` is a `Finset`), so the sigma-algebra for cylinder events is the pullback of discrete sigma-algebra on `Finset`. There are many ways.
+
+Intermediate lemmas to plan:
+
+* `measurable_mem_edge (e : Edge d) : MeasurableSet {ω | e ∈ ω}`
+* `measurableSet_dependsOn_finset`: if `A` depends only on `F : Finset E`, then `MeasurableSet A`.
+* Show `connects_in_box n` depends only on finitely many edges (those with both endpoints in the box).
+
+B.3. Independence and positive correlation
+
+For percolation proofs you need at least these probabilistic facts:
+
+* Independence of edge states on disjoint finite edge sets.
+* A Harris-FKG type inequality for increasing events (positive association) under product Bernoulli measure.
+
+Mathlib gives general independence facts for infinite product measures (`Measure.infinitePi`) and independence of families. ([Lean Community][2]) It does not automatically give “FKG for increasing events” in the form percolation wants, so expect to formalize Harris inequality yourself (first for finite `Finset`, then lift to cylinder events).
+
+Suggested definitions:
+
+* Order on configurations: `ω ≤ ω'` iff `ω ⊆ ω'`.
+* An event `A : Set (Set E)` is increasing if `ω ∈ A` and `ω ⊆ ω'` implies `ω' ∈ A`.
+
+Then formalize:
+
+* `increasing_event (A) : Prop`
+* `decreasing_event (A) : Prop` similarly.
+
+Intermediate lemmas:
+
+* `event_mem_edge_increasing (e) : increasing_event (fun ω => e ∈ ω)`
+* `crossing_event_increasing`: rectangle crossing events are increasing.
+* Harris inequality (finite): for increasing events `A,B` depending on finitely many edges, `P_p(A ∩ B) ≥ P_p(A)*P_p(B)`.
+* Extension to countable intersections or to cylinder events via monotone class arguments.
+
+You will need this for RSW gluing and for renormalization arguments.
+
+Part C. Graph events: open paths, clusters, and percolation probability
+
+C.1. Open adjacency and open walks
+
+Given a configuration `ω : Set (Edge d)`, define open adjacency on vertices:
+
+* `openAdj ω x y : Prop := G.Adj x y ∧ edge(x,y) ∈ ω`.
+
+You need a function `edgeOfAdj : G.Adj x y → Edge d`, with value `⟨Sym2.mk x y, proof⟩`.
+
+```lean
+namespace Open
+
+open Lattice Prob
+
+variable {d : ℕ}
+abbrev V := Zd d
+abbrev G := Lattice.latticeGraph d
+abbrev E := Prob.Edge d
+
+noncomputable def edgeOfAdj {x y : V} (h : (G (d:=d)).Adj x y) : E := by
+  refine ⟨Sym2.mk x y, ?_⟩
+  -- show Sym2.mk x y ∈ G.edgeSet
+  -- edgeSet membership uses ∃ x y, Adj x y ∧ ...
+  refine ⟨x, y, h, rfl⟩
+
+def openAdj (ω : Set E) (x y : V) : Prop :=
+  (G (d:=d)).Adj x y ∧ (edgeOfAdj (d:=d) (x:=x) (y:=y) ·) ∈ ω
+-- you will write it with `∧` and explicit `h : Adj x y` so you can form edgeOfAdj h
+```
+
+Then define open connectivity:
+
+* `OpenConnected ω x y : Prop := ∃ w : G.Walk x y, w is open`.
+* Or define open reachability using `SimpleGraph.Reachable` in the subgraph restricted to open edges.
+
+Using `SimpleGraph.Walk` is usually easier for “depends on finite edges” proofs.
+
+Define `walkAllOpen` recursively:
+
+```lean
+def Walk.AllOpen (ω : Set E) : {x y : V} → (G (d:=d)).Walk x y → Prop
+| _, _, .nil => True
+| _, _, .cons h w => (edgeOfAdj (d:=d) h ∈ ω) ∧ Walk.AllOpen ω w
+```
+
+Intermediate lemmas:
+
+* `AllOpen_append`: open-ness preserved under concatenation.
+* `AllOpen_reverse` if you use walks reversed.
+* `OpenConnected_refl`, `OpenConnected_symm`, `OpenConnected_trans`.
+* Monotonicity: if `ω ⊆ ω'` then `OpenConnected ω x y → OpenConnected ω' x y`.
+
+C.2. Clusters and “connects to distance n”
+
+Define cluster and boundary events in a way that is measurable and countable:
+
+* `cluster ω x := {y | OpenConnected ω x y}`.
+* The event “origin is in an infinite cluster” is hard to handle directly; instead define
+  $${0 \leftrightarrow \infty} := \bigcap_{n\ge 1} {0 \leftrightarrow \partial B(n)}$$
+  where $\partial B(n)$ is the boundary of the box.
+
+So define:
+
+* `connectsToBoundary (n : ℕ) : Set (Set E)` meaning “there exists an open path from origin to some vertex outside box n (or on boundary)”.
+
+Then define percolation event:
+
+```lean
+def percolates : Set (Set E) := ⋂ n : ℕ, connectsToBoundary (d:=d) n
+```
+
+Intermediate measurability lemmas:
+
+* `MeasurableSet_connectsToBoundary (n)`
+  because it depends on edges in a finite box of size roughly `n`.
+* `MeasurableSet_percolates` because it is a countable intersection.
+
+Then define the percolation function:
+
+* `θ(p) := (P p) (percolates)` as a real number in `[0,1]`.
+
+C.3. Critical probability
+
+Pick a formal definition that is stable under monotonicity:
+
+* $p_c := \inf{p \in [0,1] : \theta(p) > 0}$, or
+* $p_c := \sup{p \in [0,1] : \theta(p) = 0}$.
+
+In Lean with `unitInterval` it is often clean to define on `p : unitInterval` and then coerce to `ℝ`. For statements like $p_c=1/2$, you can use the element `(⟨1/2, by ...⟩ : unitInterval)`.
+
+Intermediate lemmas:
+
+* `theta_mono : p ≤ q → θ(p) ≤ θ(q)` (monotonicity).
+* `theta_right_continuous` or at least the “sup/inf” properties needed for critical point reasoning.
+* `pc_def` lemmas: `p < pc → θ(p) = 0` and `pc < p → 0 < θ(p)` once you have sharpness, etc.
+
+Part D. Specialize to $d=2$: rectangles, crossings, and planar duality
+
+This is where the 2D-specific theorem lives.
+
+D.1. Rectangles and crossing events
+
+Fix $n,m$ and define the induced subgraph on vertices in the rectangle `rect n m`. Define boundary vertex sets:
+
+* `Left(n,m) = {(0,y): 0 ≤ y ≤ m}`
+* `Right(n,m) = {(n,y): 0 ≤ y ≤ m}`
+* `Bottom`, `Top`.
+
+Define an event:
+
+* `LRopenCross(n,m)`: there exists an open path inside the rectangle from left boundary to right boundary.
+
+Similarly `TBopenCross`.
+
+Lean strategy: define `insideRect` predicate on vertices; define `Walk` that stays inside by requiring all vertices in the walk satisfy `insideRect`. Then `LRopenCross` is:
+
+`∃ x ∈ Left, ∃ y ∈ Right, ∃ w : G.Walk x y, w.AllOpen ω ∧ w.AllVerticesInRect`.
+
+Intermediate lemmas:
+
+* `crossing_event_increasing` (monotone in ω).
+* `crossing_event_dependsOn_edgesInRect` (cylinder event).
+* `MeasurableSet_crossing_event`.
+
+D.2. Dual edges and the complement crossing lemma
+
+For bond percolation on the square lattice, define the dual graph:
+
+* Dual vertices correspond to faces of the primal lattice, realized as points in $\mathbb{Z}^2 + (1/2,1/2)$.
+* Dual edges cross primal edges.
+* A dual edge is open iff the crossed primal edge is closed.
+
+In Lean, you can avoid geometry-heavy “half-integers” by representing dual vertices as `Z2` again but shifted, or as a tagged version. A common choice:
+
+* Dual vertex type: `Z2` but interpreted as centers of unit squares; then primal horizontal edges correspond to dual vertical edges at a shifted coordinate, etc.
+
+You need a map:
+
+* `dualEdge : Edge_primal → Edge_dual` which is a bijection (on relevant finite subgraphs).
+
+Then define the dual configuration:
+
+* `ωᵈ := {eᵈ | corresponding primal edge e ∉ ω}`.
+
+Intermediate lemmas:
+
+* `dualEdge_involutive` or `dualEdge_bijective`.
+* `dual_config_measurable` if needed (often you can reason combinatorially without measurability).
+
+Now the key planar duality lemma for rectangles:
+
+* In a rectangle, exactly one of the following holds:
+
+  * There is an open primal left-right crossing.
+  * There is an open dual top-bottom crossing (equivalently, a closed primal top-bottom dual crossing).
+
+Formally, for each configuration ω in the rectangle edge set,
+
+`LRopenCross ω ↔ ¬ TBopenCross_dual ωᵈ`,
+
+and often also a disjointness and “covering” lemma:
+
+`LRopenCross ω ∨ TBdualCross ωᵈ` and `¬(LRopenCross ω ∧ TBdualCross ωᵈ)`.
+
+This lemma is equivalent in spirit to the “no draw” property of a suitable discrete planar separation statement, and is one of the major combinatorial/topological inputs.
+
+In Lean, you will probably proceed in a very rectangle-specific way, not with full planar graph theory:
+
+* Model the rectangle grid as a finite planar cell complex.
+* Prove a cut-path duality: absence of primal LR path implies existence of a dual TB cut, which is a path in the dual.
+
+You can structure this via “edge cut sets” and a min-cut max-flow lemma specialized to planar grids, or by a constructive boundary-following argument. Expect lots of intermediate lemmas about paths, cuts, and connected components.
+
+Suggested intermediate lemma chain (very explicit):
+
+* Define finite graph `Grect(n,m)` induced by rect vertices and edges.
+* Define boundary subsets `L` and `R`.
+* Define `NoLRPath ω` meaning there is no open path from `L` to `R`.
+* Define `ClosedCut ω` as a set of closed edges separating L from R.
+* Prove:
+
+  * `NoLRPath ω → ∃ C, ClosedCut ω C` using finite graph connectivity/cut existence.
+* Define dual graph `GrectDual(n,m)` where dual vertices are faces plus outer face.
+* Define a map `cutToDualPath : ClosedCut ω C → DualTBPath ωᵈ`.
+* Prove:
+
+  * `ClosedCut ω C → DualTBPath ωᵈ`.
+
+Then you get:
+
+`NoLRPath ω → DualTBPath ωᵈ`,
+
+and conversely, any dual TB path blocks LR primal path (easy).
+
+That yields the desired dichotomy.
+
+D.3. Symmetry at $p=1/2$
+
+Once you have the dichotomy, you can prove that at $p=1/2$ crossing probability is exactly $1/2$ for “square-like” shapes where the dual event is a rotated version of the primal.
+
+The standard statement for an $n \times n$ square:
+
+* `P_{1/2}(LRopenCross(n,n)) = 1/2`.
+
+Proof idea:
+
+* `LRopenCross` is complementary to `TBdualCross`.
+* At $p=1/2$, the law of ω equals the law of its complement (open/closed swap), and duality plus rotation identifies the events.
+
+Lean intermediate lemmas:
+
+* `law_complement_at_half`: under `setBernoulli univ (1/2)`, the image of ω under complement map has same distribution.
+* `dual_event_eq_rotated_event`: dual TB crossing equals rotated primal LR crossing (in a square).
+* Conclude exact probability $1/2$.
+
+This step also feeds the starting constant in RSW.
+
+Part E. RSW: box-crossing bounds at criticality
+
+RSW (Russo-Seymour-Welsh) is used twice:
+
+* To get uniform lower bounds on crossing probabilities at $p=1/2$ for rectangles of fixed aspect ratio.
+* To control arm events and pivotal estimates (in the Kesten sharp-threshold proof).
+
+You can structure the formalization of RSW as a theorem package that depends on:
+
+* Translation invariance and rotation symmetry of the lattice.
+* Harris inequality (positive correlation) for increasing events.
+* The duality dichotomy and $1/2$ symmetry.
+* A gluing lemma: if you have crossings in overlapping rectangles, you can combine them to get a crossing in a larger rectangle.
+
+A typical RSW statement:
+
+For every aspect ratio $\rho>1$ there exists $c(\rho)>0$ such that for all $n$,
+$$\mathbb{P}_{1/2}(\text{LR crossing of } [0,\rho n]\times[0,n]) \ge c(\rho).$$
+
+Lean plan:
+
+* Define `CrossLR (n m)` event.
+* Prove base case for squares using the $1/2$ symmetry: `P(CrossLR n n) = 1/2`.
+* Define a “concatenation” operator to build a long rectangle crossing from several square crossings.
+* Use Harris inequality to lower bound intersection probability by product.
+* Manage geometric alignment with translation invariance.
+
+Intermediate lemmas for RSW (fine-grained):
+
+Geometry/gluing:
+
+* `glue_LR_two_rectangles`: crossing of left rectangle and crossing of right rectangle plus a “bridge” implies crossing of union.
+* `square_to_rect`: crossing of certain square + certain rectangle implies crossing of a bigger rectangle.
+* `translate_crossing_event`: crossing events are invariant under translation.
+* `rotate_crossing_event`: LR crossing rotates to TB crossing.
+
+Probability/inequalities:
+
+* `harris_intersection_lower`: if `A,B` increasing, `P(A ∩ B) ≥ P(A)P(B)`.
+* `crossing_increasing`: crossing events are increasing.
+* `prob_cross_square_half`: at $p=1/2$ the square crossing prob is $1/2$.
+
+RSW induction:
+
+* `rsw_aspect_ratio_two`: show a uniform bound for $2n \times n$ rectangles.
+* `rsw_general_ratio`: extend to any rational ratio by tiling with aspect ratio 2, then to real ratio by bounding.
+
+In Lean it is helpful to make RSW a namespace with a parameter `p` but only use it at `p=1/2` first.
+
+Part F. Russo’s formula and sharp threshold for crossings
+
+To prove $p_c \le 1/2$, you need supercritical percolation for all $p>1/2$. In Kesten’s approach, the bridge is:
+
+* show that for $p>1/2$ the probability of crossing an $n\times n$ box tends to $1$ as $n \to \infty$.
+
+That uses Russo’s formula for an increasing event $A$ depending on finitely many edges:
+$$\frac{d}{dp}\mathbb{P}_p(A) = \mathbb{E}_p[#\text{pivotal edges for }A].$$
+
+Then you lower bound the expected number of pivotals at $p=1/2$ using RSW and “arm events”, integrate from $1/2$ to $p>1/2$, and deduce that $\mathbb{P}_p(A)$ becomes close to $1$ for large $n$.
+
+Lean prerequisites:
+
+* Work on a finite edge set `F` (edges in a box). On finite spaces, you can define the Bernoulli measure more explicitly, and differentiate polynomials in `p` (since probabilities are polynomials).
+* Alternatively, use a combinatorial identity for discrete derivative and then a real-analytic lemma to connect it with derivative.
+
+A Lean-friendly approach:
+
+* Define `P_p^F` the product Bernoulli measure on `Set F` with parameter `p`.
+* Show for an event `A` depending only on `F`, the probability is a polynomial in `p`.
+* Prove Russo’s formula by direct counting over configurations.
+
+Intermediate lemmas to formalize Russo’s formula:
+
+Finite cube:
+
+* `finite_config_space`: configurations on `F` are `F → Bool` or `Set F`.
+* `probability_as_sum`: $\mathbb{P}*p(A)=\sum*{\omega} p^{|ω|}(1-p)^{|F\setminus ω|} 1_A(ω)$.
+
+Pivotals:
+
+* Define `pivotal (e : F) (A) (ω)` meaning flipping membership of `e` changes `A`.
+* Prove identity:
+  $$\mathbb{P}_p(A \mid e \text{ open}) - \mathbb{P}_p(A \mid e \text{ closed}) = \mathbb{P}_p(e \text{ pivotal}).$$
+* Differentiate the explicit polynomial and show it equals sum of pivotal probabilities.
+
+Then:
+
+* `russo_formula`:
+  `deriv (fun p => P_p^F A) = ∑ e∈F, P_p^F (pivotal e A)`.
+
+Now you need a lower bound on pivotal probability at $p=1/2$ for the crossing event.
+
+Kesten’s key geometric input:
+
+* If an edge is pivotal for LR crossing of a square, then there are four disjoint “arms” (two open arms, two closed dual arms) from the edge to the boundary of the square.
+* RSW gives a lower bound on certain arm events, which implies a lower bound on the expected number of pivotals growing like $c \log n$.
+
+Lean plan for pivotal estimates:
+
+Arm event definitions:
+
+* `arm_open (x, r, R)` existence of open path from neighborhood of x to distance R within annulus.
+* `arm_closed_dual` similarly for closed dual paths.
+* `four_arm_event` defined as conjunction of two open and two closed arms alternating.
+
+Lemmas:
+
+* `pivotal_imp_four_arms`: pivotal edge implies four-arm event around it.
+* `four_arms_prob_lower_bound`: using RSW, show probability of four arms at scale is at least `c / r` or some scale-dependent estimate.
+* `expected_pivotals_lower_bound`: sum over disjoint annuli yields `E[#pivotals] ≥ c log n`.
+
+Finally integrate Russo:
+
+* `crossing_prob_growth`: for any `p>1/2`, crossing probability tends to 1:
+  $$\lim_{n\to\infty} \mathbb{P}_p(\text{LR crossing of } n\times n)=1.$$
+
+Part G. From high crossing probability to an infinite cluster
+
+Once you know that for $p>1/2$ large boxes are crossed with probability very close to 1, you still need an implication:
+
+* If crossing probabilities go to 1 fast enough, then $\mathbb{P}_p(0 \leftrightarrow \infty)>0$.
+
+A standard method:
+
+* Define events `E_k` that a certain rectangle at scale $2^k$ is crossed in a way that forces an open circuit or an outward connection.
+* Show $\sum_k \mathbb{P}_p(E_k^c) < \infty$.
+* Apply the first Borel-Cantelli lemma to conclude that only finitely many failures occur almost surely, so for large k all good events occur, giving an infinite open path. The first Borel-Cantelli lemma is available in mathlib as `MeasureTheory.measure_limsup_atTop_eq_zero` and related results, and there is also a dedicated file about generalized Borel-Cantelli. ([Lean Community][3])
+
+Intermediate lemmas:
+
+* `crossing_to_circuit`: two crossings (horizontal and vertical) in a square imply existence of an open circuit in an annulus.
+* `nested_circuits_imp_infinite_cluster`: if for infinitely many scales you have a circuit connecting outward, then origin connects to infinity (or at least to arbitrarily large distance).
+* `summable_failure`: use your convergence-to-1 to show summability of failure probabilities.
+
+Part H. Subcritical side via duality
+
+For $p<1/2$, you want to show $\theta(p)=0$.
+
+Use dual percolation with parameter $q = 1-p > 1/2$:
+
+* Under parameter $p$, closed primal edges have probability $q$.
+* Dual open edges correspond to primal closed edges.
+* Using the already proven “supercritical” result (for $q>1/2$), dual crossings occur with high probability, hence there are dual closed circuits around the origin at infinitely many scales almost surely.
+* These circuits block any infinite primal open path.
+
+This again uses Borel-Cantelli.
+
+Intermediate lemmas:
+
+* `dual_supercritical_crossings`: from $q>1/2$ obtain high-prob dual crossings.
+* `dual_crossings_imp_closed_circuit`: combine dual crossings to get a closed dual circuit in an annulus.
+* `closed_circuit_blocks_open_path`: any open path from inside to outside must cross the circuit, contradiction.
+* `almost_sure_infinitely_many_circuits`: by Borel-Cantelli.
+* Conclude `θ(p)=0` for `p<1/2`.
+
+Part I. Finish: $p_c(2)=1/2$
+
+Once you have:
+
+* for all $p<1/2$, $\theta(p)=0$,
+* for all $p>1/2$, $\theta(p)>0$,
+
+then by your chosen definition of $p_c$ as an infimum/supremum, you conclude $p_c(2)=1/2$.
+
+Intermediate “order-theory” lemmas to keep proofs clean:
+
+* If `θ` is monotone, then `pc := sInf {p | θ(p) > 0}` satisfies:
+
+  * `p < pc → θ(p)=0` (needs definition carefully, sometimes you get `θ(p)=0` only for `p ≤ pc` after sharpness).
+  * `pc < p → 0 < θ(p)`.
+
+In Lean, expect to use `sInf_le`, `le_sInf`, `csInf` lemmas, and monotonicity.
+
+A concrete file plan with lemma checklists
+
+Here is a practical file layout you can follow, with many intermediate lemmas explicitly listed.
+
+File `Percolation/Zd/Basic.lean`
+
+Definitions:
+
+* `Zd d := Fin d → ℤ`
+* `e : Fin d → Zd d`
+* `Adj` and `latticeGraph d : SimpleGraph (Zd d)`
+* `Edge d := {e : Sym2 (Zd d) // e ∈ (latticeGraph d).edgeSet}`
+
+Lemmas:
+
+* `countable_Zd`, `countable_Edge`
+* `Adj_symm`, `Adj_irrefl`
+* `translation (z : Zd d) : Zd d → Zd d`
+* `translation_isGraphIso : ...`
+* `rotation_isGraphIso` specialized to `d=2` (swap coordinates and sign flips)
+* `edgeOfAdj` construction and simp lemmas about it
+
+File `Percolation/Zd/FiniteRegions.lean`
+
+Definitions:
+
+* `box (n) : Set (Zd d)`
+* `rect (n m) : Set (Zd 2)`
+* boundary sets: `leftBoundary`, `rightBoundary`, `topBoundary`, `bottomBoundary`
+* induced vertex and edge sets in a region
+
+Lemmas:
+
+* `finite_box`, `finite_rect`
+* `finite_edges_in_box`
+* `boundary_finite`, `boundary_nonempty` (under simple conditions)
+* “any walk staying in region uses only edges in region”: `walk_edges_subset_edgesInRegion`
+
+File `Percolation/Measure/SetBernoulli.lean`
+
+Imports `Mathlib.Probability.Distributions.SetBernoulli`. ([Lean Community][1])
+
+Definitions:
+
+* `P (p : unitInterval) : Measure (Set (Edge d)) := setBernoulli univ p`
+
+Lemmas:
+
+* `isProbabilityMeasure_P`
+* `measurable_mem_edge` for `e ∈ ω`
+* `measurable_restrict_finset` machinery
+* `independence_disjoint_finsets` (derive from product structure)
+* coupling/monotonicity tools if you want them
+
+File `Percolation/Open/Connectivity.lean`
+
+Definitions:
+
+* `openAdj ω x y`
+* `Walk.AllOpen`
+* `OpenConnected ω x y`
+* `connectsToBoundary n`
+* `percolates := ⋂ n, connectsToBoundary n`
+* `theta p := P p percolates`
+
+Lemmas:
+
+* equivalence relation lemmas for `OpenConnected`
+* monotonicity in ω: `ω ⊆ ω' → OpenConnected ω x y → ...`
+* measurability: `MeasurableSet_connectsToBoundary`, `MeasurableSet_percolates`
+* monotonicity in p: `p ≤ q → theta p ≤ theta q`
+
+File `Percolation/TwoD/Duality.lean`
+
+Definitions:
+
+* rectangle crossing event `CrossLR (n m)`
+* dual graph objects and dual config map `dualConfig : ω ↦ ωᵈ`
+* dual crossing event `DualCrossTB (n m)` etc.
+
+Core duality lemmas:
+
+* `crossing_dichotomy`: `CrossLR ω ∨ DualCrossTB ωᵈ`
+* `crossing_disjoint`: `¬ (CrossLR ω ∧ DualCrossTB ωᵈ)`
+* `crossing_complement`: `CrossLR ω ↔ ¬ DualCrossTB ωᵈ`
+
+Symmetry lemma:
+
+* At $p=1/2$, `P_{1/2}(CrossLR n n) = 1/2` (square)
+
+File `Percolation/TwoD/RSW.lean`
+
+Assumptions/inputs:
+
+* Harris inequality for increasing events (you can place it in a separate file and import it)
+* duality and square symmetry at $1/2$
+
+Statements:
+
+* `rsw_rect_lower (ρ) : ∃ c>0, ∀ n, P_{1/2}(CrossLR (⌊ρ*n⌋) n) ≥ c`
+* similar upper bound via duality: `≤ 1 - c`
+
+Many intermediate gluing lemmas.
+
+File `Percolation/TwoD/Russo.lean`
+
+Finite-dimensional measure on `edgesInRect`:
+
+* define `P_p^F` and relate it to restriction of the infinite measure
+
+Russo formula:
+
+* define pivotal edges
+* prove `d/dp P_p(A) = E_p[#pivotals]` for events depending on finite `F`
+
+Pivotal lower bounds:
+
+* pivotal implies four-arm
+* RSW implies four-arm probability estimates
+* expected pivotals grows like `c log n`
+
+Conclude sharp threshold for crossing:
+
+* for `p>1/2`, `P_p(CrossLR n n) → 1`
+
+File `Percolation/TwoD/Supercritical.lean`
+
+* define a sequence of “good events” forcing connections outward
+* prove summable failure probabilities
+* apply Borel-Cantelli (from mathlib) ([Lean Community][3])
+* conclude `θ(p) > 0` for `p>1/2`
+
+File `Percolation/TwoD/Subcritical.lean`
+
+* use duality and supercritical result at `q = 1-p`
+* construct closed dual circuits infinitely often
+* conclude `θ(p)=0` for `p<1/2`
+
+File `Percolation/TwoD/CriticalProbability.lean`
+
+* define `p_c` from θ
+* prove `p_c = 1/2`
+
+Where mathlib already helps, concretely
+
+* Product Bernoulli measure on random subsets is already there as `ProbabilityTheory.setBernoulli`, with notation `setBer(u, p)` and it is a probability measure. ([Lean Community][1])
+* Infinite product measure infrastructure exists (`MeasureTheory.Measure.infinitePi`) and a file dedicated to independence of infinite families. ([Lean Community][2])
+* There is extensive support for finite and countable product measures (`Measure.pi` for finite index, plus a `pi'` construction for countable index types is discussed in the product-measure docs). ([Lean Community][4])
+* Borel-Cantelli tools exist in mathlib, and the docs point to the lemmas typically used for the first and second Borel-Cantelli statements. ([Lean Community][3])
+
+What you will almost surely need to write yourself
+
+* The duality dichotomy for rectangle crossings on the square lattice (unless you find an existing development you can import).
+* Harris inequality in the exact “increasing events in a finite Bernoulli cube” form (mathlib has ingredients, but you will likely want a percolation-friendly lemma).
+* RSW itself.
+* Russo’s formula specialized to percolation events, plus pivotal and arm-event geometry.
+* The renormalization / finite-size criterion turning crossing estimates into an infinite cluster event.
+
+
+[1]: https://leanprover-community.github.io/mathlib4_docs/Mathlib/Probability/Distributions/SetBernoulli.html "Mathlib.Probability.Distributions.SetBernoulli"
+[2]: https://leanprover-community.github.io/mathlib4_docs/Mathlib/Probability/Independence/InfinitePi.html "Mathlib.Probability.Independence.InfinitePi"
+[3]: https://leanprover-community.github.io/mathlib4_docs/Mathlib/Probability/Martingale/BorelCantelli.html "Mathlib.Probability.Martingale.BorelCantelli"
+[4]: https://leanprover-community.github.io/mathlib4_docs/Mathlib/MeasureTheory/Constructions/Pi.html "Mathlib.MeasureTheory.Constructions.Pi"
