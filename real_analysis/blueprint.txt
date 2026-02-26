@@ -1,0 +1,525 @@
+LEAN4 FOR REAL ANALYSIS
+Integrated blueprint (text only)
+
+0. BOOK GOALS, AUDIENCE, AND HOUSE STYLE
+
+0.1 Audience and prerequisites
+
+* Audience: readers who already know standard undergraduate real analysis and want to formalize it in Lean4 using Mathlib.
+* Math prerequisites: limits of sequences and functions, continuity, differentiation, Riemann (or Lebesgue-light) integration, basic topology on ℝ, and comfort with epsilon arguments.
+* Lean prerequisites: none.
+
+0.2 What this book teaches (and what it does not)
+
+* Core focus: how to express real analysis statements in Mathlib idioms, then prove them in Lean with stable proof engineering.
+* Secondary focus: how to find and reuse existing Mathlib lemmas, and how to write maintainable “library-style” proofs.
+* Not a replacement for a Lean tutorial: we teach only the Lean core you need for analysis.
+
+0.3 Global learning loop used in every section
+Each section repeats the same cycle.
+
+* One target theorem, chosen to introduce a specific proof pattern or Mathlib API.
+* The usual mathematical proof (informal but correct).
+* A Lean implementation (first a short robust proof; sometimes also a “from definitions” proof as a contrast).
+* Explanation of the new tactics, commands, and library objects used.
+* Exercises that reuse the same pattern in slightly different contexts.
+
+0.4 Two proof modes, both used intentionally
+
+* API mode: use Mathlib lemmas and structures as intended; the proof is short and stable.
+* Definition mode: unfold key definitions and run an epsilon style argument; used sparingly to build understanding and to teach debugging.
+
+0.5 Repository and file structure (recommended)
+
+* Root folder RealAnalysisLean/
+
+  * Common.lean: shared imports, notation, local helper lemmas, and “book conventions”
+  * Chapter01_Setup/
+
+    * S01_FirstFile.lean
+    * S02_ReadingTypes.lean
+    * ...
+  * Chapter02_CoreLean/
+  * ...
+* Each section is one Lean file so the reader can compile incrementally.
+* Also provide an optional ChapterXX.lean aggregator that imports that chapter’s section files, for readers who prefer “one file per chapter”.
+
+0.6 Import policy
+
+* Early chapters can start with `import Mathlib` for simplicity.
+* From the topology chapter onward, progressively tighten imports in the repository version, but keep the book text readable by showing only what matters.
+
+0.7 Notation and open scoped conventions (introduced once, then reused)
+
+* `open scoped Topology` when filters and neighborhoods appear.
+* `open Filter` and `open scoped BigOperators` when needed.
+* `open Set` when doing set algebra frequently.
+* All such choices are declared in Common.lean and repeated briefly in the first section that uses them.
+
+PART I. GETTING READY TO DO ANALYSIS IN MATHLIB
+
+CHAPTER 1. PROJECT SETUP AND READING MATHLIB LIKE A MATHEMATICIAN
+
+Section 1.1 Creating a project and compiling a first file
+
+* Target theorem: a tiny arithmetic fact in ℕ and in ℝ, mainly to confirm the toolchain.
+* Lean focus: lake project, file compilation, imports, tactic blocks.
+* New tools: `by`, `simp`, `norm_num`.
+* Exercises: a small checklist of “prove three trivial goals” with different tactics.
+
+Section 1.2 Reading types as documentation
+
+* Target theorem: a one-line lemma that is easy once you locate the right name.
+* Lean focus: how to inspect definitions and lemma types.
+* New commands: `#check`, `#print`, and a “search habit” section (name guessing, browsing namespaces, checking simp lemmas).
+* Exercises: locate and use lemmas for identities like x + 0 = x, x * 1 = x, and basic order facts.
+
+Section 1.3 Structuring files: sections, variables, and local assumptions
+
+* Target theorem: rewriting under hypotheses (a = b implies a + c = b + c).
+* Lean focus: scope management and readability.
+* New tactics: `intro`, `rw`, basic use of `section` and `variable`.
+* Exercises: variations with subtraction, function application, and rewriting in larger expressions.
+
+CHAPTER 2. CORE LEAN MECHANICS YOU WILL USE EVERY DAY
+
+Section 2.1 Definitional equality and `rfl`
+
+* Target theorem: a computation equality on ℕ that closes by reduction.
+* Lean focus: when definitional unfolding is enough.
+* New tactic: `rfl`.
+* Exercises: try `rfl` on goals where it fails (for variables) and explain why.
+
+Section 2.2 Simplification as controlled rewriting: `simp` and simp-lemmas
+
+* Target theorem: standard recursion identity on ℕ, proved by induction with simp.
+* Lean focus: `simp` as a rewriting engine, and how to add rewrite rules locally.
+* New tactics: `simp`, `induction`.
+* Exercises: prove add_zero, mul_one, add_assoc on ℕ and reflect on induction direction.
+
+Section 2.3 Proofs as functions: implication and ∀
+
+* Target theorem: P → Q → P and (∀ x, P x) → P a.
+* Lean focus: introduction and use of hypotheses.
+* New tactics: `intro`, `exact`, `apply`, `specialize`.
+* Exercises: write three variants of the same lemma, once by direct application, once with `specialize`, once with a `have`.
+
+Section 2.4 Conjunction, disjunction, and existence as data
+
+* Target theorem: destruct and build And/Or/Exists statements.
+* Lean focus: pairing and unpacking.
+* New tactics: `constructor`, `cases`, `rcases`, `use`, `refine`.
+* Exercises: standard elimination lemma for Or, extracting witnesses, building witnesses.
+
+Section 2.5 Equality reasoning and readable chains: `rw` and `calc`
+
+* Target theorem: transitivity for = and ≤, plus a short algebra chain.
+* Lean focus: rewriting and chain proofs that read like mathematics.
+* New tools: `rw` in both directions, `calc`, `show`, basic congruence usage.
+* Exercises: symmetry of equality, associativity lemma, inequality transitivity via `calc`.
+
+Section 2.6 Case splits and negation hygiene
+
+* Target theorem: a simple lemma where you genuinely need cases.
+* Lean focus: managing classical logic only when needed.
+* New tactics: `by_cases`, `by_contra`, `push_neg` (introduced carefully, with a warning about overuse).
+* Exercises: basic abs facts by case splitting, plus one exercise that avoids case splitting by using an existing lemma.
+
+PART II. ALGEBRA, ORDER, AND THE REAL LINE AS A WORKSPACE
+
+CHAPTER 3. AUTOMATION FOR ALGEBRA AND INEQUALITIES (THE ANALYST’S MINIMUM)
+
+Section 3.1 Polynomial identities by normalization
+
+* Target theorem: (x + y)^2 expansion.
+* New tactic: `ring`.
+* Exercises: (x − y)^2, factorization identities, small polynomial rearrangements.
+
+Section 3.2 Linear and nonlinear inequalities
+
+* Target theorem: a linear inequality solved by arithmetic closure.
+* New tactics: `linarith`, `nlinarith`.
+* Exercises: rewrite goals into a form suitable for linarith, then solve.
+
+Section 3.3 Clearing denominators safely
+
+* Target theorem: an identity involving division under a nonzero hypothesis.
+* New tactic: `field_simp` (and how it generates side goals).
+* Exercises: one goal that needs field_simp + ring, and one that needs field_simp + linarith.
+
+Section 3.4 Arithmetic computation tools
+
+* Target theorem: small numerical inequalities in ℚ/ℝ.
+* New tactics: `norm_num`, `positivity` (the latter introduced as optional but very useful).
+* Exercises: choose the right tool, and practice minimal proof scripts.
+
+CHAPTER 4. CASTS AND COERCIONS (ℕ, ℤ, ℚ, ℝ)
+
+Section 4.1 The casting problem as a proof engineering problem
+
+* Target theorem: m ≤ n in ℕ implies (m : ℝ) ≤ n.
+* New tactics: `norm_cast`, `exact_mod_cast`.
+* Exercises: rewrite mixed-type statements into cast-friendly forms, then apply linarith.
+
+Section 4.2 Archimedean moves and “choose N large enough”
+
+* Target theorem: ∀ x : ℝ, ∃ n : ℕ, x < n and a quantitative 1/n < ε lemma.
+* Lean focus: existence lemmas, handling casts cleanly, finishing with nlinarith.
+* Exercises: standard epsilon arguments with explicit N, then a version that is mostly “library lemma + nlinarith”.
+
+CHAPTER 5. ABSOLUTE VALUE, INTERVALS, AND SET MEMBERSHIP
+
+Section 5.1 Order lemmas and chaining inequalities cleanly
+
+* Target theorem: monotonicity under addition and multiplication (with sign hypotheses).
+* Lean focus: using order lemmas, and writing readable inequality chains.
+* Optional tools introduced: `gcongr` (as an alternative to manual monotonicity lemmas).
+* Exercises: prove variants with subtraction, products with nonnegativity assumptions, sums of squares.
+
+Section 5.2 Absolute value as the bridge to intervals
+
+* Target theorem: |x − a| < ε implies a − ε < x and x < a + ε.
+* Lean focus: using existing abs characterizations when available; otherwise by_cases + simp.
+* New lemmas/tools: `abs_of_nonneg`, `abs_of_nonpos`, and the standard “abs bounds iff pair of inequalities” lemma families.
+* Exercises: translate between |x − a| ≤ ε and membership in Icc (a − ε) (a + ε), in both directions.
+
+Section 5.3 Intervals as sets: simp rules for membership
+
+* Target theorem: x ∈ Icc a b gives two inequalities, and subset inclusions between intervals.
+* Lean focus: `simp` for membership, `intro x hx` for subset goals, and `ext` for set equality.
+* Exercises: inclusions between Ioo/Icc, emptiness when endpoints are reversed, one equality proved via ext + simp.
+
+PART III. SETS AND FUNCTIONS AS THE LANGUAGE OF ANALYSIS
+
+CHAPTER 6. SET EXTENSIONALITY, PREIMAGES, IMAGES, AND FUNCTION EXTENSIONALITY
+
+Section 6.1 Set extensionality template
+
+* Target theorem: commutativity and distributivity identities for unions/intersections/differences.
+* Lean focus: `ext x; simp` as the default method when the statement is definitional.
+* New tools: `ext`, optional `tauto` or `aesop` for pure propositional goals (introduced cautiously).
+* Exercises: a short list of classical set identities, all done by ext + simp.
+
+Section 6.2 Function extensionality and pointwise reasoning
+
+* Target theorem: (∀ x, f x = g x) implies f = g, and simplifications with composition.
+* Lean focus: `funext`, simplifying function expressions.
+* Exercises: associativity of composition, rewriting under f = g, and a few pointwise simplifications.
+
+Section 6.3 Preimages and images as analysis transport
+
+* Target theorem: preimage distributes over union/intersection/diff/compl.
+* Lean focus: ext + simp for preimages; rcases for images since membership is existential.
+* New tactics emphasized: `rcases` with patterns like ⟨x, hx, rfl⟩.
+* Exercises: image monotonicity, image of union, and a counterexample where image of intersection is only a subset.
+
+PART IV. TOPOLOGY OF ℝ AND THE FILTER FRAMEWORK
+
+CHAPTER 7. METRIC AND TOPOLOGICAL BASICS ON ℝ
+
+Section 7.1 Openness and closedness of intervals
+
+* Target theorem: Ioo a b is open and Icc a b is closed.
+* Lean focus: recognizing when a theorem is already in Mathlib and proving by `simpa using ...`.
+* New tools: `simpa` as “simp plus matching”.
+* Exercises: do all standard intervals; practice union/intersection closure properties for open/closed sets.
+
+Section 7.2 Metric balls and the dist-to-abs bridge on ℝ
+
+* Target theorem: x ∈ Metric.ball a ε ↔ |x − a| < ε.
+* Lean focus: rewriting membership to inequalities; dist on ℝ is abs difference.
+* Exercises: closedBall analogue, and inclusions between balls and interval neighborhoods.
+
+CHAPTER 8. NEIGHBORHOODS AND FILTERS AS WORKING OBJECTS
+
+Section 8.1 Neighborhoods `𝓝 a` and the usable epsilon-ball characterization
+
+* Target theorem: s ∈ 𝓝 a ↔ ∃ ε > 0, Metric.ball a ε ⊆ s (in metric spaces).
+* Lean focus: unpacking ∃ and subset goals, and seeing subsets as functions.
+* New tactics: `rcases`, `refine`, `use` in the neighborhood context.
+* Exercises: show ball a ε ∈ 𝓝 a, and derive a few basic consequences.
+
+Section 8.2 `atTop` and “eventually”
+
+* Target theorem: combine eventual statements and move ∀ into eventually.
+* Lean focus: `∀ᶠ n in atTop, P n` as the Lean form of “for n large enough”.
+* New tools: `filter_upwards`, `eventually_of_forall`.
+* Exercises: translate between “∃ N, ∀ n ≥ N” and eventual statements for concrete predicates.
+
+Section 8.3 From `Tendsto` to classical epsilon statements (sequences on ℝ)
+
+* Target theorem: Tendsto u atTop (𝓝 a) gives ∀ ε > 0, eventually |u n − a| < ε.
+* Lean focus: apply Tendsto to a neighborhood, choose a ball neighborhood, then rewrite membership to abs inequality.
+* Exercises: reproduce the argument for closed balls and discuss strict vs non-strict issues via library lemmas.
+
+PART V. LIMITS AND CONTINUITY (THE WORKHORSE LEMMA COLLECTION)
+
+CHAPTER 9. LIMITS OF SEQUENCES
+
+Section 9.1 Basic limits and eventual equality
+
+* Target theorems: constant sequences, shift invariance, and “eventually equal implies same limit”.
+* Lean focus: Filter.EventuallyEq and rewriting with it.
+* Exercises: shift by 1 and by k, stability under eventual equality.
+
+Section 9.2 Algebra of limits
+
+* Target theorems: limits of sums, products, negation, scalar multiples.
+* Lean focus: chaining API lemmas and finishing by simpa.
+* Exercises: write each theorem twice, once by chaining short lemmas and once by using a single packed lemma if available.
+
+Section 9.3 Order consequences and squeeze
+
+* Target theorems: squeeze theorem, and passing inequalities to limits.
+* Lean focus: combining eventual inequalities with filter_upwards, then applying a squeeze lemma.
+* Exercises: a squeeze application with 1/(n+1), and two “limit respects ≤” corollaries.
+
+CHAPTER 10. CAUCHY SEQUENCES AND COMPLETENESS OF ℝ
+
+Section 10.1 Tendsto implies Cauchy
+
+* Target theorem: if u → a then u is Cauchy.
+* Lean focus: use built-in lemmas and understand the statement shape.
+* Exercises: show a convergent sequence is Cauchy, then apply to examples.
+
+Section 10.2 Cauchy implies convergent in ℝ
+
+* Target theorem: Cauchy sequences of reals converge (completeness).
+* Lean focus: relying on instances and locating the right lemma.
+* Exercises: prove concrete sequences are Cauchy (1/(n+1), r^n with |r| < 1), then conclude convergence.
+
+CHAPTER 11. LIMITS OF FUNCTIONS AND CONTINUITY
+
+Section 11.1 Tendsto at a point and composition
+
+* Target theorems: Tendsto id (𝓝 a) (𝓝 a) and composition of limits.
+* Lean focus: Tendsto.comp pattern and expression management with Function.comp.
+* Exercises: limit laws at a point mirroring sequence laws.
+
+Section 11.2 Definitions: Continuous, ContinuousAt, ContinuousOn
+
+* Target theorems: constants and identity are continuous; sums/products/compositions preserve continuity.
+* Lean focus: chaining continuity lemmas in API style.
+* Exercises: continuity of x^2, |x|, max (f x) (g x), and simple polynomials.
+
+Section 11.3 Extracting epsilon-delta from ContinuousAt (metric spaces)
+
+* Target theorem: ContinuousAt f a implies the classical ε-δ definition in abs form on ℝ.
+* Lean focus: the metric characterization lemma for continuity, then rewriting dist to abs.
+* Exercises: do affine maps and squaring with explicit δ choices for at least one proof.
+
+Section 11.4 Intermediate Value Theorem as an existence engine
+
+* Target theorem: if f is continuous on [a,b] and y lies between f a and f b, then ∃ c ∈ [a,b], f c = y.
+* Lean focus: apply IVT lemma, then unpack with rcases and finish with inequality bookkeeping.
+* Exercises: root existence (f a ≤ 0 ≤ f b), and a concrete existence claim like x^3 = 2 on a chosen interval.
+
+Section 11.5 Compactness on [a,b] and the extreme value theorem
+
+* Target theorem: continuous on Icc a b implies attainment of max/min and boundedness.
+* Lean focus: IsCompact Icc, continuous image of compact, and “exists maximizer” lemma shapes.
+* Exercises: boundedness in abs form, uniform continuity on Icc (as an optional extension), minimum attainment.
+
+PART VI. SERIES AND INFINITE SUMS
+
+CHAPTER 12. FINITE SUMS AS PRACTICE
+
+Section 12.1 BigOperators and simp for finite sums
+
+* Target theorem: ∑ i in range n, c = n*c (in ℝ).
+* Lean focus: importing BigOperators, letting simp do the work, and learning when induction is easier.
+* Exercises: sums of constants, sum of i over range (search for the lemma), telescoping sums.
+
+CHAPTER 13. INFINITE SERIES: Summable AND tsum
+
+Section 13.1 First infinite series: geometric
+
+* Target theorems: if |r| < 1 then Summable (fun n => r^n), and optionally the tsum value.
+* Lean focus: applying packaged lemmas, discharging side conditions by linarith or nlinarith.
+* Exercises: summability of (1/2)^n, shifts, and a partial-sum estimate.
+
+Section 13.2 Comparison and absolute convergence
+
+* Target theorem: 0 ≤ u n ≤ v n and Summable v implies Summable u (in an appropriate form).
+* Lean focus: choosing the right comparison lemma, pushing inequalities pointwise, and switching to norms when needed.
+* Exercises: p-series style example via library results, sums of two geometric series, absolute convergence implies convergence.
+
+Section 13.3 Uniform convergence via series 
+
+* Target theorem: Weierstrass M-test on a set, stated and used.
+* Lean focus: learning how Mathlib phrases uniform convergence, and how to apply it rather than reprove it.
+* Exercises: apply M-test to x^n/2^n on [-1,1], and show uniform convergence implies pointwise convergence.
+
+PART VII. DIFFERENTIATION
+
+CHAPTER 14. DERIVATIVES AS AN API: HasDerivAt, deriv, RULES
+
+Section 14.1 First derivatives: constants and identity
+
+* Target theorems: HasDerivAt id 1 x and HasDerivAt (fun _ => c) 0 x.
+* Lean focus: reading HasDerivAt statements and converting to derivative expressions when desired.
+* Exercises: affine maps, switching between HasDerivAt and deriv forms.
+
+Section 14.2 Sum, product, chain rules as compositional tools
+
+* Target theorem: derivative of x^2 is 2x (proved by product rule plus ring).
+* Lean focus: chaining derivative lemmas and finishing by algebra simplification.
+* Exercises: (x+1)^2, polynomial products, and 1/x on x ≠ 0 (with careful hypothesis handling).
+
+Section 14.3 Differentiability implies continuity
+
+* Target theorem: DifferentiableAt f a implies ContinuousAt f a.
+* Lean focus: short proofs by lemma application and simpa.
+* Exercises: polynomials are continuous everywhere via differentiability, and an optional non-differentiability example for |x| at 0.
+
+Section 14.4 Mean Value Theorem and monotonicity 
+
+* Target theorem: derivative sign implies monotonicity on an interval, or a Lipschitz bound from |f'|.
+* Lean focus: invoking MVT, unpacking the witness, then bounding slopes by inequalities.
+* Exercises: monotonicity of x^3, and a derivative bound implies Lipschitz for linear functions.
+
+PART VIII. INTEGRATION (INTERVAL INTEGRALS WITH MINIMAL MEASURE THEORY)
+
+CHAPTER 15. A MINIMAL MEASURE TOOLKIT FOR ANALYSTS
+
+Section 15.1 Measurability closure lemmas you will actually use
+
+* Target theorems: measurable constants, closure under +, *, max, abs, and composition.
+* Lean focus: dot-notation closure lemmas, keeping proofs short.
+* Exercises: measurability of polynomials and abs-based functions.
+
+CHAPTER 16. INTERVAL INTEGRALS
+
+Section 16.1 IntervalIntegral notation and linearity basics
+
+* Target theorem: ∫ x in a..b, c = (b − a) * c.
+* Lean focus: using intervalIntegral lemmas and simplifying results.
+* Exercises: compute integrals of constants on [0,1], linearity for sums of constants, and a simple algebraic cleanup exercise.
+
+Section 16.2 Fundamental theorem of calculus as an application interface
+
+* Target theorem: a standard FTC statement (choose one Mathlib form and stick to it).
+* Lean focus: assumption engineering, collecting continuity/integrability hypotheses and aligning them with the theorem statement.
+* Exercises: use FTC for f(x)=x and f(x)=x^2 or x^3, and explicitly record which hypotheses were needed and how you obtained them.
+
+Section 16.3 Convergence under the integral sign
+
+* Target theorem: a dominated convergence style result in a form suitable for [a,b] integrals.
+* Lean focus: manipulating “almost everywhere” statements and integrability assumptions.
+* Exercises: a simple dominated convergence example like x/(n+1) on [0,1], and an optional monotone convergence exercise.
+
+PART IX. SYNTHESIS AND MINI-PROJECTS
+
+CHAPTER 17. CASE STUDIES ON [a,b]
+
+Section 17.1 Heine–Borel consequences for continuous functions
+
+* Targets: boundedness, attainment of max/min, uniform continuity on Icc.
+* Lean focus: composing compactness and continuity lemmas, keeping the proof readable with intermediate names.
+* Exercises: derive several corollaries as reusable lemmas.
+
+Section 17.2 One full epsilon proof in Lean (definition mode showcase)
+
+* Target theorem: limit of sums via an epsilon/2 argument, written without relying on the final packaged lemma.
+* Lean focus: coordinating multiple eventual statements, using the triangle inequality for abs, and finishing with linarith.
+* Exercises: product limit by explicit bounding, and continuity of abs via epsilon.
+
+CHAPTER 18. WRITING YOUR OWN REUSABLE LEMMA LIBRARY
+
+Section 18.1 Stable lemma shapes and simp discipline
+
+* Targets: “adding a constant preserves convergence”, “shift preserves convergence”, “continuous polynomial map” as reusable statements.
+* Lean focus: writing lemmas that are easy to apply later, naming conventions, avoiding brittle proofs.
+* Exercises: build a small library of five lemmas and use them in a short project file.
+
+PART X. PROBABILITY 
+
+CHAPTER 19. PROBABILITY SPACES AND RANDOM VARIABLES
+
+Section 19.1 Events as measurable sets and probability as measure
+
+* Target theorem: P(univ) = 1 and P(A complement) = 1 - P(A).
+* Lean focus: reading probability-space assumptions and reusing measure lemmas through the probability API.
+* New tools: ProbabilityTheory notation for probabilities, measurability simp lemmas.
+* Exercises: prove finite additivity on disjoint events and monotonicity of probability.
+
+Section 19.2 Random variables as measurable functions
+
+* Target theorem: closure of random variables under addition, multiplication, max, abs, and composition with continuous maps.
+* Lean focus: move smoothly between `Measurable` and algebraic expressions.
+* Exercises: show polynomial functions of a random variable are measurable, and build event sets like {x | X x <= t}.
+
+Section 19.3 Indicators and probability by integration 
+
+* Target theorem: expectation of indicator of A equals probability of A (in a standard statement form).
+* Lean focus: indicator functions, integrability side conditions, and rewriting between set and function viewpoints.
+* Exercises: compute expectation of indicators for simple partitions and derive union bounds.
+
+CHAPTER 20. EXPECTATION, INDEPENDENCE, AND CONVERGENCE IN PROBABILITY
+
+Section 20.1 Expectation API basics
+
+* Target theorem: expectation of constants and linearity of expectation.
+* Lean focus: selecting the right expectation theorem variants and discharging integrability assumptions.
+* Exercises: expectation of affine transforms and finite sums of integrable random variables.
+
+Section 20.2 Variance and second moments
+
+* Target theorem: variance is nonnegative and var(X + c) = var(X).
+* Lean focus: expand definitions, simplify algebra, and reuse expectation linearity lemmas.
+* Exercises: variance of constants, scaling rule var(a * X) = a^2 * var(X), and a short second-moment bound.
+
+Section 20.3 Independence and product expectations 
+
+* Target theorem: under independence and integrability, E[X * Y] = E[X] * E[Y].
+* Lean focus: reading independence assumptions and matching them to theorem signatures.
+* Exercises: independent indicators, covariance of independent variables, and quick checks with Bernoulli-style examples.
+
+Section 20.4 Convergence modes and a first law of large numbers result 
+
+* Target theorem: one clean LLN-style statement from Mathlib, applied to an explicit sequence.
+* Lean focus: navigating convergence-in-probability/almost-sure statements and minimizing boilerplate by API-first proofs.
+* Exercises: specialize the theorem to bounded i.i.d. variables and compare assumptions across theorem variants.
+
+APPENDICES (REFERENCE AND WORKFLOW)
+
+Appendix A Tactic and command index by first appearance
+
+* Core: rfl, intro, exact, apply, refine, have, show, suffices, constructor, cases, rcases, use
+* Rewriting: rw, simp, simpa, simp_rw, funext, ext, calc
+* Automation: norm_num, ring, linarith, nlinarith, field_simp, positivity
+* Filters: filter_upwards, eventually_of_forall, EventuallyEq patterns
+* Logic hygiene: by_cases, by_contra, push_neg
+* Inspection: #check, #print, and the book’s lemma-finding workflow
+
+Appendix B How to find the lemma you need (a repeatable routine)
+
+* Start from goal shape, simplify it into a standard form (often by simp), then search by namespace and known lemma families.
+* Learn a small “family list” to memorize: abs inequalities, interval membership simp lemmas, Tendsto/Continuous API lemmas, and integral/derivative closure lemmas.
+
+Appendix C Common pitfalls and debugging patterns
+
+* Cast problems: norm_cast and exact_mod_cast, and the habit “fix casts before linarith”.
+* simp surprises: using simp with local rewrite lists, and avoiding global simp attributes unless you are sure.
+* Type inference annoyances: annotating constants as (0 : ℝ), (1 : ℝ) when necessary.
+* When automation fails: prepare the goal first, then run linarith/ring.
+
+Appendix D Suggested end-of-part projects
+
+* After Part IV: formalize a small collection of limit laws and apply them to polynomial limits.
+* After Part V: prove a root existence result for a concrete continuous function using IVT.
+* After Part VIII: compute a short list of interval integrals using intervalIntegral lemmas and FTC, documenting hypotheses.
+* After Part X: formalize a short probability toolkit (indicator expectation, variance lemmas, and one concentration-style corollary).
+
+End matter: a concept map from textbook analysis to Mathlib
+
+* Limits: Filter.Tendsto
+* Neighborhoods: 𝓝 a
+* Sequence convergence: Tendsto u atTop (𝓝 a)
+* Continuity: Continuous, ContinuousAt, ContinuousOn
+* Derivatives: HasDerivAt, deriv
+* Integrals: intervalIntegral and integral APIs
+* Series: Summable and tsum
+* Probability: probability measures and event APIs
+* Random variables: Measurable functions on a probability space
+* Expectation: expectation/integral APIs
