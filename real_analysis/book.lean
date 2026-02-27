@@ -84,9 +84,9 @@ Core commands:
 Habit: before proving, inspect candidate lemmas and namespaces.
 -/
 
-#check Nat.add_assoc
-#check add_zero
-#check zero_le
+-- #check Nat.add_assoc
+-- #check add_zero
+-- #check zero_le
 
 example (x : Real) : x + 0 = x := by
   simp
@@ -418,11 +418,22 @@ example (u v : Nat -> Real) (a b : Real)
 
 /-! ### 9.3 Squeeze/order consequences
 
-Blueprint target here includes squeeze-style theorems.
-In this integrated file we keep this as an API placeholder:
-- Start with eventual inequalities (`filter_upwards`).
-- Apply the appropriate squeeze lemma from Mathlib.
+Two canonical API patterns:
+1. Squeeze theorem from eventual inequalities.
+2. Passing eventual order relations to the limit.
 -/
+
+example (u v w : Nat -> Real) (a : Real)
+    (hu : Tendsto u atTop (𝓝 a)) (hw : Tendsto w atTop (𝓝 a))
+    (huv : ∀ᶠ n in atTop, u n <= v n) (hvw : ∀ᶠ n in atTop, v n <= w n) :
+    Tendsto v atTop (𝓝 a) := by
+  exact tendsto_of_tendsto_of_tendsto_of_le_of_le' hu hw huv hvw
+
+example (u v : Nat -> Real) (a b : Real)
+    (hu : Tendsto u atTop (𝓝 a)) (hv : Tendsto v atTop (𝓝 b))
+    (huv : ∀ᶠ n in atTop, u n <= v n) :
+    a <= b := by
+  exact le_of_tendsto_of_tendsto hu hv huv
 
 end Chapter09
 
@@ -479,27 +490,45 @@ example (f g : Real -> Real) (hf : Continuous f) (hg : Continuous g) :
 
 /-! ### 11.3 Extracting epsilon-delta from `ContinuousAt`
 
-Blueprint intent:
-- Use metric-space characterization lemmas.
-- Rewrite `dist` as `abs` on `Real`.
-- This is a good place for one explicit definition-mode proof.
+Definition-mode extraction from the metric characterization.
 -/
+
+example {f : Real -> Real} {a : Real} (hf : ContinuousAt f a) :
+    ∀ eps > 0, ∃ δ > 0, ∀ x : Real, |x - a| < δ -> |f x - f a| < eps := by
+  intro eps heps
+  rcases Metric.continuousAt_iff.mp hf eps heps with ⟨δ, hδ, hδ_spec⟩
+  refine ⟨δ, hδ, ?_⟩
+  intro x hx
+  simpa [Real.dist_eq] using (hδ_spec hx)
 
 /-! ### 11.4 Intermediate Value Theorem
 
-Blueprint intent:
-- Apply a packaged IVT theorem.
-- `rcases` unpacking for witness `c`.
-- Interval bookkeeping with inequalities.
+Use packaged IVT and unpack the witness.
 -/
+
+example {f : Real -> Real} {a b : Real} (hab : a <= b)
+    (hf : ContinuousOn f (Set.Icc a b)) (ha : f a <= 0) (hb : 0 <= f b) :
+    ∃ c ∈ Set.Icc a b, f c = 0 := by
+  have hzero : (0 : Real) ∈ Set.Icc (f a) (f b) := ⟨ha, hb⟩
+  rcases intermediate_value_Icc hab hf hzero with ⟨c, hc, hfc⟩
+  exact ⟨c, hc, hfc⟩
 
 /-! ### 11.5 Compactness + extreme value theorem on `[a,b]`
 
-Blueprint intent:
-- `isCompact_Icc`.
-- Continuous image of compact.
-- Existence of min/max points.
+On compact intervals, continuous functions attain extrema.
 -/
+
+example {f : Real -> Real} {a b : Real} (hab : a <= b)
+    (hf : ContinuousOn f (Set.Icc a b)) :
+    ∃ xMax ∈ Set.Icc a b, ∀ x ∈ Set.Icc a b, f x <= f xMax := by
+  have hne : (Set.Icc a b).Nonempty := nonempty_Icc.2 hab
+  exact isCompact_Icc.exists_isMaxOn hne hf
+
+example {f : Real -> Real} {a b : Real} (hab : a <= b)
+    (hf : ContinuousOn f (Set.Icc a b)) :
+    ∃ xMin ∈ Set.Icc a b, ∀ x ∈ Set.Icc a b, f xMin <= f x := by
+  have hne : (Set.Icc a b).Nonempty := nonempty_Icc.2 hab
+  exact isCompact_Icc.exists_isMinOn hne hf
 
 end Chapter11
 
@@ -537,18 +566,27 @@ example {r : Real} (hr : |r| < 1) : (∑' n : Nat, r ^ n) = (1 - r)⁻¹ := by
 
 /-! ### 13.2 Comparison and absolute convergence
 
-Blueprint intent:
-- Pick the right comparison lemma.
-- Prove pointwise bounds.
-- Move to `norm` inequalities when needed.
+Absolute convergence implies convergence, and comparison gives summability.
 -/
+
+example (f : Nat -> Real) (habs : Summable (fun n => |f n|)) : Summable f := by
+  exact Summable.of_abs habs
+
+example (f g : Nat -> Real) (hg_nonneg : ∀ n, 0 <= g n)
+    (hgf : ∀ n, g n <= f n) (hf : Summable f) :
+    Summable g := by
+  exact Summable.of_nonneg_of_le hg_nonneg hgf hf
 
 /-! ### 13.3 Uniform convergence via series (M-test)
 
-Blueprint intent:
-- Use existing Mathlib formulations directly.
-- Apply theorem interfaces instead of reproving.
+Use the M-test interface directly.
 -/
+
+example {f : Nat -> Real -> Real} {u : Nat -> Real} {s : Set Real}
+    (hu : Summable u) (hbound : ∀ n x, x ∈ s -> ‖f n x‖ <= u n) :
+    TendstoUniformlyOn (fun N x => Finset.sum (Finset.range N) (fun n => f n x))
+      (fun x => ∑' n : Nat, f n x) atTop s := by
+  simpa using tendstoUniformlyOn_tsum_nat hu hbound
 
 end Chapter13
 
@@ -581,11 +619,19 @@ example {f : Real -> Real} {a : Real} (h : DifferentiableAt Real f a) :
 
 /-! ### 14.4 Mean value theorem and monotonicity
 
-Blueprint intent:
-- Apply MVT interface lemmas.
-- Unpack witness points.
-- Convert derivative sign bounds to monotonicity/Lipschitz statements.
+Apply MVT and derivative-sign monotonicity APIs.
 -/
+
+example {f : Real -> Real} {a b : Real} (hab : a < b)
+    (hcont : ContinuousOn f (Set.Icc a b))
+    (hdiff : DifferentiableOn ℝ f (Set.Ioo a b)) :
+    ∃ c ∈ Set.Ioo a b, deriv f c = (f b - f a) / (b - a) := by
+  exact exists_deriv_eq_slope f hab hcont hdiff
+
+example {f : Real -> Real} (hf : Differentiable ℝ f)
+    (hderiv_nonneg : ∀ x, 0 <= deriv f x) :
+    Monotone f := by
+  exact monotone_of_deriv_nonneg hf hderiv_nonneg
 
 end Chapter14
 
@@ -627,17 +673,35 @@ example (a b : Real) : (∫ _x in a..b, (0 : Real)) = 0 := by
 
 /-! ### 16.2 FTC interface
 
-Blueprint intent:
-- Choose one theorem form and standardize around it.
-- Track continuity/integrability hypotheses explicitly.
+Two standard FTC interfaces: derivative of an interval integral and
+integral of a derivative.
 -/
+
+example (f : Real -> Real) (hf : Continuous f) (a b : Real) :
+    deriv (fun u => ∫ x in a..u, f x) b = f b := by
+  simpa using (Continuous.deriv_integral (f := f) hf a b)
+
+example (f : Real -> Real) (a b : Real)
+    (hderiv : ∀ x ∈ Set.uIcc a b, DifferentiableAt ℝ f x)
+    (hint : IntervalIntegrable (deriv f) MeasureTheory.volume a b) :
+    (∫ y in a..b, deriv f y) = f b - f a := by
+  simpa using (intervalIntegral.integral_deriv_eq_sub (a := a) (b := b) (f := f) hderiv hint)
 
 /-! ### 16.3 Convergence under the integral sign
 
-Blueprint intent:
-- Work with a.e. statements and integrability side conditions.
-- Keep statement forms adapted to interval integrals where possible.
+Dominated convergence is the standard API entry point.
 -/
+
+example {α ι : Type} [MeasurableSpace α] {μ : MeasureTheory.Measure α}
+    {F : ι -> α -> Real} {f : α -> Real} {l : Filter ι}
+    [l.IsCountablyGenerated] (bound : α -> Real)
+    (hF_meas : ∀ᶠ n in l, MeasureTheory.AEStronglyMeasurable (F n) μ)
+    (h_bound : ∀ᶠ n in l, ∀ᵐ x ∂μ, ‖F n x‖ <= bound x)
+    (hbound_int : MeasureTheory.Integrable bound μ)
+    (h_lim : ∀ᵐ x ∂μ, Tendsto (fun n => F n x) l (𝓝 (f x))) :
+    Tendsto (fun n => ∫ x, F n x ∂μ) l (𝓝 (∫ x, f x ∂μ)) := by
+  exact MeasureTheory.tendsto_integral_filter_of_dominated_convergence
+    (μ := μ) bound hF_meas h_bound hbound_int h_lim
 
 end Chapter16
 
@@ -660,11 +724,21 @@ example {f : Real -> Real} (hf : Continuous f) (a b : Real) :
 
 /-! ### 17.2 One explicit epsilon proof (definition mode showcase)
 
-Blueprint intent:
-- Coordinate multiple eventual statements.
-- Use triangle inequality plus epsilon/2 splitting.
-- This chapter is ideal for a long pedagogical proof script.
+Explicit eventual epsilon/2 proof with the triangle inequality.
 -/
+
+example (u v : Nat -> Real) (a b eps : Real)
+    (hue : ∀ᶠ n in atTop, |u n - a| < eps / 2)
+    (hve : ∀ᶠ n in atTop, |v n - b| < eps / 2) :
+    ∀ᶠ n in atTop, |(u n + v n) - (a + b)| < eps := by
+  filter_upwards [hue, hve] with n hun hvn
+  have htri : |(u n + v n) - (a + b)| <= |u n - a| + |v n - b| := by
+    have htri_norm : ‖(u n - a) + (v n - b)‖ <= ‖u n - a‖ + ‖v n - b‖ := norm_add_le _ _
+    simpa [sub_eq_add_neg, add_assoc, add_comm, add_left_comm] using
+      htri_norm
+  have hsum : |u n - a| + |v n - b| < eps / 2 + eps / 2 := add_lt_add hun hvn
+  have hlt : |(u n + v n) - (a + b)| < eps / 2 + eps / 2 := lt_of_le_of_lt htri hsum
+  simpa [add_halves] using hlt
 
 end Chapter17
 
@@ -711,12 +785,75 @@ Recommended implementation order:
 
 section Chapter19And20
 
-/-! Placeholder exercise shell for this part. -/
+variable {Ω : Type} [MeasurableSpace Ω]
 
-example : True := by
-  trivial
+example (μ : MeasureTheory.Measure Ω) [MeasureTheory.IsProbabilityMeasure μ] : μ Set.univ = 1 := by
+  simp [MeasureTheory.measure_univ]
+
+example (μ : MeasureTheory.Measure Ω) [MeasureTheory.IsProbabilityMeasure μ]
+    {s : Set Ω} (hs : MeasurableSet s) :
+    μ sᶜ = 1 - μ s := by
+  have hs_ne_top : μ s ≠ ⊤ := MeasureTheory.measure_ne_top μ s
+  simpa [MeasureTheory.measure_univ] using (MeasureTheory.measure_compl hs hs_ne_top)
+
+example (μ : MeasureTheory.Measure Ω) (X Y : Ω -> Real)
+    (hX : MeasureTheory.Integrable X μ) (hY : MeasureTheory.Integrable Y μ) :
+    (∫ ω, (X ω + Y ω) ∂μ) = (∫ ω, X ω ∂μ) + (∫ ω, Y ω ∂μ) := by
+  simpa using MeasureTheory.integral_add hX hY
 
 end Chapter19And20
+
+/-!
+## Chapter 21. Probability Toolkit (Chapter 3 in Part X)
+
+This chapter adds a compact, concrete toolbox that compiles on current
+Mathlib versions. We focus on measurability closure and basic expectation
+identities that are used repeatedly in probability proofs.
+-/
+
+section Chapter21
+
+variable {Ω : Type} [MeasurableSpace Ω]
+variable (μ : MeasureTheory.Measure Ω) [MeasureTheory.IsProbabilityMeasure μ]
+
+/-! ### 21.1 Random variables: measurability closure -/
+
+example {X Y : Ω -> Real} (hX : Measurable X) (hY : Measurable Y) :
+    Measurable (fun ω => X ω + Y ω) := by
+  exact hX.add hY
+
+example {X : Ω -> Real} (hX : Measurable X) :
+    Measurable (fun ω => |X ω|) := by
+  exact hX.abs
+
+example {X : Ω -> Real} (hX : Measurable X) :
+    Measurable (fun ω => X ω ^ 2) := by
+  simpa using (hX.pow_const 2)
+
+/-! ### 21.2 Expectation of constants and linearity -/
+
+example (c : Real) : (∫ _ : Ω, c ∂μ) = c := by
+  simp
+
+example {X Y : Ω -> Real} (hX : MeasureTheory.Integrable X μ)
+    (hY : MeasureTheory.Integrable Y μ) :
+    (∫ ω, X ω + Y ω ∂μ) = (∫ ω, X ω ∂μ) + (∫ ω, Y ω ∂μ) := by
+  simpa using MeasureTheory.integral_add hX hY
+
+example {X : Ω -> Real} (c : Real) :
+    (∫ ω, c * X ω ∂μ) = c * (∫ ω, X ω ∂μ) := by
+  simpa using (MeasureTheory.integral_const_mul c X)
+
+/-! ### 21.3 Convergence in probability: first-form API shape
+
+We record the standard "definition mode" predicate without proving a theorem,
+so later chapters can add results specialized to your local Mathlib API.
+-/
+
+def ConvergesInProbability (u : Nat -> Ω -> Real) (f : Ω -> Real) : Prop :=
+  ∀ eps > 0, Tendsto (fun n => μ {ω | |u n ω - f ω| > eps}) atTop (𝓝 0)
+
+end Chapter21
 
 /-!
 ## Appendices (Reference + Workflow)
