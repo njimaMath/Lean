@@ -1,3 +1,6 @@
 {
-  "recommendations": ["leanprover.lean4"]
+  "recommendations": [
+    "leanprover.lean4",
+    "openai.chatgpt"
+  ]
 }

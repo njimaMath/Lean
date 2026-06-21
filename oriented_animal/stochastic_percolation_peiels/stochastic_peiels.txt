@@ -1,0 +1,248 @@
+We shall use the counting bound from Theorem~\ref{thm:count-boundaries} (see C:\Users\Public\Github\Lean\oriented_animal\final_animal_bound\oriented_animal_bound.lean): there
+exists a constant $C<\infty$ such that, for all integers $N,L\ge 3$ with
+$N\le e^L$ and every integer $k\ge 1$,
+\[
+\Bigl|\Bigl\{\arpartial^{\mrm{in}} B(\omega):\ \omega\in\{0,1\}^{\arrow{E}},\ |\arpartial^{\mrm{in}} B(\omega)|=k,\ \mathcal C(\omega)^c\Bigr\}\Bigr|
+\le e^{Ck}.
+\]
+
+Fix integers $n,L\ge 3$ with $L\ge \log n$ (natural logarithm). In this
+section set
+\[
+T_m:=T_m^{n,L}:=\{m\}\times \Chi_L \quad(m\in[\![0,n]\!]).
+\]
+Thus $\arrow{E}_{n,L}$ is the set of oriented edges
+\[
+e=\langle (m,x),(m+1,y)\rangle,
+\qquad m\in[\![0,n-1]\!],\quad x,y\in \Chi_L,\quad |x-y|_\infty\le 1.
+\]
+
+Throughout this section, we endow $\{0,1\}^{\arrow{E}_{n,L}}$ with the product
+measure $\Pbb_p$ under which the family $(X_e)_{e\in \arrow{E}_{n,L}}$ is
+i.i.d.\ with
+\[
+\Pbb_p(X_e=1)=1-p,
+\qquad
+\Pbb_p(X_e=0)=p,
+\qquad e\in \arrow{E}_{n,L}.
+\]
+
+We construct $\omega=\omega(X)$ inductively as follows. We allow oriented paths
+of length zero, so every vertex of $T_0$ is initially reachable from $T_0$.
+Suppose that at the stage of edges from $T_m$ to $T_{m+1}$, reachability of
+vertices in $T_m$ has already been determined. For an edge
+$e=\langle (m,x),(m+1,y)\rangle$, set
+\[
+\omega_e=
+\begin{cases}
+X_e, & \text{if } (m,x) \text{ is reachable from } T_0 \text{ by oriented edges } f \text{ with } \omega_f=1,\\
+0, & \text{otherwise}.
+\end{cases}
+\]
+After this construction, an edge $e$ is called $\omega$-open if $\omega_e=1$,
+and $\omega$-closed if $\omega_e=0$.
+For two vertex sets $A,B\subset \Sbb_{n,L}$ write $A\leftrightarrow B$ if there
+exists an oriented path of $\omega$-open edges from some vertex of $A$ to some
+vertex of $B$, staying inside $\Sbb_{n,L}$.
+
+For a deterministic configuration $\omega$, write $\mathcal C_{n,L}(\omega)$
+for the condition that $T_0\leftrightarrow T_n$ in $\omega$. Under $\Pbb_p$ we
+use the abbreviation
+\[
+\mathcal C_{n,L}:=\mathcal C_{n,L}(\omega(X)).
+\]
+The reached set is
+\[
+B_{n,L}(\omega):=\{v\in \Sbb_{n,L}:\ T_0\leftrightarrow v\}.
+\]
+If $\mathcal C_{n,L}(\omega)^c$ holds, then
+$B_{n,L}(\omega)\cap T_n=\varnothing$.
+
+Let $F_{n,L}(\omega)$, $\arpartial_E^{\mrm{in}} B_{n,L}(\omega)$, and
+$\arpartial^{\mrm{in}} B_{n,L}(\omega)$ be the corresponding sets from the
+previous section with $N=n$ and this value of $L$. Set
+\[
+M_L:=|\Chi_L|=(2L+1)^2.
+\]
+
+\begin{lemma}[Boundary edges are closed]\label{lem:logslab-boundary-closed}
+For every configuration $\omega$, every edge in the oriented inner
+edge-boundary is $\omega$-closed:
+\[
+e\in \arpartial_E^{\mrm{in}} B_{n,L}(\omega)\quad\Longrightarrow\quad \omega_e=0.
+\]
+\end{lemma}
+
+\begin{proof}
+Fix $e=\langle u,v\rangle\in \arpartial_E^{\mrm{in}} B_{n,L}(\omega)$, so
+$u\in B_{n,L}(\omega)$ and $v\notin B_{n,L}(\omega)$. If $\omega_e=1$, then
+concatenating an $\omega$-open path from $T_0$ to $u$ with the open edge $e$
+gives an $\omega$-open path from $T_0$ to $v$, which would imply
+$v\in B_{n,L}(\omega)$, a contradiction. Thus $\omega_e=0$.
+\end{proof}
+
+\begin{lemma}\label{lem:logslab-closed-attached}
+There exists a deterministic rule that assigns to each $\omega$ an edge set
+$\Gamma(\omega)\subset \arrow{E}_{n,L}$ with the following properties. For every
+deterministic $\omega$ with $\mathcal C_{n,L}(\omega)^c$,
+\[
+|\Gamma(\omega)|=|\arpartial^{\mrm{in}} B_{n,L}(\omega)|.
+\]
+Moreover, for the configuration $\omega=\omega(X)$ constructed above, on
+$\mathcal C_{n,L}^c$,
+\[
+X_e=0\ \text{for all }e\in \Gamma(\omega).
+\]
+\end{lemma}
+
+\begin{proof}
+Fix once and for all a total ordering $\prec$ of the vertices of $\Sbb_{n,L}$
+(for instance lexicographic in $(m,x_1,x_2)$). If
+$\mathcal C_{n,L}(\omega)$ holds, set $\Gamma(\omega):=\emptyset$. It remains
+to define $\Gamma(\omega)$ when $\mathcal C_{n,L}(\omega)^c$ holds. Assume this
+condition. For each
+$u\in \arpartial^{\mrm{in}} B_{n,L}(\omega)$ there exists at least one edge
+$e=\langle u,v\rangle\in \arpartial_E^{\mrm{in}} B_{n,L}(\omega)$ by definition
+of $\arpartial^{\mrm{in}} B_{n,L}(\omega)$. Choose $e(u)$ to be the boundary
+edge $\langle u,v\rangle\in\arpartial_E^{\mrm{in}} B_{n,L}(\omega)$ whose head
+$v$ is $\prec$-minimal among all admissible boundary heads.
+
+Define
+\[
+\Gamma(\omega):=\{e(u):\ u\in \arpartial^{\mrm{in}} B_{n,L}(\omega)\}.
+\]
+Distinct $u$ give distinct directed edges because the tail of $e(u)$ is $u$.
+Hence
+\[
+|\Gamma(\omega)|=|\arpartial^{\mrm{in}} B_{n,L}(\omega)|.
+\]
+Moreover, by Lemma~\ref{lem:logslab-boundary-closed}, each
+$e(u)\in \arpartial_E^{\mrm{in}} B_{n,L}(\omega)$ is closed. Since
+$u\in B_{n,L}(\omega)$, if $\omega=\omega(X)$, then the construction of
+$\omega$ gives $\omega_{e(u)}=X_{e(u)}$, and hence $X_e=0$ for all
+$e\in\Gamma(\omega)$.
+\end{proof}
+
+\begin{lemma}[Counting candidates]\label{lem:logslab-counting}
+Let
+\[
+\mathcal S_{n,L,k}
+:=
+\Bigl\{\arpartial^{\mrm{in}} B_{n,L}(\omega):\ \omega\in\{0,1\}^{\arrow{E}_{n,L}},\ \mathcal C_{n,L}(\omega)^c,\ |\arpartial^{\mrm{in}} B_{n,L}(\omega)|=k\Bigr\},
+\]
+and let
+\[
+\mathcal G_{n,L,k}
+:=
+\Bigl\{\Gamma(\omega):\ \omega\in\{0,1\}^{\arrow{E}_{n,L}},\ \mathcal C_{n,L}(\omega)^c,\ |\arpartial^{\mrm{in}} B_{n,L}(\omega)|=k\Bigr\}.
+\]
+Then there exists a constant $C_{\mathrm{bd}}<\infty$, independent of $n,L$
+and $k$, such that
+\[
+|\mathcal S_{n,L,k}|\le \exp(C_{\mathrm{bd}}k),
+\qquad
+|\mathcal G_{n,L,k}|\le \exp\bigl((C_{\mathrm{bd}}+\log 9)\,k\bigr),
+\]
+for all integers $n,L\ge 3$ with $L\ge \log n$ and all $k\ge 1$.
+\end{lemma}
+
+\begin{proof}
+The first bound follows from Theorem~\ref{thm:count-boundaries} applied with
+$N=n$. This is allowed because $L\ge \log n$ implies $n\le e^L$. We take
+$C_{\mathrm{bd}}:=\max\{C,0\}$, where $C$ is the constant in
+Theorem~\ref{thm:count-boundaries}.
+
+For the second bound, fix $S\in\mathcal S_{n,L,k}$. Each vertex $u=(m,x)\in S$
+has at most $9$ outgoing edges in $\arrow{E}_{n,L}$, corresponding to the
+choices of $y$ with $|x-y|_\infty\le 1$. Hence, for this fixed $S$, the number
+of candidate edge sets of the form $\{e(u):u\in S\}$ is at most $9^k$.
+Summing over $S\in\mathcal S_{n,L,k}$ gives
+\[
+|\mathcal G_{n,L,k}|\le 9^k\,|\mathcal S_{n,L,k}|
+\le 9^k\,\exp(C_{\mathrm{bd}}k)
+=
+\exp\bigl((C_{\mathrm{bd}}+\log 9)\,k\bigr).
+\]
+\end{proof}
+
+\begin{lemma}\label{lem:layer-to-layer}
+For any fixed finite set of distinct directed edges $\Gamma\subset \arrow{E}_{n,L}$,
+\[
+\Pbb_p\bigl(X_e=0\text{ for every }e\in\Gamma\bigr)
+= p^{|\Gamma|}.
+\]
+\end{lemma}
+
+\begin{proof}
+This is independence of the variables $(X_e)_{e\in \arrow{E}_{n,L}}$ and
+$\Pbb_p(X_e=0)=p$.
+\end{proof}
+
+\begin{theorem}[Peierls bound in a slab]\label{thm:logslab-peierls}
+For every $A>1$ there exists $p_0=p_0(A)\in(0,1)$ such that, for all
+$p\in(0,p_0)$,
+\[
+\Pbb_p(\mathcal C_{n,L}^c)\le \exp\bigl(-A L^2\bigr)
+\]
+for all integers $n,L\ge 3$ with $L\ge \log n$.
+\end{theorem}
+
+\begin{proof}
+Fix integers $n,L\ge 3$ with $L\ge \log n$. On $\mathcal C_{n,L}^c$, with
+$\omega=\omega(X)$, Lemma~\ref{lem:lowerbd} yields
+$|\arpartial^{\mrm{in}} B_{n,L}(\omega)|\ge M_L$, and
+Lemma~\ref{lem:logslab-closed-attached} produces an edge set
+$\Gamma(\omega)\subset \arrow{E}_{n,L}$ such that
+$|\Gamma(\omega)|=|\arpartial^{\mrm{in}} B_{n,L}(\omega)|\ge M_L$ and $X_e=0$ for all
+$e\in\Gamma(\omega)$. Therefore,
+\[
+\mathcal C_{n,L}^c
+\subseteq
+\bigcup_{k\ge M_L}\ \bigcup_{\Gamma\in \mathcal G_{n,L,k}}
+\Bigl\{X_e=0\text{ for every }e\in\Gamma\Bigr\}.
+\]
+Taking $\Pbb_p$-probabilities, using the union bound,
+Lemma~\ref{lem:logslab-counting}, and Lemma~\ref{lem:layer-to-layer},
+\[
+\Pbb_p(\mathcal C_{n,L}^c)
+\le
+\sum_{k\ge M_L} |\mathcal G_{n,L,k}|\,p^k
+\le
+\sum_{k\ge M_L} \exp\bigl((C_{\mathrm{bd}}+\log 9)\,k\bigr)\,p^k
+=
+\sum_{k\ge M_L} r^k,
+\]
+where $r:=e^{C_{\mathrm{bd}}+\log 9}\,p$.
+
+Choose
+\[
+p_0(A):=
+e^{-(C_{\mathrm{bd}}+\log 9)}\min\Bigl\{\frac12,\ e^{-(A+1)/4}\Bigr\}.
+\]
+Then for $p\in(0,p_0(A))$ we have $r\le 1/2$ and $r\le e^{-(A+1)/4}$, hence
+\[
+\Pbb_p(\mathcal C_{n,L}^c)
+\le
+\sum_{k\ge M_L} r^k
+=
+\frac{r^{M_L}}{1-r}
+\le
+2\,r^{M_L}
+\le
+2\,\exp\Bigl(-\frac{A+1}{4}M_L\Bigr).
+\]
+Since $L\ge 3$, we have $M_L=(2L+1)^2\ge 49$, and thus
+$2\le e^{M_L/4}$. Consequently,
+\[
+2\,\exp\Bigl(-\frac{A+1}{4}M_L\Bigr)
+\le
+\exp\Bigl(-\frac{A}{4}M_L\Bigr).
+\]
+Finally, $M_L=(2L+1)^2\ge 4L^2$, so
+\[
+\exp\Bigl(-\frac{A}{4}M_L\Bigr)
+\le
+\exp\bigl(-A L^2\bigr),
+\]
+which completes the proof.
+\end{proof}

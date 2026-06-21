@@ -1,0 +1,463 @@
+
+\documentclass[11pt]{amsart}
+
+\usepackage{amsmath,amssymb,amsthm,mathtools,bbm,enumitem}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+\numberwithin{equation}{section}
+
+% macros
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Pbb}{\mathbb{P}}
+\newcommand{\Zbb}{\mathbb{Z}}
+\newcommand{\Sbb}{\mathbb{S}}
+\newcommand{\Rbb}{\mathbb{R}}
+\newcommand{\mrm}[1]{\mathrm{#1}}
+\newcommand{\Slab}{\mrm{Slab}}
+\newcommand{\1}{\mathbbm{1}}
+\newcommand{\Var}{\mrm{Var}}
+\newcommand{\Cov}{\mrm{Cov}}
+\newcommand{\F}{\mathcal{F}}
+\newcommand{\cL}{\mathcal{L}}
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\by}{\mathbf{y}}
+\newcommand{\arrow}[1]{\overrightarrow{#1}}
+\newcommand{\arpartial}{\arrow{\partial}}
+\newcommand{\Chi}{\mathcal{X}}
+
+\usepackage{xcolor}
+
+\author{Anonymous}
+\begin{document}
+
+\section{Oriented Lattice animal estimates}
+
+For $a\le b$, write
+\[
+[\![a,b]\!]:=[a,b]\cap \Zbb.
+\]
+For integers $N,L\ge 0$, set
+\[
+\Chi_L:=[\![-L,L]\!]^2,
+\qquad
+\Sbb_{N,L}:=[\![0,N]\!]\times \Chi_L.
+\]
+For $\ell\in[\![0,N]\!]$, set
+\[
+T_\ell:= T_\ell^{N,L}:=\{\ell\}\times \Chi_L.
+\]
+\iffalse
+Introduce the slab boundary by
+\[
+\partial\Sbb_{N,L}
+:=
+T_0^{N,L}\cup T_N^{N,L}
+\cup
+\bigl([\![0,N]\!]\times\{x\in\Zbb^2:\ |x|_\infty=L\}\bigr).
+\]
+\fi
+Define
+\[
+\arrow{E}:=\arrow{E}_{N,L}
+:=
+\bigl\{\langle (m,x),(m+1,y)\rangle:\ 
+m\in[\![0,N-1]\!],\ x,y\in\Chi_L,\ |x-y|_\infty \le 1
+\bigr\}
+\]
+and
+\[
+E:= E_{N,L}
+:=
+\bigl\{\{u,v\}:\ u,v\in\Sbb_{N,L},\ u\ne v,\ |u-v|_\infty\le 1\bigr\}.
+\]
+
+Fix integers $N,L\ge 3$ with $N\le e^L$.
+Write vertices as $v=(m,x)$ with $m\in[\![0,N]\!]$ and $x\in\Chi_L$.
+
+Let $\omega=(\omega_e)_{e\in \arrow{E}}\in\{-1,1\}^{\arrow{E}}$. We say that an edge $e$ is $\omega$-open if $\omega_e=1$.
+
+A non-oriented path is a finite sequence $\gamma=(v_0,\dots,v_r)$ of vertices in $\Sbb_{N,L}$ such that $\{v_i,v_{i+1}\}\in E$ for every $0\le i<r$. An oriented open path is a finite sequence $\gamma=(v_0,\dots,v_r)$ such that $\langle v_i,v_{i+1}\rangle\in \arrow{E}$ and $\omega_{\langle v_i,v_{i+1}\rangle}=1$ for every $0\le i<r$. In both definitions, the length $0$ path is allowed.
+
+For vertices $u,v$, write $u\leftrightarrow v$ if there exists an oriented open path from $u$ to $v$. Write $A\leftrightarrow B$ for sets $A,B$ if there exist $a\in A$ and $b\in B$ such that $a\leftrightarrow b$.
+
+Define the event
+\[
+\mathcal C:=\{T_0\leftrightarrow T_N\}.
+\]
+Define the reached set
+\[
+B:=B(\omega):=\{v\in \Sbb_{N,L}:\ T_0\leftrightarrow v\}.
+\]
+Since the length $0$ path is allowed, $T_0\subset B(\omega)$ for every $\omega$.
+
+
+Given $B=B(\omega)$, define
+\[
+\begin{aligned}
+F:=F(\omega):=\Bigl\{v\in \Sbb_{N,L}\setminus B:\ &
+\exists \text{ a non-oriented path }\gamma\text{ from }v\text{ to } T_{N}\\
+&\text{in }\Sbb_{N,L}\text{ such that the vertices of }\gamma\text{ avoid }B\Bigr\}.
+\end{aligned}
+\]
+Define the oriented inner edge-boundary
+\[
+\arpartial^{\mrm{in}}_E B:=\arpartial_E^{\mrm{in}} B(\omega):=\{\langle u,v\rangle\in \arrow{E}:\ u\in B(\omega),\ v\in F(\omega)\},
+\]
+and the corresponding inner boundary tails
+\[
+\arpartial^{\mrm{in}} B:=\arpartial^{\mrm{in}} B(\omega):=\{u\in B(\omega):\ \exists v\in F(\omega)\ \text{with}\ \langle u,v\rangle\in \arrow{E}\}.
+\]
+Equivalently, $u\in\arpartial^{\mrm{in}} B(\omega)$ if and only if
+$u\in B(\omega)$ and there exists an oriented edge
+$\langle u,v\rangle\in \arrow{E}$ with $v\in F(\omega)$; that is,
+$v$ admits a non-oriented path to $T_N$ inside
+$\Sbb_{N,L}$ whose vertex set is disjoint from $B(\omega)$.
+
+
+Define the enlarged inner boundary
+\[\partial^{\mrm{in}} B(\omega):=\{u\in B(\omega):\ \exists v\in F(\omega)\ \text{with}\ \{u,v\}\in E\}. \]
+Since every oriented edge has its underlying non-oriented edge in $E$, we have $\arpartial^{\mrm{in}} B\subset \partial^{\mrm{in}} B$. 
+
+
+
+
+\begin{lemma}\label{lem:cutset}
+On $\mathcal C^c$, every oriented path in $(\Sbb_{N,L},\arrow{E})$ from $T_0$ to $T_N$ contains at least one edge of $\arpartial_E^{\mrm{in}} B$.
+\end{lemma}
+
+\begin{proof}
+Let $\pi=(v_0,v_1,\dots,v_r)$ be an oriented path in $(\Sbb_{N,L},\arrow{E})$ with $v_0\in T_0$ and $v_r\in T_N$.
+Since every oriented edge increases the time coordinate by one, necessarily
+$r=N$. In particular, $r\ge 1$ and no vertex is repeated.
+Since $\mathcal C^c$ holds, we have $T_N\cap B=\emptyset$, and in particular $v_r\notin B$.
+Moreover, $v_r\in F$ because the length $0$ path $(v_r)$ is a non-oriented path from $v_r$ to $T_N$ whose vertex set is disjoint from $B$.
+
+Let $i$ be the smallest index such that $v_i\in F$. Then $i\ge 1$ because $v_0\in T_0\subset B$ and $F\subset \Sbb_{N,L}\setminus B$.
+If $v_{i-1}\notin B$, then concatenating the underlying non-oriented edge $\{v_{i-1},v_i\}$ with a non-oriented path from $v_i$ to $T_N$ avoiding $B$
+(which exists since $v_i\in F$) yields a non-oriented path from $v_{i-1}$ to $T_N$ avoiding $B$, hence $v_{i-1}\in F$, a contradiction.
+Thus $v_{i-1}\in B$ and $v_i\in F$, and therefore $\langle v_{i-1},v_i\rangle\in \arpartial_E^{\mrm{in}} B$.
+\end{proof}
+
+\begin{lemma}\label{lem:lowerbd}
+Assume $\omega\in\mathcal C^c$. Every vertical fiber $[\![0,N]\!]\times\{x\}$, $x\in \Chi_L$, meets $\arpartial^{\mrm{in}} B$. In particular,
+\[
+|\arpartial^{\mrm{in}} B(\omega)|\ge |\Chi_L|=(2L+1)^2.
+\]
+Moreover, if $x\in \Chi_L$, $m\in[\![1,N]\!]$, and
+$(m,x)\in \partial^{\mrm{in}} B\setminus \arpartial^{\mrm{in}} B$, then either
+$(m-1,x)\in \arpartial^{\mrm{in}} B\cup F$, or
+$m\ge 2$ and $(m-2,x)\in \arpartial^{\mrm{in}} B\cup F$.
+\end{lemma}
+
+\begin{proof}
+Fix $x\in\Chi_L$ and consider the vertical oriented path
+\[
+\pi_x:=\bigl((0,x),(1,x),\dots,(N,x)\bigr).
+\]
+It is an oriented path in $(\Sbb_{N,L},\arrow{E})$ from $T_0$ to $T_N$.
+By Lemma~\ref{lem:cutset}, $\pi_x$ contains an edge in $\arpartial_E^{\mrm{in}} B$.
+Since the only edges of $\pi_x$ are $\langle(m,x),(m+1,x)\rangle$, there exists $m_x\in[\![0,N-1]\!]$ such that
+\[
+\langle(m_x,x),(m_x+1,x)\rangle\in \arpartial_E^{\mrm{in}} B.
+\]
+In particular, $(m_x,x)\in\arpartial^{\mrm{in}} B$. The map $x\mapsto (m_x,x)$ is injective, hence
+\[
+|\arpartial^{\mrm{in}} B|\ge |\Chi_L|=(2L+1)^2.
+\]
+
+Now let $x\in \Chi_L$ and $m\in[\![1,N]\!]$ satisfy
+$(m,x)\in \partial^{\mrm{in}} B\setminus \arpartial^{\mrm{in}} B$. Choose $v=(r,y)\in F$ adjacent to $(m,x)$ in the non-oriented graph
+$(\Sbb_{N,L},E)$. Since $(m,x)\notin \arpartial^{\mrm{in}} B$, the time coordinate of $v$ cannot be $m+1$, for otherwise
+$\langle (m,x),v\rangle\in \arrow{E}$ and $(m,x)$ would belong to $\arpartial^{\mrm{in}} B$.
+Hence $r\in\{m,m-1\}$.
+
+If $r=m$, then $\langle (m-1,x),v\rangle\in \arrow{E}$. If
+$(m-1,x)\in B$, this oriented edge from $(m-1,x)$ to $F$ shows that
+$(m-1,x)\in \arpartial^{\mrm{in}} B$. If instead $(m-1,x)\notin B$, concatenating
+the underlying non-oriented edge $\{(m-1,x),v\}$ with a non-oriented path from
+$v$ to $T_N$ avoiding $B$ shows that $(m-1,x)\in F$.
+
+If $r=m-1$, then $m\ge 2$, since otherwise $v\in T_0\subset B$, contradicting
+$v\in F$. In this case $\langle (m-2,x),v\rangle\in \arrow{E}$. The same
+argument gives either $(m-2,x)\in \arpartial^{\mrm{in}} B$ or
+$(m-2,x)\in F$.
+\end{proof}
+
+
+\subsection{From oriented lattice animal to lattice animal estimates}
+
+\begin{theorem}\label{thm:oriented-animal-to-animal}
+Assume $\omega\in\mathcal C^c$. It holds
+\[
+|\partial^{\mrm{in}} B|\leq 3|\arpartial^{\mrm{in}} B|.
+\]
+\end{theorem}
+
+We are now in a position to prove Theorem~\ref{thm:oriented-animal-to-animal}.
+\begin{proof}[Proof of Theorem~\ref{thm:oriented-animal-to-animal}]
+Fix $x\in \Chi_L$ and write
+\[
+I_x:=\{m\in[\![0,N]\!]:\ (m,x)\in \partial^{\mrm{in}} B\},\qquad
+J_x:=\{m\in[\![0,N]\!]:\ (m,x)\in \arpartial^{\mrm{in}} B\},
+\]
+and
+\[
+G_x:=\{m\in[\![0,N]\!]:\ (m,x)\in F\}.
+\]
+Clearly $J_x\subset I_x$ and $I_x\cap G_x=\emptyset$.
+We regard $G_x$ as empty outside $[\![0,N]\!]$ when writing expressions such as $q+1\in G_x$.
+We prove that $|I_x|\le 3|J_x|$.
+
+We first note a simple consequence of the definition of $F$. If $t\in G_x$ and
+$t\ge 1$, then either $t-1\in G_x$ or $t-1\in J_x$. Indeed, if
+$(t-1,x)\in B$, then the vertical edge
+$\langle(t-1,x),(t,x)\rangle\in \arrow{E}$ shows that $t-1\in J_x$. If
+$(t-1,x)\notin B$, concatenating the underlying non-oriented edge
+$\{(t-1,x),(t,x)\}$ with a non-oriented path
+from $(t,x)$ to $T_N$ avoiding $B$ shows that
+$t-1\in G_x$. Since $T_0\subset B$, every nonempty connected component
+$[\![a,b]\!]$ of $G_x$ has $a\ge 1$ and $a-1\in J_x$.
+
+For each $q\in J_x$, define $h(q)$ as follows. If $q+1\notin G_x$, set
+$h(q)=q$. If $q+1\in G_x$, let $h(q)$ be the upper endpoint of the connected
+component of $G_x$ that contains $q+1$. Set
+\[
+K_q:=\{q,h(q)+1,h(q)+2\}\cap[\![0,N]\!].
+\]
+We claim that
+\[
+I_x\subset \bigcup_{q\in J_x} K_q.
+\]
+Let $m\in I_x$. If $m\in J_x$, then $m\in K_m$. Hence assume $m\notin J_x$.
+The case $m=0$ is impossible, because $T_0\subset B$ rules out an $F$-neighbor
+of $(0,x)$ at time $0$, and any $F$-neighbor at time $1$ would put $0$ in
+$J_x$. Thus $m\ge 1$.
+
+By Lemma~\ref{lem:lowerbd}, there exists
+$s\in\{m-1,m-2\}\cap(J_x\cup G_x)$, with the convention that $m-2$ is available only when $m\ge2$.
+Choose such an $s$. If $s\in J_x$, then $m=s+1$ or $m=s+2$. If $s+1\notin G_x$, then
+$h(s)=s$ and $m\in K_s$. If $s+1\in G_x$, the fact that $m\in I_x$ and
+$I_x\cap G_x=\emptyset$ forces the component of $G_x$ starting at $s+1$ to end
+before $m$; hence $m=h(s)+1$ or $m=h(s)+2$, and again $m\in K_s$.
+
+It remains to consider the case where $s\in G_x$. Let
+$[\![a,b]\!]$ be the connected component of $G_x$ containing $s$. The observation
+above gives $a-1\in J_x$. Since $m=s+1$ or $m=s+2$ and $m\notin G_x$, we must
+have $m=b+1$ or $m=b+2$. Therefore $m\in K_{a-1}$.
+
+ Since each set $K_q$ has at most three elements,
+\[
+|I_x|\le 3|J_x|
+\]
+for every $x\in\Chi_L$. Since
+\[
+|\partial^{\mrm{in}}B|=\sum_{x\in\Chi_L}|I_x|,
+\qquad
+|\arpartial^{\mrm{in}}B|=\sum_{x\in\Chi_L}|J_x|,
+\]
+summing over $x\in\Chi_L$ yields
+\[
+|\partial^{\mrm{in}} B|\le 3|\arpartial^{\mrm{in}} B|.
+\]
+\end{proof}
+
+Recall that
+\begin{align*}
+&    \Sbb_{N,L}:=[\![0,N]\!]\times[\![-L,L]\!]^2,\quad T_\ell := \{\ell\}\times [\![-L,L]\!]^2.
+\end{align*}
+For the counting step we use $*$-adjacency on $\Zbb^3$, i.e.\ for distinct
+vertices $u,v$ we write $u\sim_* v$ when $|u-v|_\infty\le 1$.
+\begin{lemma}[Finite-box Peierls lemma for $*$]\label{lem:finite-box-peierls}
+Let $U\subset \Sbb_{N,L}$ be nonempty and $*$-connected with
+$T_0\subset U$ and $T_N\cap U=\emptyset$. Let $H$ be the $*$-connected component of
+$\Sbb_{N,L}\setminus U$ which touches
+$T_N$, and assume $H\ne\emptyset$. Then
+\[
+V:=\{u\in U:\ \exists h\in H\text{ with }u\sim_* h\}
+\]
+is $*$-connected.
+\end{lemma}
+
+\begin{proof}
+Let $C:=\Sbb_{N,L}\setminus H$. We claim that $C$ is $*$-connected. Indeed,
+$U\subset C$, and $U$ is $*$-connected by assumption. If $K$ is any
+$*$-connected component of $\Sbb_{N,L}\setminus U$ different from $H$, then
+$K$ has a $*$-neighbor in $U$. Otherwise, since $\Sbb_{N,L}$ is
+$*$-connected, a $*$-path from $K$ to $\Sbb_{N,L}\setminus K$ would have a first edge leaving
+$K$, and its endpoint outside $K$ would lie in $\Sbb_{N,L}\setminus U$,
+contradicting maximality of the component $K$. Hence every such $K$ is
+attached to $U$, so $C$ is $*$-connected.
+
+Define the $*$-boundary of $H$ inside $C$ by
+$\partial_* H:=\{c\in C:\ \exists h\in H\text{ with }c\sim_* h\}$. The inclusion $V\subset \partial_* H$ follows from
+$U\subset C$. Conversely, if $c\in\partial_* H$ and $c\notin U$, then
+$c\in \Sbb_{N,L}\setminus U$. Since $c\sim_* h$ for some $h\in H$, the vertex
+$c$ lies in the same $*$-connected component of $\Sbb_{N,L}\setminus U$ as
+$h$, so $c\in H$, contradicting $c\in C$. Thus every vertex of
+$\partial_* H$ lies in $U$. Therefore, we have
+$\partial_* H=V$.
+
+It remains to show that $\partial_* H$ is $*$-connected. We use the following
+finite-box corollary of Timar's boundary-connectivity theorem; see
+Timar~\cite[Theorem~3]{Timar2013BoundaryConnectivity}. If $Q$ is a finite
+induced box in $\Zbb^3$ and $A\subset Q$ is nonempty and $*$-connected, then
+the $*$-outer boundary of $A$ in any $*$-connected component of $Q\setminus A$
+is $*$-connected. Equivalently, if both $A$ and $Q\setminus A$ are nonempty
+and $*$-connected, then
+\[
+\partial_* A
+:=\{z\in Q\setminus A:\ \exists a\in A\text{ with }z\sim_* a\}
+\]
+is $*$-connected.
+
+We apply this corollary with $Q=\Sbb_{N,L}$ and $A=H$. The set $H$ is
+$*$-connected by definition, and we proved above that
+$\Sbb_{N,L}\setminus H=C$ is $*$-connected. Both sets are nonempty. Hence
+$\partial_* H$ is $*$-connected. Since $\partial_* H=V$, the required set $V$
+is $*$-connected.
+\end{proof}
+
+\begin{lemma}[Peierls connectivity]\label{lem:peierls-connectivity}
+Assume $\omega\in\mathcal C^c$. The set $\partial^{\mrm{in}} B(\omega)$ is
+$*$-connected.
+\end{lemma}
+
+\begin{proof}
+The set $B(\omega)$ is $*$-connected: $T_0$ is $*$-connected, and every
+$v\in B(\omega)$ is joined to $T_0$ by an oriented open path, whose underlying
+non-oriented path is a $*$-path.
+
+Also, $F(\omega)$ is exactly the union of the $*$-connected components of
+$\Sbb_{N,L}\setminus B(\omega)$ which touch $T_N$. Indeed, a
+vertex $v\notin B(\omega)$ belongs to $F(\omega)$ precisely when there is an
+$*$-path from $v$ to $T_N$ avoiding $B(\omega)$. On
+$\mathcal C^c$ we have $T_N\subset F(\omega)$, so $F(\omega)$ is nonempty.
+
+Applying Lemma~\ref{lem:finite-box-peierls} with $U=B(\omega)$ and
+$H=F(\omega)$ gives
+\[
+\{u\in B(\omega):\ \exists v\in F(\omega)\text{ with }u\sim_* v\}
+\]
+is $*$-connected. This set is $\partial^{\mrm{in}} B(\omega)$ by definition,
+since $E$ is the restriction of $*$-adjacency to $\Sbb_{N,L}$.
+\end{proof}
+
+
+\subsection{Main counting claim}
+\begin{theorem}\label{thm:count-boundaries}
+There exists a constant $C<\infty$ such that, for all integers $N,L\ge 3$
+with $N\le e^L$ and every integer $k\ge 1$,
+\[
+\Bigl|\Bigl\{\arpartial^{\mrm{in}} B(\omega):\ \omega\in\{-1,1\}^{\arrow{E}},\ |\arpartial^{\mrm{in}} B(\omega)|=k,\ \mathcal C(\omega)^c\Bigr\}\Bigr|
+\le e^{Ck}.
+\]
+\end{theorem}
+\begin{proof}
+Fix an integer $k\ge 1$.  Let
+\[
+\begin{aligned}
+\mathcal S_{N,L,k}:=\Bigl\{\,\arpartial^{\mrm{in}} B(\omega):\ &
+\omega\in\{-1,1\}^{\arrow{E}},\ \mathcal C(\omega)^c,\,|\arpartial^{\mrm{in}} B(\omega)|=k
+\Bigr\}.
+\end{aligned}
+\]
+
+If $k<(2L+1)^2$, then Lemma~\ref{lem:lowerbd} gives
+$\mathcal S_{N,L,k}=\emptyset$. We may therefore assume
+\(
+k\ge (2L+1)^2.
+\) 
+ We use the standard lattice-animal estimate: there exists $C_1<\infty$,
+depending only on the dimension, such that for every integer $m\ge 1$,
+\[
+\bigl|\{A\subset\Zbb^3:\ |A|=m,\ A \text{ is $*$-connected, and }0\in A\}\bigr|
+\le \exp(C_1 m).
+\]
+
+For each $S\in \mathcal S_{N,L,k}$, let $a(S)\in S$ be its lexicographic minimum.
+The order is taken in the coordinates $(m,x_1,x_2)$. Set
+\[
+S_0:=S-a(S)\subset \Zbb^3.
+\]
+Then $0\in S_0$ and $|S_0|=k$.
+
+Fix $S\in \mathcal S_{N,L,k}$ and choose $\omega$ such that $S=\arpartial^{\mrm{in}} B(\omega)$.
+On $\mathcal C^c$, Theorem~\ref{thm:oriented-animal-to-animal} gives
+\[
+|\partial^{\mrm{in}} B(\omega)|\le 3|\arpartial^{\mrm{in}} B(\omega)|=3k.
+\]
+Since $S\subset \partial^{\mrm{in}} B(\omega)$, the translated set
+\[
+A:=\partial^{\mrm{in}} B(\omega)-a(S)
+\]
+contains $S_0$. Thus
+\[
+0\in S_0\subset A,\qquad |A|\le 3k.
+\]
+By Lemma~\ref{lem:peierls-connectivity}, the set
+$\partial^{\mrm{in}} B(\omega)$ is $*$-connected. Consequently $A$ is a
+$*$-connected lattice animal containing the origin.
+
+We first count the possible translated sets $S_0$. If $|A|=m$, then
+$k\le m\le 3k$. There are at most $\exp(C_1 m)$ choices for such an $A$.
+After $A$ is fixed, there are at most
+\[
+\binom{m-1}{k-1}\le 2^m
+\]
+choices for a subset $S_0\subset A$ with $0\in S_0$ and $|S_0|=k$.
+Therefore
+\[
+\bigl|\{S_0:\ S\in \mathcal S_{N,L,k}\}\bigr|
+\le \sum_{m=k}^{3k} \exp(C_1 m)\,2^m
+\le (3k)\,\exp\bigl((C_1+\log 2)\,3k\bigr).
+\]
+Since $3k\le \exp(2k)$ for $k\ge 1$,
+\[
+\bigl|\{S_0:\ S\in \mathcal S_{N,L,k}\}\bigr|
+\le \exp\bigl(\bigl(3(C_1+\log 2)+2\bigr)k\bigr).
+\]
+
+It remains to count the possible anchors. The map $S\mapsto (a(S),S_0)$ is
+injective, and $a(S)\in \Sbb_{N,L}$. Hence
+\[
+|\mathcal S_{N,L,k}|\le |\Sbb_{N,L}|\cdot \bigl|\{S_0:\ S\in \mathcal S_{N,L,k}\}\bigr|.
+\]
+
+We have $|\Sbb_{N,L}|=(N+1)(2L+1)^2$ and $N\le e^L$. Since
+$L\ge 2$ and $k\ge (2L+1)^2$,
+\[
+\log|\Sbb_{N,L}|
+= \log(N+1)+2\log(2L+1)
+\le (L+1)+2(2L+1)
+\le (2L+1)^2
+\le k,
+\]
+and therefore $|\Sbb_{N,L}|\le \exp(k)$.
+
+Combining the bounds,
+\[
+|\mathcal S_{N,L,k}|
+\le \exp(k)\cdot \exp\bigl(\bigl(3(C_1+\log 2)+2\bigr)k\bigr) =\exp\bigl(\bigl(3(C_1+\log 2+1)\bigr)k\bigr).
+\]
+\end{proof}
+
+\begin{thebibliography}{9}
+
+\bibitem{Timar2013BoundaryConnectivity}
+A. Timar,
+\emph{Boundary-connectivity via graph theory},
+Proc. Amer. Math. Soc. 141 (2013), no. 2, 475--480.
+
+\end{thebibliography}
+
+\end{document}

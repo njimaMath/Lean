@@ -4,7 +4,7 @@ open Lake DSL
 package NjimaLean where
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4" @ "v4.26.0"
+  "https://github.com/leanprover-community/mathlib4" @ "v4.28.0"
 
 @[default_target]
 lean_lib NjimaLean
@@ -23,6 +23,11 @@ lean_lib percolation where
 lean_lib KignmanSubadditiveErgodic where
   srcDir := "."
   globs := #[.submodules `KignmanSubadditiveErgodic]
+
+-- Library for oriented animal files
+lean_lib oriented_animal where
+  srcDir := "."
+  globs := #[.submodules `oriented_animal]
 
 @[default_target]
 lean_exe njimaLean where

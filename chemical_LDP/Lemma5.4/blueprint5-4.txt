@@ -1,0 +1,31 @@
+Recall that $P_i$ is the projection on the hyperplane $\mathrm{H}_{i}(0)$.
+\begin{lem}\label{lem:proj}
+Assume $d\geq 3$. For any finite $S\subset \Z^d$, there exists $i\in[d]$ such that $$|P_i(S)|\ge \frac{1}{2}|S|^{\frac{2}3}.$$
+\end{lem}
+\begin{proof}[Proof of Lemma \ref{lem:proj}]
+Our goal is to prove that there exists $i\in [d]$ such that ${\CO |P_i(S)|}\geq |S|^{2/3}/2$.
+
+Let $n=|S|$. If $|P_1(S)|\ge n^{2/3}/2$, then the claim holds with $i=1$. Hence,  we assume $|P_1(S)|< n^{2/3}/2$. Define $S_1:=P_1(S)$. Since
+\[\sum_{z\in S_1}|P_1^ {-1}(z)\cap S|\mathbf{1}_{|P_1^ {-1}(z)\cap S|\le n^ {1/3}}\le |S_1|n^ {1/3}< \frac{n}{2},\]
+we have
+\[\sum_{z\in S_1}|P_1^ {-1}(z)\cap S|\mathbf{1}_{|P_1^ {-1}(z)\cap S|\ge n^ {1/3}}\ge \frac{n}{2}.\]
+Set
+\[S_1':=\{z\in S_1: |P_1^ {-1}(z)\cap S|\ge n^ {1/3}\},\quad S_2:=\{\tilde{P}_2(z): z\in S_1'\},\]
+{\CO where for $x=(x_2,\ldots,x_d)\in S_1'$, we denote
+$
+\tilde{P}_2(x) := (x_3,\ldots,x_d)
+$.}    
+Let us first assume that  $|S_2|\ge n^{1/3}.$ Then, there exist $z^1,\dots,z^m\in S_1'$ with $m\ge n^{1/3}$ such that $(\tilde{P}_2(z^i))_{i\in[m]}$ are all distinct. {\CO Let $x\neq x'\in \cup_{i=1}^m P_1^ {-1}(z^i)\cap S$. If $x,x'\in P_1^ {-1}(z^i)\cap S$ with some $i$, then since the first coordinates are different, i.e.\@ $x_1\neq x_1'$, we have $P_2(x)\neq P_2(x')$. Otherwise, if $x\in P_1^ {-1}(z^i),\,x'\in P_1^ {-1}(z^j)$ with $i\neq j$, then since $\tilde{P}_2(z^i)\neq \tilde{P}_2(z^j)$, we also have $P_2(x)\neq P_2(x')$.} Hence, $(P_2(x),~x\in \cup_{i=1}^m P_1^ {-1}(z^i)\cap S)$ are  all distinct. It follows that
+\[|P_2(S)|\ge \left|\bigcup_{i=1}^m P_1^ {-1}(z^i)\cap S\right|=\sum_{i=1}^ m|P_1^ {-1}(z^i)\cap S|\ge n^{2/3}.\]
+
+Otherwise, if $|S_2|<n^{1/3}$, then 
+\begin{equation*}
+    \begin{split}
+        \sum_{z'\in S_2}\#\{w\in S: \,\tilde{P}_2\circ P_1(w)=z'\}&\geq   \sum_{z'\in S_2} \sum_{z\in S_1'}\#\{w\in S: \,z=P_1(w),\,\tilde{P}_2(z)=z'\}\\&= \sum_{z\in S_1}|P_1^ {-1}(z)\cap S|\mathbf{1}_{|P_1^ {-1}(z)\cap S|\ge n^ {1/3}}\ge \frac{n}{2}.
+    \end{split}
+\end{equation*}
+Hence, by pigeonhole principle, there exists $z\in S_2$ such that
+\[\#\{w\in S: \,\tilde{P}_2\circ P_1(w)=z\}\ge \frac{n}{2|S_2|}> \frac{n^{2/3}}{2}.\]
+{\CO Since $P_3(w)\neq P_3(w')$ for $w\neq w'\in \Z^d$ with $\tilde{P}_2\circ P_1(w)=\tilde{P}_2\circ P_1(w')$, this implies $ |P_3(S)|\ge  \frac{n^{2/3}}{2}.$} 
+This concludes the proof.
+\end{proof}

@@ -1,12 +1,50 @@
-import Mathlib.Data.Real.Basic
-import Mathlib.Tactic
+import Mathlib
 
-example (x y : ℝ) (h₁ : x + y ≤ 1) (h₂ : x - y ≤ 1) : x ≤ 1 := by
-  linarith
+open MeasureTheory ProbabilityTheory
 
-theorem abs_le_one_of_sq_add_sq_le_one (x y : ℝ) (h : x ^ 2 + y ^ 2 ≤ 1) : |x| ≤ 1 ∧ |y| ≤ 1 := by
-  have hx2 : x ^ 2 ≤ 1 := le_trans (le_add_of_nonneg_right (sq_nonneg y)) h
-  have hy2 : y ^ 2 ≤ 1 := le_trans (le_add_of_nonneg_left (sq_nonneg x)) h
+variable {Ω : Type*} [MeasurableSpace Ω]
+
+variable {A : Set Ω} (hA : MeasurableSet A)
+
+include hA
+theorem measurable_compl_A : MeasurableSet Aᶜ := by
+  exact hA.compl
+
+variable {P: Measure Ω} [IsProbabilityMeasure P]
+
+
+omit hA
+
+theorem P_univ : P Set.univ = 1 := by
+  exact MeasureTheory.measure_univ (μ := P)
+
+variable {X: Ω → ℝ} (hX: Measurable X)
+
+theorem my_Markov_inequality  (hXpos : ∀ ω, 0 ≤ X ω) :
+    P {ω | 1 ≤ X ω} ≤ ∫⁻ ω, ENNReal.ofReal (X ω) ∂P := by
+  sorry
+
+variable {U : Type*}
+example {A B : Set U} : (A ∩ B)ᶜ = Aᶜ ∪ Bᶜ := by
+  ext x
   constructor
-  · exact (sq_le_one_iff_abs_le_one x).1 hx2
-  · exact (sq_le_one_iff_abs_le_one y).1 hy2
+  intro hx
+  simp at hx
+  by_cases hy: x∈ A
+  right
+  apply hx
+  apply hy
+  left
+  apply hy
+  intro hxx h
+  rcases hxx with hA | hB
+  apply hA
+  exact h.1
+  apply hB
+  exact h.2
+
+example {P Q: Prop}: P → Q  → P∧Q := by
+  intro h1 h2
+  refine ⟨?_,?_⟩
+  exact h1
+  exact h2

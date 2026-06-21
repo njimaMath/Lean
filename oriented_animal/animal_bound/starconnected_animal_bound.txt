@@ -1,0 +1,87 @@
+Recall that
+\begin{align*}
+&    \Sbb_{N,L}:=[\![0,N]\!]\times[\![-L,L]\!]^2,\quad T_\ell := \{\ell\}\times [\![-L,L]\!]^2.
+\end{align*}
+For the counting step we use $*$-adjacency on $\Zbb^3$, i.e.\ for distinct
+vertices $u,v$ we write $u\sim_* v$ when $|u-v|_\infty\le 1$.
+\begin{lemma}[Finite-box Peierls lemma for $*$]\label{lem:finite-box-peierls}
+Let $U\subset \Sbb_{N,L}$ be nonempty and $*$-connected with
+$T_0\subset U$ and $T_N\cap U=\emptyset$. Let $H$ be the $*$-connected component of
+$\Sbb_{N,L}\setminus U$ which touches
+$T_N$, and assume $H\ne\emptyset$. Then
+\[
+B:=\{u\in U:\ \exists h\in H\text{ with }u\sim_* h\}
+\]
+is $*$-connected.
+\end{lemma}
+
+\begin{proof}
+Let $C:=\Sbb_{N,L}\setminus H$. We claim that $C$ is $*$-connected. Indeed,
+$U\subset C$, and $U$ is $*$-connected by assumption. If $K$ is any
+$*$-connected component of $\Sbb_{N,L}\setminus U$ different from $H$, then
+$K$ has a $*$-neighbor in $U$. Otherwise, since $\Sbb_{N,L}$ is
+$*$-connected, a $*$-path from $K$ to $\Sbb_{N,L}\setminus K$ would have a first edge leaving
+$K$, and its endpoint outside $K$ would lie in $\Sbb_{N,L}\setminus U$,
+contradicting maximality of the component $K$. Hence every such $K$ is
+attached to $U$, so $C$ is $*$-connected.
+
+Define the $*$-boundary of $H$ inside $C$ by
+$\partial_* H:=\{c\in C:\ \exists h\in H\text{ with }c\sim_* h\}$. The inclusion $B\subset \partial_* H$ follows from
+$U\subset C$. Conversely, if $c\in\partial_* H$ and $c\notin U$, then
+$c\in \Sbb_{N,L}\setminus U$. Since $c\sim_* h$ for some $h\in H$, the vertex
+$c$ lies in the same $*$-connected component of $\Sbb_{N,L}\setminus U$ as
+$h$, so $c\in H$, contradicting $c\in C$. Thus every vertex of
+$\partial_* H$ lies in $U$. Therefore, we have
+$\partial_* H=B$.
+
+It remains to show that $\partial_* H$ is $*$-connected. We use the following
+finite-box corollary of Timar's boundary-connectivity theorem; see
+Timar~\cite[Theorem~3]{Timar2013BoundaryConnectivity}. If $Q$ is a finite
+induced box in $\Zbb^3$ and $A\subset Q$ is nonempty and $*$-connected, then
+the $*$-outer boundary of $A$ in any $*$-connected component of $Q\setminus A$
+is $*$-connected. Equivalently, if both $A$ and $Q\setminus A$ are nonempty
+and $*$-connected, then
+\[
+\partial_* A
+:=\{z\in Q\setminus A:\ \exists a\in A\text{ with }z\sim_* a\}
+\]
+is $*$-connected.
+
+We apply this corollary with $Q=\Sbb_{N,L}$ and $A=H$. The set $H$ is
+$*$-connected by definition, and we proved above that
+$\Sbb_{N,L}\setminus H=C$ is $*$-connected. Both sets are nonempty. Hence
+$\partial_* H$ is $*$-connected. Since $\partial_* H=B$, the required set $B$
+is $*$-connected.
+\end{proof}
+\begin{lemma}[Peierls connectivity]\label{lem:peierls-connectivity}
+Assume $\omega\in\mathcal C^c$. The set $\partial^{\mrm{in}} B(\omega)$ is
+$*$-connected.
+\end{lemma}
+
+\begin{proof}
+The set $B(\omega)$ is $*$-connected: $T_0$ is $*$-connected, and every
+$v\in B(\omega)$ is joined to $T_0$ by an oriented open path, whose underlying
+non-oriented path is a $*$-path.
+
+Also, $F(\omega)$ is exactly the union of the $*$-connected components of
+$\Sbb_{N,L}\setminus B(\omega)$ which touch $T_N$. Indeed, a
+vertex $v\notin B(\omega)$ belongs to $F(\omega)$ precisely when there is an
+$*$-path from $v$ to $T_N$ avoiding $B(\omega)$. On
+$\mathcal C^c$ we have $T_N\subset F(\omega)$, so $F(\omega)$ is nonempty.
+
+Applying Lemma~\ref{lem:finite-box-peierls} with $U=B(\omega)$ and
+$H=F(\omega)$ gives
+\[
+\{u\in B(\omega):\ \exists v\in F(\omega)\text{ with }u\sim_* v\}
+\]
+is $*$-connected. This set is $\partial^{\mrm{in}} B(\omega)$ by definition,
+since $E$ is the restriction of $*$-adjacency to $\Sbb_{N,L}$.
+\end{proof}
+
+\begin{lema} there exists $C_1<\infty$,
+depending only on the dimension, such that for every integer $m\ge 1$,
+\[
+\bigl|\{A\subset\Zbb^3:\ |A|=m,\ A \text{ is $*$-connected, and }0\in A\}\bigr|
+\le \exp(C_1 m).
+\]
+\end{lemma}

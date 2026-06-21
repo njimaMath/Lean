@@ -1,0 +1,32 @@
+
+\begin{lem}
+Suppose $d\geq 2$. Let $S\subset\Z^d$ be a non-empty finite set. We define
+ $$m(d,S):= \left({\frac{|S|}{2^{d-1}(\Diam(S){\CO +1})}}\right)^ {\frac{1}{d-1}}.$$
+There exist $i\neq j\in[d]$ and $S'\subset S$ with $|S'|\ge m(d,S)$ such that for any $z\neq z'\in S'$, we have $z_i\neq z'_i$ and $z_j\neq z_j'$. 
+\end{lem}
+
+\begin{proof} 
+Recall $m(d,S)=\left(\frac{|S|}{2^{d-1}(\Diam(S)+1)}\right)^{\frac{1}{d-1}}.$ {We will find, by induction on dimension, $i\neq j\in[d]$,  $S'\subset S$ with $|S'|\ge m(d,S)$ such that $z_i\neq z'_i$ and $z_j\neq z'_j$ for any $z\neq z'\in S'$.}
+
+Let us start by proving the result for $d=2$. Let $S\subset \Z^2$.
+Given $u=(u_1,u_2)\in S$, set \[\rL'(u):=\rL_1(u)\cup \rL_2(u).\]
+Now, we construct $(u^k)_{k=1}^N$ as follows:  Set $u^1=u$ for some arbitrary $u\in S$. Suppose that $u^1,\cdots,u^\ell$ have been defined. If there exists $u\in S \backslash \bigcup_{l=1}^\ell \rL'(u^l)$, then we set $u^{\ell+1}=u$; otherwise, we stop this procedure and set $N=\ell$. Since the set $S$ is finite, this procedure will eventually stop. Since $|S\cap \rL'(u^k)|\leq 2(\Diam{(S)}{\CO +1}),$
+\[2(\Diam{(S)}+1) N\ge |S|,\]
+so \[N\ge \frac{|S|}{2(\Diam(S)+1)}=m(2,S).\]
+The family $S'=(u^k)_{k=1}^N$ satisfies the requirements. The proof is completed for $d=2$.
+
+Let us now assume that the claim holds for $d-1\ge 2$.
+Let $S\subset \Z^d$.
+ Given $z\in S$, set \[\rL(z):=\{w\in\Z^d: w_{d-1}=z_{d-1}\}\cup \{w\in\Z^d: w_d=z_d\}.\] We define $(v^k)_{k=1}^N$ recursively as follows: Set $v^1=z$ for some arbitrary $z\in S$. Suppose that $v^1,\cdots,v^\ell$ have been defined. If there exists $z\in S \backslash \bigcup_{l=1}^\ell \rL(v^l)$, then we set $v^{\ell+1}=z$; otherwise, we stop this procedure and set $N=\ell$. Since the set $S$ is finite, this procedure will eventually stop.
+If $N\geq m(d,S)$, then the proof is completed with $i=d-1,j=d$ and $S'=({\CO v^k})_{k=1}^N$. Otherwise, if $N<m(d,S)$, then by pigeonhole principle, there exists $k\in [N]$ such that $$|\{x\in S:~x\in \rL(v^k)\}|\geq \frac{|S|}{m(d,S)}.$$
+By pigeonhole principle, there exists $r\in\{d-1,d\}$ such that
+$\#\{x\in S: x_r=v^k_r\}\geq \frac{|S|}{2m(d,S)}.$ Without loss of generality, we suppose $r=d$, i.e.\@ \[\#\{x\in S: x_d=v^k_d\}\geq \frac{|S|}{2m(d,S)}.\] 
+It follows that 
+the set $\bar{S}:=\{(x_1,\dots,x_{d-1}):x\in S\}$ is of size at least $|S|/(2m(d,S)).$
+Applying the induction hypothesis to the set $\bar{S}\subset \Z^{d-1}$, we find $i\neq j\in [d-1]$ and $\bar{S}'\subset \bar{S}$ such that for all $y\ne y'\in \bar{S}'$, $y_i\ne y'_i$ and $y_j\ne y'_j$, and   
+\al{|\bar{S}'|&\ge \left(\frac{|\bar{S}|}{2^{d-2}(\Diam(\bar{S})+1)}\right)^{1/(d-2)}\\
+&\ge \left(\frac{|S|}{2^{d-1}(\Diam(S)+1)\,m(d,S)}\right)^{1/(d-2)}\\
+&\ge \left(\frac{|S|}{2^{d-1}(\Diam(S)+1)}\right)^{\frac{1}{d-2}\left(1-\frac{1}{d-1}\right)}=m(d,S).
+}
+We take $u^y\in S$ for $y\in \bar{S}'$  such that $(u^y_1,\dots,u^{y}_{d-1})=y$. The result follows with the family $S':=(u^{y})_{y\in \bar{S}'}$ and $i,j$ chosen above. This completes the induction.
+\end{proof}

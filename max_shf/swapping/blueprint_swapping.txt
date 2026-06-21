@@ -1,0 +1,106 @@
+\begin{lemma}\label{lem: swapping lemma}
+Let $m\in \mathbb N$ and $(\mathcal E_\ell)_{\ell=0}^{m+1}$ be a sequence of  finite sets.  Let $f_\ell:\mathcal E_\ell^2\to \mathbb R$, $\ell=0,\ldots,m$, be a family of functions. Let
+\[
+	\tau_q(x_1,y_1,\ldots,x_m,y_m)
+:=
+(y_1,x_1,\ldots,y_q,x_q,x_{q+1},y_{q+1},\ldots,x_m,y_m).
+\]
+ We take $\mathcal{A}\subset \prod_{\ell=1}^m \mathcal E_\ell^2$ and 
+ \((I_U)_{U\in \mathcal A}\subset [m]\) satisfying that for any
+ \(\ell\in [m]\) and 
+ \(U=(x_1,y_1,\ldots,x_m,y_m)\in \mathcal{A}\),
+\[
+\tau_\ell U\in \mathcal{A},
+\qquad
+I_{\tau_\ell U}=I_U.
+\]
+Then, for any $(x_0,y_0)\in \mathcal E_0^2,(x_{m+1},y_{m+1})\in \mathcal E_{m+1}^2$, and $z^*_i\in \mathcal E_i$, and $c\in \mathbb R$, letting 
+$$\Delta_\ell^c(x,x';y,y'):=f_\ell(x,x')f_\ell(y,y')-cf_\ell(z_\ell^*,x') f_\ell(z_\ell^*,y'),$$ we have
+\begin{align*}
+  &\sum_{(x_1,y_1,\ldots,x_m,y_m)\in \mathcal{A}} f_0(x_0,x_1)f_0(y_0,y_1)\prod_{\ell=1}^m f_\ell(x_\ell,x_{\ell+1})f_\ell(y_\ell,y_{\ell+1})\\
+&\qquad - \sum_{(x_1,y_1,\ldots,x_m,y_m)\in \mathcal{A}} f_0(y_0,x_1)f_0(x_0,y_1)\prod_{\ell=1}^m f_\ell(x_\ell,x_{\ell+1})f_\ell(y_\ell,y_{\ell+1})\\
+&=\sum_{U=(x_1,y_1,\ldots,x_m,y_m)\in \mathcal{A}} f_0(x_0,x_1)f_0(y_0,y_1)\prod_{\ell\in I_U} \Delta_\ell^c(x_\ell,x_{\ell+1};y_\ell,y_{\ell+1})\prod_{\ell\in [m]\setminus I_U} f_\ell(x_\ell,x_{\ell+1})f_\ell(y_\ell,y_{\ell+1})\\
+&\qquad - \sum_{U=(x_1,y_1,\ldots,x_m,y_m)\in \mathcal{A}} f_0(y_0,x_1)f_0(x_0,y_1)\prod_{\ell\in I_U} \Delta_\ell^c(x_\ell,x_{\ell+1};y_\ell,y_{\ell+1})\prod_{\ell\in [m]\setminus I_U} f_\ell(x_\ell,x_{\ell+1})f_\ell(y_\ell,y_{\ell+1}).
+\end{align*}
+\end{lemma}
+\begin{proof}
+For \(q\in \{1,\ldots,m+1\}\), set
+\[
+I_U^{(q)}:=I_U\cap \{q,\ldots,m\}.
+\]
+Define
+\begin{align*}
+F_q^+
+&:=
+\sum_{U=(x_1,y_1,\ldots,x_m,y_m)\in \mathcal{A}}
+f_0(x_0,x_1)f_0(y_0,y_1)
+\prod_{\ell\in I_U^{(q)}} \Delta_\ell^c(x_\ell,x_{\ell+1};y_\ell,y_{\ell+1})
+\prod_{\ell\in [m]\setminus I_U^{(q)}} f_\ell(x_\ell,x_{\ell+1})f_\ell(y_\ell,y_{\ell+1}),\\
+F_q^-
+&:=
+\sum_{U=(x_1,y_1,\ldots,x_m,y_m)\in \mathcal{A}}
+f_0(y_0,x_1)f_0(x_0,y_1)
+\prod_{\ell\in I_U^{(q)}} \Delta_\ell^c(x_\ell,x_{\ell+1};y_\ell,y_{\ell+1})
+\prod_{\ell\in [m]\setminus I_U^{(q)}} f_\ell(x_\ell,x_{\ell+1})f_\ell(y_\ell,y_{\ell+1}),
+\end{align*}
+and \(F_q:=F_q^+-F_q^-\).
+Then \(F_1\) is the right-hand side of the lemma, while \(F_{m+1}\) is the
+left-hand side. It is therefore enough to prove
+\[
+F_{q+1}-F_q=0,\qquad q\in [m].
+\]
+
+Fix \(q\in [m]\). Only those \(U\in \mathcal A\) with \(q\in I_U\) contribute to
+the difference. Write
+\[
+F_{q+1}-F_q=c(\mathrm I+\mathrm{II}),
+\]
+where
+\begin{align*}
+\mathrm I
+&:=
+\sum_{U\in \mathcal A:\,q\in I_U}
+f_0(x_0,x_1)f_0(y_0,y_1)f_q(z_q^*,x_{q+1})f_q(z_q^*,y_{q+1})\\ &\qquad \times 
+\prod_{\ell\in I_U^{(q+1)}} \Delta_\ell^c(x_\ell,x_{\ell+1};y_\ell,y_{\ell+1})
+\prod_{\ell\in [m]\setminus I_U^{(q)}} f_\ell(x_\ell,x_{\ell+1})f_\ell(y_\ell,y_{\ell+1}),\\
+\mathrm{II}
+&:=
+-\sum_{U\in \mathcal A:\,q\in I_U}
+f_0(y_0,x_1)f_0(x_0,y_1)f_q(z_q^*,x_{q+1})f_q(z_q^*,y_{q+1})\\ &\qquad \times 
+\prod_{\ell\in I_U^{(q+1)}} \Delta_\ell^c(x_\ell,x_{\ell+1};y_\ell,y_{\ell+1})
+\prod_{\ell\in [m]\setminus I_U^{(q)}} f_\ell(x_\ell,x_{\ell+1})f_\ell(y_\ell,y_{\ell+1}).
+\end{align*}
+
+By assumption, \(\tau_q\) is a bijection of \(\mathcal A\) and
+\(I_{\tau_q(U)}=I_U\), so it is a bijection of \(\{U\in \mathcal A:q\in I_U\}\).
+Fix such a \(U=(x_1,y_1,\ldots,x_m,y_m)\).
+The factor \(f_q(z_q^*,x_{q+1})f_q(z_q^*,y_{q+1})\) does not depend on
+\((x_q,y_q)\). For \(\ell\le q-1\), the factor
+\(f_\ell(x_\ell,x_{\ell+1})f_\ell(y_\ell,y_{\ell+1})\) is sent by \(\tau_q\) to
+\(f_\ell(y_\ell,y_{\ell+1})f_\ell(x_\ell,x_{\ell+1})\), which is the same
+quantity. For \(\ell\ge q+1\), nothing changes since \(\tau_q\) leaves
+\((x_\ell,y_\ell)\) unchanged and \(I_{\tau_q(U)}^{(q+1)}=I_U^{(q+1)}\).
+Finally, the entrance factor transforms as
+\[
+f_0(x_0,x_1)f_0(y_0,y_1)
+\mapsto
+f_0(x_0,y_1)f_0(y_0,x_1)
+=
+f_0(y_0,x_1)f_0(x_0,y_1).
+\]
+Hence, if \(G_q(U)\) and \(H_q(U)\) denote the respective summands in the two
+sums \(\mathrm I\) and \(-\mathrm{II}\), then
+\[
+G_q(\tau_q(U))=H_q(U).
+\]
+Using the bijection \(U\mapsto \tau_q(U)\) on \(\{U\in \mathcal A:q\in I_U\}\),
+\[
+\sum_{U\in \mathcal A:\,q\in I_U} G_q(U)
+=
+\sum_{U\in \mathcal A:\,q\in I_U} G_q(\tau_q(U))
+=
+\sum_{U\in \mathcal A:\,q\in I_U} H_q(U).
+\]
+Hence \(\mathrm I+\mathrm{II}=0\), so \(F_{q+1}-F_q=0\). Summing over \(q=1,\ldots,m\) yields
+\(F_{m+1}=F_1\).
+\end{proof}

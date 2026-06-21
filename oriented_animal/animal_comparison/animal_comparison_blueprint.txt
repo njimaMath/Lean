@@ -1,0 +1,828 @@
+Oriented animal Lean blueprint
+==============================
+
+Source file: oriented_animal/animal.tex
+
+Goal
+----
+
+Formalize the deterministic part of the TeX file:
+
+- the finite slab geometry,
+- oriented and non-oriented paths,
+- the reached set B and the free set F,
+- the oriented inner boundary and the enlarged inner boundary,
+- Lemma cutset,
+- Lemma lowerbd,
+- Theorem oriented animal to animal:
+  if the crossing event C fails, then
+  card partialIn B <= 3 * card arrowPartialIn B.
+
+The hypotheses N >= 3, L >= 2, and N <= exp L are present in the TeX file.
+The three displayed results only use finite slab geometry and the fact that
+N has enough room for the predecessor arguments. Keep the full hypotheses in
+the final theorem if the Lean file is meant to mirror the TeX exactly, but most
+helper lemmas can use weaker hypotheses such as 1 <= N or 2 <= m.
+
+Recommended file layout
+-----------------------
+
+Create oriented_animal/animal.lean later with roughly this import list:
+
+```
+import Mathlib.Data.Int.Basic
+import Mathlib.Data.Finset.Basic
+import Mathlib.Data.Fintype.Basic
+import Mathlib.Data.Fintype.Card
+import Mathlib.Combinatorics.SimpleGraph.Basic
+import Mathlib.Combinatorics.SimpleGraph.Walks.Basic
+import Mathlib.Tactic
+
+open scoped BigOperators
+
+namespace OrientedAnimal
+```
+
+If the file should build through Lake, add an extra library stanza later:
+
+```
+lean_lib OrientedAnimal where
+  srcDir := "."
+  globs := #[.submodules `oriented_animal]
+```
+
+The blueprint below is written so a first Lean version can avoid probability
+and measure theory entirely. The edge configuration is only an open-edge
+predicate on oriented edges.
+
+Finite geometry
+---------------
+
+Use a finite vertex type rather than a global lattice plus an `InSlab`
+predicate. This makes all boundary sets finite by typeclass search.
+
+```
+abbrev SpacePoint (L : Nat) : Type :=
+  {x : Fin 2 -> Int // forall i : Fin 2, Int.natAbs (x i) <= L}
+
+abbrev V (N L : Nat) : Type :=
+  Fin (N + 1) * SpacePoint L
+```
+
+Useful projections:
+
+```
+namespace V
+
+def time (v : V N L) : Nat := v.1.val
+def space (v : V N L) : SpacePoint L := v.2
+def coord (v : V N L) (i : Fin 2) : Int := v.2.1 i
+
+def mk (m : Nat) (hm : m < N + 1) (x : SpacePoint L) : V N L :=
+  (Fin.mk m hm, x)
+
+@[simp] lemma time_mk ...
+@[simp] lemma space_mk ...
+
+end V
+```
+
+For the final cardinal lower bound, prove the box size once:
+
+```
+lemma card_spacePoint (L : Nat) :
+    Fintype.card (SpacePoint L) = (2 * L + 1) ^ 2 := by
+  -- Build an equivalence with Fin (2 * L + 1) x Fin (2 * L + 1).
+  -- A convenient map sends k : Fin (2 * L + 1) to (k : Int) - L.
+  -- The inverse sends z with natAbs z <= L to Nat.ofInt (z + L).
+  -- This proof is independent from the path arguments, so it can be postponed.
+  sorry
+```
+
+If this equivalence takes time, keep the first version of Lemma lowerbd in the
+form
+
+```
+Fintype.card (SpacePoint L) <= Fintype.card ...
+```
+
+and rewrite by `card_spacePoint` only at the end.
+
+Boundary slices and slab boundary
+---------------------------------
+
+Define time slices as predicates on the finite vertex type:
+
+```
+def T (N L : Nat) (k : Nat) : Set (V N L) :=
+  {v | V.time v = k}
+
+def T0 (N L : Nat) : Set (V N L) := T N L 0
+def TN (N L : Nat) : Set (V N L) := T N L N
+```
+
+For this blueprint, the boundary `partial Slab_{N,L}` used in the free set is
+the top slice `T_N`.
+
+```
+def SlabBoundary (N L : Nat) : Set (V N L) :=
+  TN N L
+```
+
+Core lemmas:
+
+```
+lemma mem_boundary_of_time_top (v : V N L) (h : V.time v = N) :
+    v in SlabBoundary N L := ...
+```
+
+In actual Lean code use normal membership notation. The text here uses ASCII
+phrasing only.
+
+Adjacency
+---------
+
+Define the L1 distance in the two spatial coordinates:
+
+```
+def l1Space (x y : SpacePoint L) : Nat :=
+  Int.natAbs (x.1 0 - y.1 0) + Int.natAbs (x.1 1 - y.1 1)
+```
+
+The oriented edge relation matches the TeX definition:
+
+```
+def OAdj (u v : V N L) : Prop :=
+  V.time v = V.time u + 1 And l1Space (V.space u) (V.space v) <= 1
+```
+
+The non-oriented edge relation is the graph relation `E_{N,L}`:
+
+```
+def UAdj (u v : V N L) : Prop :=
+  u <> v And
+  Int.natAbs ((V.time u : Int) - (V.time v : Int)) <= 1 And
+  l1Space (V.space u) (V.space v) <= 1
+```
+
+Build a `SimpleGraph` for non-oriented walks:
+
+```
+def UGraph (N L : Nat) : SimpleGraph (V N L) where
+  Adj := UAdj
+  symm := by
+    -- use natAbs_neg and symmetry of l1Space
+    sorry
+  loopless := by
+    intro v hv
+    exact hv.1 rfl
+```
+
+Core adjacency lemmas:
+
+```
+lemma l1Space_symm (x y : SpacePoint L) :
+    l1Space x y = l1Space y x := by ...
+
+lemma oAdj_to_uAdj {u v : V N L} (h : OAdj u v) : UAdj u v := by
+  -- time increases by one, so u <> v.
+  -- the time difference has natAbs one.
+  -- spatial part is from h.
+  sorry
+
+lemma uAdj_time_cases {u v : V N L} (h : UAdj u v) :
+    V.time v = V.time u Or
+    V.time v = V.time u + 1 Or
+    V.time u = V.time v + 1 := by
+  -- Convert natAbs of the integer time difference <= 1 into the three Nat cases.
+  -- This lemma is used in lowerbd.
+  omega
+```
+
+Open configurations and reachability
+------------------------------------
+
+There are two Lean-friendly options.
+
+Option A, closest to the paper:
+
+```
+structure OEdge (N L : Nat) where
+  tail : V N L
+  head : V N L
+  adj : OAdj tail head
+
+def Config (N L : Nat) := OEdge N L -> Bool
+
+def EdgeOpen (omega : Config N L) (e : OEdge N L) : Prop :=
+  omega e = true
+```
+
+Option B, easier for early proofs:
+
+```
+variable (Open : forall u v : V N L, OAdj u v -> Prop)
+```
+
+Use Option B for a first formalization. It avoids quotient issues around edge
+objects. You can package it as `OEdge` later.
+
+Indexed path structures
+-----------------------
+
+Mathlib `SimpleGraph.Walk` is fine for the non-oriented graph. For the
+oriented path in Lemma cutset, use an indexed finite path because the proof
+needs the first index where a vertex lies in F.
+
+```
+structure OPath (N L : Nat) where
+  len : Nat
+  vertex : Fin (len + 1) -> V N L
+  edge : forall i : Fin len,
+    OAdj (vertex i.castSucc) (vertex i.succ)
+
+namespace OPath
+
+def start (p : OPath N L) : V N L := p.vertex 0
+def finish (p : OPath N L) : V N L :=
+  p.vertex (Fin.last p.len)
+
+def AllOpen (Open : forall u v : V N L, OAdj u v -> Prop)
+    (p : OPath N L) : Prop :=
+  forall i : Fin p.len, Open (p.vertex i.castSucc) (p.vertex i.succ) (p.edge i)
+
+end OPath
+```
+
+For non-oriented paths, use either `SimpleGraph.Walk` or a matching indexed
+structure. If using `SimpleGraph.Walk`, define:
+
+```
+def WalkAvoids (B : Set (V N L)) {u v : V N L}
+    (w : (UGraph N L).Walk u v) : Prop :=
+  forall z, z in w.support -> z notin B
+```
+
+Actual Lean names for support may need a local check. If the support API is
+annoying, use an indexed `UPath`:
+
+```
+structure UPath (N L : Nat) where
+  len : Nat
+  vertex : Fin (len + 1) -> V N L
+  edge : forall i : Fin len,
+    UAdj (vertex i.castSucc) (vertex i.succ)
+
+def UPath.start ...
+def UPath.finish ...
+def UPath.Avoids (B : Set (V N L)) (p : UPath N L) : Prop :=
+  forall i, p.vertex i notin B
+```
+
+The indexed `UPath` route gives simpler predecessor and concatenation lemmas:
+
+```
+def UPath.nil (v : V N L) : UPath N L := ...
+
+def UPath.cons {u v : V N L} (h : UAdj u v) (p : UPath N L)
+    (hpstart : p.start = v) : UPath N L := ...
+
+lemma UPath.avoids_cons {B : Set (V N L)} {u v : V N L}
+    (hu : u notin B) (hrest : p.Avoids B) :
+    (UPath.cons h p hpstart).Avoids B := ...
+```
+
+Reached set, free set, and boundaries
+-------------------------------------
+
+Open reachability:
+
+```
+def OpenReach (Open : forall u v : V N L, OAdj u v -> Prop)
+    (u v : V N L) : Prop :=
+  Exists fun p : OPath N L =>
+    p.start = u And p.finish = v And p.AllOpen Open
+
+def Crossing (Open : forall u v : V N L, OAdj u v -> Prop) : Prop :=
+  Exists fun u : V N L =>
+  Exists fun v : V N L =>
+    u in T0 N L And v in TN N L And OpenReach Open u v
+
+def B (Open : forall u v : V N L, OAdj u v -> Prop) : Set (V N L) :=
+  {v | Exists fun u : V N L => u in T0 N L And OpenReach Open u v}
+```
+
+Core reachability lemmas:
+
+```
+lemma T0_subset_B (h : v in T0 N L) : v in B Open := by
+  -- use the length zero oriented path.
+  sorry
+
+lemma not_TN_mem_B_of_not_crossing
+    (hC : Not (Crossing Open)) (hv : v in TN N L) :
+    v notin B Open := by
+  -- unpack v in B and form a crossing.
+  sorry
+```
+
+Free vertices:
+
+```
+def FreeToBoundary (Open : forall u v : V N L, OAdj u v -> Prop)
+    (v : V N L) : Prop :=
+  v notin B Open And
+  Exists fun b : V N L =>
+  Exists fun p : UPath N L =>
+    b in SlabBoundary N L And
+    p.start = v And p.finish = b And p.Avoids (B Open)
+
+def F := FreeToBoundary
+```
+
+In TeX, `F` is defined by a path whose vertices avoid B; this already implies
+`v notin B`. Keep the explicit conjunct in Lean because it saves repeated
+support arguments.
+
+Key free-set lemmas:
+
+```
+lemma F_disjoint_B (hv : v in F Open) : v notin B Open := hv.1
+
+lemma TN_subset_F_of_not_crossing
+    (hC : Not (Crossing Open)) (hv : v in TN N L) :
+    v in F Open := by
+  -- Use not_TN_mem_B_of_not_crossing.
+  -- Use UPath.nil v.
+  -- Use mem_boundary_of_time_top.
+  sorry
+
+lemma F_of_uAdj_F_of_not_B {u v : V N L}
+    (huv : UAdj u v) (hvF : v in F Open) (huB : u notin B Open) :
+    u in F Open := by
+  -- Prepend the non-oriented edge u--v to the path witnessing hvF.
+  -- The new path avoids B since huB handles the new first vertex.
+  sorry
+```
+
+Boundaries:
+
+```
+def OrientedInnerEdgeBoundary
+    (Open : forall u v : V N L, OAdj u v -> Prop) : Set (OEdge N L) :=
+  {e | e.tail in B Open And e.head in F Open}
+
+def OrientedInnerBoundary
+    (Open : forall u v : V N L, OAdj u v -> Prop) : Set (V N L) :=
+  {u | u in B Open And
+       Exists fun v : V N L =>
+       Exists fun h : OAdj u v =>
+         v in F Open}
+
+def InnerBoundary
+    (Open : forall u v : V N L, OAdj u v -> Prop) : Set (V N L) :=
+  {u | u in B Open And
+       Exists fun v : V N L =>
+         UAdj u v And v in F Open}
+```
+
+Core boundary lemma:
+
+```
+lemma orientedInnerBoundary_subset_innerBoundary :
+    OrientedInnerBoundary Open subset InnerBoundary Open := by
+  -- use oAdj_to_uAdj
+  sorry
+```
+
+Lemma cutset
+------------
+
+TeX statement:
+On C^c, every oriented path from T0 to TN contains an edge of
+OrientedInnerEdgeBoundary.
+
+Lean target:
+
+```
+theorem cutset
+    (hC : Not (Crossing Open))
+    (p : OPath N L)
+    (hp0 : p.start in T0 N L)
+    (hpN : p.finish in TN N L) :
+    Exists fun i : Fin p.len =>
+      p.vertex i.castSucc in B Open And
+      p.vertex i.succ in F Open := by
+  sorry
+```
+
+Proof outline:
+
+- The final vertex is not in B, otherwise `p.finish in B` gives a crossing to
+  TN.
+- The final vertex lies in F by the length zero non-oriented path to the slab
+  boundary.
+- The starting vertex lies in B because T0 is always reached by a zero-length
+  open path.
+- Choose the least path index k such that `p.vertex k in F`.
+  Use a helper lemma for finite paths:
+
+```
+lemma exists_first_index
+    (P : forall i : Fin (p.len + 1), Prop) [DecidablePred P]
+    (hLast : P (Fin.last p.len)) :
+    Exists fun k : Fin (p.len + 1) =>
+      P k And forall j : Fin (p.len + 1), j.val < k.val -> Not (P j) := ...
+```
+
+- Since `p.start in B` and F is disjoint from B, k is not zero.
+- Let `i` be the predecessor edge index, so the head is `p.vertex k`.
+- Minimality gives the predecessor is not in F.
+- If the predecessor were not in B, `F_of_uAdj_F_of_not_B` applied to the
+  underlying non-oriented edge of `p.edge i` would put the predecessor in F.
+- Therefore the predecessor is in B and the edge goes from B to F.
+
+Needed helper:
+
+```
+lemma oPath_edge_to_uAdj (p : OPath N L) (i : Fin p.len) :
+    UAdj (p.vertex i.castSucc) (p.vertex i.succ) :=
+  oAdj_to_uAdj (p.edge i)
+```
+
+Lemma lowerbd, fiber lower bound
+--------------------------------
+
+TeX first claim:
+For every x in Chi_L, the vertical fiber meets the oriented inner boundary.
+
+Lean target:
+
+```
+def verticalPath (x : SpacePoint L) : OPath N L := ...
+
+lemma verticalPath_start (x : SpacePoint L) :
+    (verticalPath (N := N) (L := L) x).start in T0 N L := ...
+
+lemma verticalPath_finish (x : SpacePoint L) :
+    (verticalPath (N := N) (L := L) x).finish in TN N L := ...
+
+theorem every_fiber_meets_oriented_inner
+    (hC : Not (Crossing Open)) (x : SpacePoint L) :
+    Exists fun m : Fin (N + 1) =>
+      V.space (V.mk m.val m.isLt x) = x And
+      V.mk m.val m.isLt x in OrientedInnerBoundary Open := by
+  -- Apply cutset to verticalPath x.
+  -- A cutset edge on the vertical path has tail (m,x).
+  sorry
+```
+
+The vertical path can have length N and vertex at index k equal to `(k,x)`.
+Its edge proof is immediate from time increment and zero spatial distance.
+
+Cardinality version:
+
+```
+theorem card_space_le_oriented_inner
+    (hC : Not (Crossing Open)) :
+    Fintype.card (SpacePoint L) <=
+      Fintype.card {u : V N L // u in OrientedInnerBoundary Open} := by
+  classical
+  -- For each x choose a tail on its fiber using every_fiber_meets_oriented_inner.
+  -- Define phi : SpacePoint L -> {u // u in OrientedInnerBoundary Open}.
+  -- Prove injective by comparing V.space.
+  -- Apply Fintype.card_le_of_injective.
+  sorry
+```
+
+After proving `card_spacePoint`, get the TeX lower bound
+`(2 * L + 1)^2 <= ...`.
+
+Lemma lowerbd, predecessor claim
+--------------------------------
+
+TeX second claim:
+If `(m,x)` is in the enlarged inner boundary but not in the oriented one, then
+one or two time levels below it, in the same fiber, lies a vertex in the
+oriented inner boundary or in F.
+
+Lean target:
+
+```
+def vertexAt (m : Nat) (hm : m <= N) (x : SpacePoint L) : V N L :=
+  V.mk m (Nat.lt_succ_of_le hm) x
+
+theorem lowerbd_predecessor
+    (hmN : m <= N) (hm1 : 1 <= m)
+    (hmem : vertexAt (N := N) (L := L) m hmN x in InnerBoundary Open)
+    (hnot : vertexAt (N := N) (L := L) m hmN x
+        notin OrientedInnerBoundary Open) :
+    (Exists fun hm1N : m - 1 <= N =>
+      let u1 := vertexAt (N := N) (L := L) (m - 1) hm1N x
+      u1 in OrientedInnerBoundary Open Or u1 in F Open)
+    Or
+    (2 <= m And
+      Exists fun hm2N : m - 2 <= N =>
+      let u2 := vertexAt (N := N) (L := L) (m - 2) hm2N x
+      u2 in OrientedInnerBoundary Open Or u2 in F Open) := by
+  sorry
+```
+
+Proof outline:
+
+- From `hmem`, choose a non-oriented neighbor `v = (r,y)` in F.
+- Since the current vertex is not in the oriented inner boundary, the neighbor
+  cannot have time `m + 1`. If it did, the non-oriented adjacency conditions
+  would give an oriented edge from `(m,x)` to `v`, placing `(m,x)` in the
+  oriented inner boundary.
+- Use `uAdj_time_cases` to conclude `r = m` or `r + 1 = m`.
+- If `r = m`, the vertex `(m - 1, x)` has an oriented edge to `v`.
+  If `(m - 1, x)` lies in B, it is in the oriented inner boundary.
+  If it does not lie in B, prepend the non-oriented edge from `(m - 1,x)` to
+  `v` to the F-witness for `v`, so `(m - 1,x)` lies in F.
+- If `r + 1 = m`, first prove `m <> 1`. If `m = 1`, then `r = 0`, so `v` is
+  in T0 and hence in B, contradicting `v in F`.
+  Thus `2 <= m`. Apply the same argument to `(m - 2,x)`.
+
+Local one-dimensional counting lemma
+------------------------------------
+
+The final theorem is easiest if the hard finite counting is isolated from the
+slab geometry.
+
+For fixed `x`, define finite sets of time indices:
+
+```
+def I (x : SpacePoint L) : Finset Nat :=
+  (Finset.range (N + 1)).filter fun m =>
+    vertexAt m proof_from_filter x in InnerBoundary Open
+
+def J (x : SpacePoint L) : Finset Nat :=
+  (Finset.range (N + 1)).filter fun m =>
+    vertexAt m proof_from_filter x in OrientedInnerBoundary Open
+
+def G (x : SpacePoint L) : Finset Nat :=
+  (Finset.range (N + 1)).filter fun m =>
+    vertexAt m proof_from_filter x in F Open
+```
+
+In Lean a filter predicate cannot directly use the proof that `m < N + 1`.
+Use one of these implementations:
+
+- Work with `Fin (N + 1)` for `I`, `J`, `G`, and convert `.val` only inside
+  the counting lemma.
+- Or define a total `vertexAtClamp m x` using `min m N`; then prove all uses
+  happen for `m in range (N + 1)`.
+- Or define the finite sets on the subtype `{m : Nat // m <= N}`.
+
+The subtype route is usually clean:
+
+```
+abbrev TimeIndex (N : Nat) := {m : Nat // m <= N}
+
+def vertexAtIndex (m : TimeIndex N) (x : SpacePoint L) : V N L :=
+  vertexAt m.1 m.2 x
+
+def Iset (x : SpacePoint L) : Finset (TimeIndex N) :=
+  Finset.univ.filter fun m => vertexAtIndex m x in InnerBoundary Open
+```
+
+For arithmetic, add helper constructors:
+
+```
+def predIndex (m : TimeIndex N) (hm : 1 <= m.1) : TimeIndex N :=
+  Subtype.mk (m.1 - 1) (by omega)
+
+def pred2Index (m : TimeIndex N) (hm : 2 <= m.1) : TimeIndex N :=
+  Subtype.mk (m.1 - 2) (by omega)
+```
+
+The one-dimensional lemma should be stated over `Nat` finsets first. This
+makes it reusable and independent from slab details.
+
+```
+structure FiberHyp (N : Nat) (I J G : Finset Nat) : Prop where
+  I_subset_range : I subset Finset.range (N + 1)
+  J_subset_I : J subset I
+  G_subset_range : G subset Finset.range (N + 1)
+  I_disjoint_G : Disjoint I G
+  G_back :
+    forall t, t in G -> 1 <= t -> (t - 1 in G Or t - 1 in J)
+  IminusJ_back :
+    forall m, m in I -> m notin J -> 1 <= m ->
+      (m - 1 in J Or m - 1 in G) Or
+      (2 <= m And (m - 2 in J Or m - 2 in G))
+
+theorem fiber_card_le_three
+    (h : FiberHyp N I J G) :
+    I.card <= 3 * J.card := by
+  sorry
+```
+
+Proof outline matching the TeX:
+
+- For `q in J`, define `hEnd q`.
+  If `q + 1 notin G`, set `hEnd q = q`.
+  If `q + 1 in G`, set `hEnd q` to the top endpoint of the connected component
+  of `G` containing `q + 1`.
+
+- Define
+
+```
+def componentFrom (G : Finset Nat) (a : Nat) : Finset Nat :=
+  G.filter fun t => a <= t And forall s, a <= s -> s <= t -> s in G
+
+def hEnd (G : Finset Nat) (q : Nat) : Nat :=
+  if h : q + 1 in G then
+    (componentFrom G (q + 1)).max' nonempty_proof
+  else q
+
+def K (G : Finset Nat) (q : Nat) : Finset Nat :=
+  {q, hEnd G q + 1, hEnd G q + 2}
+```
+
+- Prove `K_card_le_three : (K G q).card <= 3`.
+- Prove every connected component of G has its left predecessor in J.
+  A convenient lemma:
+
+```
+lemma component_left_pred_in_J
+    (h : FiberHyp N I J G)
+    (haG : a in G)
+    (haMin : forall s, s in G -> s < a -> False)
+    (haPos : 1 <= a) :
+    a - 1 in J := by
+  -- Use h.G_back a haG haPos.
+  -- The alternative a - 1 in G contradicts minimality.
+  sorry
+```
+
+  For a component starting at `q + 1`, this gives q in J; in the TeX proof the
+  component is already attached to q by construction.
+
+- Prove the cover:
+
+```
+lemma I_subset_biUnion_K (h : FiberHyp N I J G) :
+    I subset J.biUnion (K G) := by
+  -- Let m in I.
+  -- If m in J, use q = m and m in K m.
+  -- Otherwise m cannot be 0; h.IminusJ_back applies.
+  -- If the predecessor from h.IminusJ_back is in J, use that q.
+  -- If the predecessor is in G, move left to the start a of its component;
+  -- h.G_back gives a - 1 in J, and m is hEnd (a - 1) + 1 or + 2.
+  sorry
+```
+
+- Finish by cardinal estimates:
+
+```
+calc
+  I.card <= (J.biUnion (K G)).card := Finset.card_le_card I_subset_biUnion_K
+  _ <= Finset.sum J (fun q => (K G q).card) := Finset.card_biUnion_le
+  _ <= Finset.sum J (fun _ => 3) := Finset.sum_le_sum ...
+  _ = 3 * J.card := by simp [Nat.mul_comm]
+```
+
+This lemma is the main finite-combinatorial workload. It is worth proving and
+testing it before connecting the slab definitions.
+
+Deriving the fiber hypotheses
+-----------------------------
+
+For each `x : SpacePoint L`, prove:
+
+```
+lemma fiberHyp (hC : Not (Crossing Open)) (x : SpacePoint L) :
+    FiberHyp N (I x) (J x) (G x) := by
+  constructor
+  -- range conditions are by construction.
+  -- J_subset_I uses orientedInnerBoundary_subset_innerBoundary.
+  -- I_disjoint_G uses InnerBoundary vertices lie in B and F is disjoint from B.
+  -- G_back follows from the definition of F:
+  --   if (t,x) in F and t >= 1, inspect (t - 1,x).
+  --   if it is in B, the vertical oriented edge to (t,x) makes t - 1 in J.
+  --   if it is not in B, prepend the vertical non-oriented edge to the F path,
+  --   making t - 1 in G.
+  -- IminusJ_back is exactly lowerbd_predecessor.
+  sorry
+```
+
+The `G_back` lemma should be stated separately because it is used to identify
+left endpoints of components of `G`:
+
+```
+lemma fiber_F_back
+    (ht : t <= N) (htpos : 1 <= t)
+    (htF : vertexAt t ht x in F Open) :
+    vertexAt (t - 1) pred_le x in F Open Or
+    vertexAt (t - 1) pred_le x in OrientedInnerBoundary Open := by
+  -- If predecessor is in B, use the vertical oriented edge.
+  -- If not in B, prepend the vertical non-oriented edge to the F path.
+  sorry
+```
+
+Main theorem
+------------
+
+The final theorem in Lean can be stated as a cardinality of finite subtypes:
+
+```
+theorem oriented_animal_to_animal
+    (hC : Not (Crossing Open)) :
+    Fintype.card {u : V N L // u in InnerBoundary Open} <=
+      3 * Fintype.card {u : V N L // u in OrientedInnerBoundary Open} := by
+  classical
+  -- Decompose both finite sets by spatial fibers.
+  -- Apply fiber_card_le_three to each x.
+  -- Sum over x : SpacePoint L.
+  sorry
+```
+
+Recommended fiber-card decomposition:
+
+```
+def fiberOf (x : SpacePoint L) : Finset (V N L) :=
+  Finset.univ.filter fun v => V.space v = x
+
+lemma card_boundary_sum_fibers :
+    Fintype.card {u : V N L // u in InnerBoundary Open} =
+      Finset.sum Finset.univ (fun x : SpacePoint L => (Iset x).card) := by
+  -- Use the equivalence between vertices in a fixed fiber and TimeIndex N.
+  sorry
+
+lemma card_oriented_boundary_sum_fibers :
+    Fintype.card {u : V N L // u in OrientedInnerBoundary Open} =
+      Finset.sum Finset.univ (fun x : SpacePoint L => (Jset x).card) := by
+  sorry
+```
+
+Then:
+
+```
+calc
+  Fintype.card {u : V N L // u in InnerBoundary Open}
+      = Finset.sum Finset.univ (fun x : SpacePoint L => (Iset x).card) := ...
+  _ <= Finset.sum Finset.univ (fun x : SpacePoint L => 3 * (Jset x).card) := by
+        exact Finset.sum_le_sum (fun x hx => fiber_card_le_three (fiberHyp hC x))
+  _ = 3 * Finset.sum Finset.univ (fun x : SpacePoint L => (Jset x).card) := by
+        simp [Finset.mul_sum]
+  _ = 3 * Fintype.card {u : V N L // u in OrientedInnerBoundary Open} := by
+        rw [card_oriented_boundary_sum_fibers]
+```
+
+Suggested implementation order
+------------------------------
+
+- Build `SpacePoint`, `V`, slices, slab boundary, and adjacency.
+- Add indexed `OPath` and `UPath`, with nil, vertical path, and one-edge
+  prepend for `UPath`.
+- Define `OpenReach`, `Crossing`, `B`, `F`, and the two boundary sets.
+- Prove the basic closure lemmas for `B` and `F`.
+- Prove `cutset`.
+- Prove the vertical fiber lower bound, first as `Fintype.card SpacePoint <= ...`.
+- Prove `lowerbd_predecessor`.
+- Prove the standalone `fiber_card_le_three` lemma.
+- Bridge fixed fibers to `FiberHyp`.
+- Sum over fibers to prove `oriented_animal_to_animal`.
+- Add the optional rewrite using `card_spacePoint` to match the displayed
+  lower bound `(2 * L + 1)^2`.
+
+Naming map from TeX to Lean
+---------------------------
+
+```
+Chi_L                         SpacePoint L
+Slab_{N,L}                    V N L
+T_l                           T N L l
+partial Slab                  TN N L
+arrow E                       OAdj
+E                             UAdj or UGraph
+omega-open edge               Open u v h
+u <-> v                       OpenReach Open u v
+C                             Crossing Open
+B(omega)                      B Open
+F(omega)                      F Open
+arrow partial_E^in B          OrientedInnerEdgeBoundary Open
+arrow partial^in B            OrientedInnerBoundary Open
+partial^in B                  InnerBoundary Open
+Lemma cutset                  cutset
+Lemma lowerbd, first part     every_fiber_meets_oriented_inner
+Lemma lowerbd, second part    lowerbd_predecessor
+Theorem oriented animal       oriented_animal_to_animal
+```
+
+Common Lean risks
+-----------------
+
+- Time arithmetic with `Fin (N + 1)` can be noisy. Use `TimeIndex N` and
+  helper constructors for predecessors.
+- If `SimpleGraph.Walk.support` causes friction, switch to the indexed `UPath`
+  immediately. The TeX proof only needs finite paths, nil paths, and prepending
+  one edge.
+- Keep `F` with an explicit `v notin B` conjunct. This avoids repeatedly
+  extracting the first vertex from an avoiding path.
+- Prove the one-dimensional counting lemma independently. It has no lattice
+  content and will be much easier to debug in isolation.
+- Do not spend time on `card_spacePoint` until the main theorem is done. The
+  theorem and the injection lower bound can use `Fintype.card (SpacePoint L)`.

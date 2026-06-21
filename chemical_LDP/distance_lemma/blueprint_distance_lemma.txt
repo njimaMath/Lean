@@ -1,0 +1,60 @@
+For $x,y\in\R^ d$, we denote by $[x,y]$ the segment joining $x$ and $y$. 
+\begin{lem}\label{lem:dislines}
+Let $d\ge 3$, $K\ge\ell\ge  1$ and  $m\ge 1$.
+Consider $S_ 1\subset \rH_1(0)\cap \Z^d$ and $S_ 2\subset \rH_1(\ell\mathbf{e}_1)\cap \Z^d$ such that $|S_1|=|S_2|=m$ and
+\aln{\label{hypothesis star}
+\max_{x\in S_1,\,y\in S_2} \|x-y\|_{\infty}{\leq} K.
+}
+Then, there exists  a bijection $\sigma$ from $S_1$ to $S_2$ such that 
+\[\forall x\neq x'\in S_1\qquad \mathrm{d}_2([x,\sigma(x)], [x',\sigma(x')]) \ge \frac{1}{\sqrt{2}}\frac{\ell}{K},\]
+{where ${\rm d}_2$ is the Euclidean distance.} In particular, the segments do not intersect.
+\end{lem}
+
+
+Let us denote by $\mathfrak{S}_{m}$  the set of all the  permutations of $[m]$. Recall that $[x,y]$ stands for the segment between $x$ and $y$.
+\begin{proof}[Proof of Lemma \ref{lem:dislines}] Let us prove the result in the case $\ell=K$. The result for general $\ell$ follows by dilating the space by a factor $\ell/K$ in the $\mathbf e_1$ direction.
+
+Let $S_1=\{x^1,\dots,x^{m}\}\subset \rH_1(0)\cap \Z^d$ and $S_2=\{y^1,\dots,y^{m}\}\subset \rH_1(K\mathbf{e}_1)\cap \Z^d$ be such that $\max_{x\in S_1,\,y\in S_2}\|x-y\|_\infty\leq K$. We will find a permutation $\sigma\in \mathfrak{S}_{m}$ such that $${\rm d}_2([x^i,y^{\sigma(i)}],[x^j,y^{\sigma(j)}])\geq \frac{1}{\sqrt{2}},\qquad\forall i\neq j\in [m].$$
+For $k,l\in [d]$, denote by $\pi_{k,l}$ the projection on the plane spanned by $\mathbf{e}_k$ and $\mathbf{e}_l$.
+Let $\sigma\in\mathfrak{S}_{m}$ be such that $\sigma$ minimizes
+\[\sum_{i=1}^ {m}\sum_{k=2}^d\|\pi_{1,k}(x^i-y^{\sigma(i)})\|_2.\]
+ Denote by $L_i$ the segment joining $x^i$ and $y^{\sigma(i)}$. Let  $v^i$ be the unit vector associated to the direction of the segment $L_i$ from $x^i$ to $y^{\sigma(i)}$.
+We claim $L_i\cap L_j= \emptyset$ for all $i\neq j$. To this end, we first suppose that $L_i\cap L_j\ne \emptyset$ for some $i\neq j\in [m]$, and we shall derive a contradiction. We note that for all $k\ne 1$, we have $\pi_{1,k}(L_i)\cap \pi_{1,k}(L_j)\ne \emptyset$, so we can take $z\in \pi_{1,k}(L_i)\cap \pi_{1,k}(L_j)$. { By the triangle inequality,
+\begin{equation}\label{eq:triangineq}
+\begin{split}
+   &  \|\pi_{1,k}(x^i- y^{\sigma(j)})\|_2+\|\pi_{1,k}(x^j- y^{\sigma(i)})\|_2\\
+  &\leq  \|\pi_{1,k}(x^i)- z\|_2+\|z-\pi_{1,k}(y^{\sigma(j)})\|_2+\|\pi_{1,k}(x^j)- z\|_2+\|z-\pi_{1,k}(y^{\sigma(i)})\|_2\\&= \|\pi_{1,k}(x^i- y^{\sigma(i)})\|_2+\|\pi_{1,k}(x^j- y^{\sigma(j)})\|_2.
+    \end{split}
+\end{equation}
+Moreover, since $v^i,v^j$ are not colinear due to $L_i\cap L_j\ne \emptyset$ and $x^i\neq x^j$, there exists $k\in \{2,\cdots,d\}$ such that $\pi_{1,k}(v^i)$ is not colinear to $\pi_{1,k}(v^j)$, where $\pi_{1,k}(L_i)$ and  $\pi_{1,k}(L_j)$ intersect only at one point. Then, the inequality in \eqref{eq:triangineq}  becomes strict, i.e.\@ $$\|\pi_{1,k}(x^i- y^{\sigma(j)})\|_2+\|\pi_{1,k}(x^j- y^{\sigma(i)})\|_2< \|\pi_{1,k}(x^i- y^{\sigma(i)})\|_2+\|\pi_{1,k}(x^j- y^{\sigma(j)})\|_2.$$
+}
+Therefore, we arrive at 
+\[\sum_{k=2}^d\|\pi_{1,k}(x^i-y^{\sigma(j)})\|_2+\sum_{k=2}^d\|\pi_{1,k}(x^j-y^{\sigma(i)})\|_2<\sum_{k=2}^d\|\pi_{1,k}(x^i-y^{\sigma(i)})\|_2+\sum_{k=2}^d\|\pi_{1,k}(x^j-y^{\sigma(j)})\|_2,\]
+which contradicts that $\sigma$ is a minimizer. Therefore, we have  $L_i\cap L_j= \emptyset$ for all $i\neq j$.
+
+
+Let us next assume that for all $k\ne 1$ the projections of the segments $\pi_{1,k}(L_i)$ and $\pi_{1,k}(L_j)$ intersect. By similar reasoning as above, $\pi_{1,k}(v^i)$ and $\pi_{1,k}(v^j)$ are colinear for all $k\ne 1$, since otherwise it contradicts the minimality of $\sigma$.  Hence $v^i$ and $v^j$ are colinear. 
+ However, since  $x^i\neq x^j$ and $x^i_1=x^j_1$, there exists  $k\in\{2,\cdots,d\}$ such that the $k$-th coordinates of $x^i$ and $x^j$ do not coincide, i.e.\@ $x^i_k\neq x^j_k$. Since $L_i$ and $L_j$ are parallel, it follows that $\pi_{1,k}(L_i)$ and $\pi_{1,k}(L_j)$ do not intersect, which is a contradiction. Therefore, there exists $k\ne 1$ such that $\pi_{1,k}(L_i)$ and $\pi_{1,k}(L_j)$ do not intersect. We fix such a $k.$
+
+ Let us now compute the distance between $L_i$ and $L_j$. 
+   {\CO Observe that for two disjoint line segments in $\mathbb{R}^2$, the minimum distance is attained by a pair in which at least one point is an endpoint. If, for $\pi_{1,k}(L_i)$ and $\pi_{1,k}(L_j)$, the minimizing pair uses the endpoint $\pi_{1,k}\bigl(y^{\sigma(i)}\bigr)$ of $\pi_{1,k}(L_i)$, reflect the configuration in the hyperplane
+$
+H\left(\tfrac{K}{2}\mathbf e_1\right)$ 
+which interchanges $x^i$ and $y^{\sigma(i)}$ and preserves all distances. Hence, without loss of generality, we assume that 
+\[
+\mathrm d_2\bigl(\pi_{1,k}(L_i),\pi_{1,k}(L_j)\bigr)
+= \mathrm d_2\bigl(\pi_{1,k}(x^i),\pi_{1,k}(L_j)\bigr).
+\]
+}
+Denote by $\mathbf{u}$ a unit vector in {\CO $\mathrm{Vect}(\mathbf{e}_1,\mathbf{e}_k)$}  orthogonal to $\pi_{1,k}(L_j).$ 
+By  $\max_{x\in S_1,\,y\in S_2}\|x-y\|_\infty\leq K$, $S_1\subset {\rm H}_1(0)$, and $S_2\subset {\rm H}_1(K\mathbf{e}_1)$, we have 
+ $|\mathbf{u}\cdot \mathbf{e}_1|\le\frac{1}{\sqrt{2}}\le |\mathbf{u}\cdot \mathbf{e}_k|$.  
+Besides, since $\pi_{1,k}(L_i)$ and $\pi_{1,k}(L_j)$ do not intersect, $x^i,x^j\in \Z^d$, and $x_1^i=x_1^j$, we have $|x^i_k-x^j_k|\geq 1$. Thus, we have
+\al{
+\mathrm{d}_2({ \pi_{1,k}(x^i)},\pi_{1,k}(L_j))&\ge |\pi_{1,k}(x^i-x^j)\cdot \mathbf{u}|\\
+&\ge |\pi_{1,k}(x^i-x^j)\cdot \mathbf{e}_k| |\mathbf{u}\cdot \mathbf{e}_k|\\
+&=|x^i_k-x^j_k||\mathbf{u}\cdot \mathbf{e}_k|\ge\frac{1}{\sqrt{2}}.
+}
+Therefore, we conclude
+\[\mathrm{d}_2(L_i,L_j)\ge \mathrm{d}_2(\pi_{1,k}(L_i),\pi_{1,k}(L_j)) \ge \frac{1}{\sqrt{2}}\,.\]
+\end{proof}

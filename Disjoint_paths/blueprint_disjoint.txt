@@ -1,0 +1,258 @@
+Assume that $d\geq 3$. In this section, we prove the following lemma. 
+\begin{theorem}
+  \label{lem:2d-2}
+  Let $x_n\in \partial D_n:=\{x\in\Z^d\colon \|x\|_1=n\}$ and $x_{n+1}\in \partial D_{n+1}$. Then for any $\delta\le 1/8d$, there exist 
+  \begin{align}
+    &\text{$2d-|\{i\colon x_n(i)\neq 0\}|-1$ paths starting from $x_n$ when $x_n\notin \{\pm n\bfe_i\}_{i\in [d]}$,}\label{eq:xn_neq_ne}\\
+    &\text{$2d-3$ paths starting from $x_n$ when $x_n=\pm n\bfe_i$ with some $i\in [d]$,}\label{eq:xn_eq_ne}\\
+    &\text{$|\{j\colon x_{n+1}(j)\neq 0\}|-1$ paths starting from $x_{n+1}$ when $x_{n+1}\not\in \{\pm (n+1)\bfe_j\}_{j\in [d]}$,}\label{eq:xn+1_neq_n+1e}\\
+    &\text{a path starting from $x_{n+1}$ when $x_{n+1}=\pm (n+1)\bfe_j $ with some $j\in [d]$,}\label{eq:xn+1_eq_n+1e}
+\end{align}
+that are edge-disjoint, stay in $\partial D_n\cup \partial D_{n+1}$, have length between $\lfloor \delta^2(n+1)\rfloor$ and $\lfloor 2d\delta^2(n+1)\rfloor$, and have endpoints at least $\delta^3(n+1)$ away from the union of all the other paths. 
+\end{theorem}
+Note that for all sufficiently large $n$, 
+\aln{\label{eq: xn coordinate large}
+\text{$x_n$ has a coordinate that is larger than $n/d > 4 \delta^2 (n+1)$,}
+}
+which we use in this proof without explicit mention. 
+\begin{proof}
+The proof is divided into various cases depending on the positions of $x_n$ and $x_{n+1}$. Before delving into the detailed argument, we give a brief guide to the reader. First, since only the relative position of $x_n$ and $x_{n+1}$ matters, we often reduce the consideration to a special case by changing the order of coordinates and applying reflections. Second, we will construct the paths from $x_n$ in such a way that they move away from $x_n$ in different directions so that they are edge-disjoint and satisfy the last requirement in Lemma~\ref{lem:2d-2}, and the same apply to the paths from $x_{n+1}$. In order to separate the paths from $x_n$ and those from $x_{n+1}$, we will often choose one coordinate and grow the differences in that coordinate along the paths.
+
+The following lemma provides a handy way to verify the last requirement in Lemma~\ref{lem:2d-2}. 
+\begin{lem}
+\label{lem:path-separation}
+Suppose that two paths $\gamma$ and $\gamma'$ have length at least $\delta^2 (n+1)$ and that there is $i\in[d]$ such that after the first $\lfloor \delta^3 (n+1)\rfloor$ steps, 
+\begin{align}
+\label{eq:ps1'}
+    &\text{the difference of $i$-th coordinates of $\gamma$ and $\gamma'$ increases at least 1 in every $2d$ steps.}
+\end{align}
+
+Then the endpoint of $\gamma$ is at least $\delta^3(n+1)$ away from the whole path $\gamma'$. Moreover, if the same condition holds also after interchanging the roles of $\gamma$ and $\gamma'$ (possibly for a different coordinate), then the endpoint of $\gamma'$ is at least $\delta^3(n+1)$ away from the whole path $\gamma$ as well.
+\end{lem}
+\begin{proof}
+By the assumption, it follows that the endpoint of $\gamma$ is at least 
+\begin{equation*}
+\frac{1}{2d} (\delta^2-\delta^3)(n+1) \ge 2\delta^3(n+1),\qquad \text{for } \delta \le (6d+1)^{-1}
+\end{equation*}
+away from $\{\gamma'_j\}_{j\ge \lfloor \delta^3(n+1)\rfloor}$ in the $i$-th coordinate. Since $\{\gamma'_j\}_{j\le \lfloor \delta^3(n+1)\rfloor}$ is contained in the $\delta^3(n+1)$ neighborhood of $\{\gamma'_j\}_{j\ge \lfloor \delta^3(n+1)\rfloor}$, it is also at least $\delta^3(n+1)$ away from the endpoint of $\gamma$. 
+The second claim follows by applying the first claim with the roles of $\gamma$ and $\gamma'$ interchanged.
+\end{proof}
+
+In what follows, we will construct paths starting from $x_n$ and $x_{n+1}$ satisfying the conditions in this lemma and having length at most $\lfloor 2d\delta^2(n+1)\rfloor$. 
+\if0
+In fact, except for Case 1 below, we will deduce the condition \eqref{eq:ps3} from the following three conditions:
+\begin{align}
+    &\text{the $i$-th coordinate of $\gamma_{\lfloor \delta^3 (n+1)\rfloor}$ is larger than that of $\gamma'_{\lfloor \delta^3 (n+1)\rfloor}$,}\label{eq:ps1}\\
+    &\text{the $i$-th coordinate of $\gamma$ increases at least 1 in every $2d$ steps, and}\label{eq:ps2}\\
+    &\text{the $i$-th coordinate of $\gamma'$ does not increase. }\label{eq:ps3}
+\end{align}
+\fi
+ \\
+
+\noindent
+\textbf{Case 1} ($x_n$ and $x_{n+1}$ are in different orthants): This means that 
+\begin{align}
+\label{eq:OppositeSign}
+    x_n(r)x_{n+1}(r)<0
+\end{align}
+for some $r\in [d]$. By applying reflections and changing the order of coordinates, we may assume that 
+\begin{align*}
+  x_n&=(x_n(1),x_n(2),\ldots,x_n(k),0,\ldots,0)
+\end{align*}
+with $\min_{1\le i \le k} x_n(i) >0$. We define the nonzero coordinates of $x_{n+1}$ and their number as 
+\begin{align}
+  J=\{j\in[d]\colon x_{n+1}(j)\neq 0\}.
+\end{align}
+Let $x_n(p)$ and $x_{n+1}(q)$ be the coordinates with the maximal modulus. Then, by \eqref{eq: xn coordinate large}, we have
+\begin{equation}
+  \label{eq:stayinface}
+\begin{split}
+  x_n(p)\ge 3\delta^2 (n+1),\quad &\max_{1\le i\le d, i\neq p} x_n(i) \le (1-3\delta^2)(n+1),\\
+  |x_{n+1}(q)|\ge 3 \delta^2 (n+1),\quad &\max_{1\le j\le d, j\neq q}|x_{n+1}(j)|\le (1-3\delta^2)(n+1).
+\end{split}
+\end{equation}
+In this case, for $1\le i\le d$ with $i\neq p$, we construct a path $\gamma_n^{i,+}$ from $x_n$ by increasing the $i$-th coordinate and decreasing the $p$-th coordinate as follows:
+\begin{align*}
+    \gamma_n^{(i,+)}:=(x_n+\bfe_i,x_n+\bfe_i-\bfe_p, \ldots, x_n+m\bfe_i-(m-1)\bfe_p, x_n+m\bfe_i-m\bfe_p,\ldots).
+\end{align*}  
+By~\eqref{eq:stayinface}, this can be continued up to $m=2\delta^2 (n+1)$. For $k+1\le i\le d$, we construct another path $\gamma_n^{i,-}$ by decreasing the $i$-th coordinate and decreasing the  $p$-th coordinate alternately. Since these paths grow in different directions, they are disjoint and satisfy~\eqref{eq:ps1'}.
+Similarly, for $j\in J$ with $j\neq q$, we construct a path $\gamma_{n+1}^j$ from $x_{n+1}$ by increasing the modulus of the $j$-th coordinate and decreasing the modulus of the $q$-th coordinate alternately. This gives us $|J|-1$ disjoint paths of length at least $\delta^2 (n+1)$ from $x_{n+1}$ which satisfy~\eqref{eq:ps1'}. If no such $j\in J$ exists, then $x_{n+1}=\pm (n+1)\bfe_q$ and we must have $q=r$, i.e., $x_{n+1}=- (n+1)\bfe_r$. In this case, we construct a path in the same way as above by choosing any $j$ different to $q$.
+
+Note that along the above constructions, the $r$-th coordinates of the paths starting from $x_n$ and $x_{n+1}$ always satisfy~\eqref{eq:OppositeSign}. This ensures that the whole collection of paths is disjoint.
+
+Moreover, if $x_n(r) \ge 3\delta^2 (n+1)$, then by comparing the $r$-th coordinates, we find that
+\begin{equation}
+\label{eq:EndpointSep2}
+\begin{split}
+&\text{the endpoints of the paths starting from $x_n$ are at least}\\
+&\text{$\delta^2 (n+1)$ away from the union of the paths starting from $x_{n+1}$.}    
+\end{split}    
+\end{equation}
+
+If $x_n(r) < 3\delta^2 (n+1)$ on the other hand, since $x_n(r)>0$, then we know $p\neq r$ from~\eqref{eq:stayinface} and we extend the paths $\gamma_n^{(i,\pm)}$ by adding $\bfe_r$ and $-\bfe_p$ alternately $\delta^2 (n+1)$ times, where the $r$-th coordinates of these endpoints are at least $\delta^2 (n+1)$. Thanks to~\eqref{eq:stayinface}, the paths stay in the same orthant as $x_n$, and the paths starting from $x_{n+1}$ always have negative $r$-th coordinate, so by comparing the $r$-th coordinates, they satisfy~\eqref{eq:EndpointSep2}. In either case, we get the paths from $x_n$ and $x_{n+1}$ which are disjoint and satisfy the requirement in Lemma~\ref{lem:2d-2}.\\
+
+Henceforth, we consider the case that $x_n$ and $x_{n+1}$ are in the same orthant. By applying reflections, we assume that 
+\aln{\label{eq: both non-negative}
+\text{both $x_n$ and $x_{n+1}$ have nonnegative coordinates.}
+}
+
+\noindent
+\textbf{Case 2} ($x_{n+1}=(n+1)\bfe_j$ for some $1 \le j \le d$ and at least two coordinates of $x_n$, including $x_n(j)$, are positive): 
+By changing the order of coordinates, we may assume $j=1$ and that $x_n$ has the form 
+\begin{align*}
+  x_n=(x_n(1),x_n(2),\ldots,x_n(k),0,\ldots,0)
+\end{align*}
+with $k \ge 2$, $\min_{1\le i \le k}x_n(i) >0$ and $x_n(2)=\max_{2\le i \le d}x_n(i)$. 
+
+Let us first define the path
+\begin{align*}
+  \gamma_{n+1}^{(1)}:=(x_{n+1}-\bfe_1,x_{n+1}-\bfe_1-\bfe_2, \ldots, x_{n+1}-m\bfe_1-(m-1)\bfe_2, x_{n+1}-m\bfe_1-m\bfe_2,\ldots)
+\end{align*}
+up to $m=\delta^2 (n+1)$. Next we define
+\begin{align*}
+  \gamma_n^{(i,+)}:=(x_n+\bfe_i,x_n+\bfe_i-\bfe_1, \ldots, x_n+m\bfe_i-(m-1)\bfe_1, x_n+m\bfe_i-m\bfe_1,\ldots)
+\end{align*}
+for $2\le i\le k$, and 
+\begin{align*}
+  \gamma_n^{(i,\pm)}:=(x_n\pm \bfe_i,x_n\pm \bfe_i-\bfe_1, \ldots, x_n\pm m \bfe_i-(m-1)\bfe_1, x_n\pm m \bfe_i-m\bfe_1,\ldots)
+\end{align*}
+for $k+1\le i\le d$, until the first coordinates become zero. 
+
+When $x_n(1) \ge \delta^2 (n+1)$, we can continue the above construction up to $m=\delta^2 (n+1)$. Note that
+\begin{align}
+    &\text{the second coordinate is nonpositive and decreasing along $\gamma_{n+1}^{(1)}$}\label{eq:n+1}\\ 
+    &\text{while the other paths have nonnegative second coordinates,}\notag
+\end{align}
+and that for $2\le i\le d$, 
+\begin{align}
+    &\text{only $\gamma_n^{(i,+)}$ has nonnegative increasing $i$-th coordinate,}\label{eq:n+}\\
+    &\text{if $i\geq k$, only $\gamma_n^{(i,-)}$ has nonpositive decreasing $i$-th coordinate.} \label{eq:n-}
+\end{align}
+These properties ensure that the above paths are growing in different directions and hence they are disjoint and satisfy~\eqref{eq:ps1'}. Thus we get the paths with the desired properties.
+
+When $x_n(1) < \delta^2 (n+1)$, the first coordinates of $\{\gamma_n^{(i,+)}\}_{i=2}^d\cup\{\gamma_n^{(i,-)}\}_{i=k+1}^d$ become zero before $m=\delta^2 (n+1)$ and we need to continue the construction. The paths $\{\gamma_n^{(i,+)}\}_{i=2}^d\cup\{\gamma_n^{(i,-)}\}_{i=k+1}^d$ are stopped on $\{x\in \Z^d\colon x(1)=0\} \cap \partial D_n$. Let $\hat\gamma^{(i,\pm)}_n$ be the point where $\gamma_n^{(i,\pm)}$ is stopped, which are distinct by the construction and the assumption $x_n(1)>0$. In addition, since we assumed $x_n(1) < \delta^2 (n+1)$ and $x_n(2)=\max_{2\le i\le d}x_n(i)$, it follows that $x_n(2)\ge n/d$. This implies that the second coordinates of $\{\hat\gamma^{(i,+)}_n\}_{i=2}^d$ and $\{\hat\gamma^{(i,-)}_n\}_{i=k+1}^d$ satisfy 
+\begin{align*}
+  \hat\gamma^{(2,+)}_n(2)\ge \hat\gamma^{(3,+)}_n(2)=\cdots=\hat\gamma^{(k+1,\pm)}(2)=\cdots=\hat\gamma^{(d,\pm)}_n(2)\ge \delta^2 (n+1).
+\end{align*}
+Therefore, we can extend $\{\gamma_n^{(i,+)}\}_{i=2}^d\cup\{\gamma_n^{(i,-)}\}_{i=k+1}^d$ up to $m=\delta^2(n+1)$ as follows: 
+\begin{align*}
+&\hat\gamma^{(2,+)}_n-\bfe_1, \hat\gamma^{(2,+)}_n-\bfe_1-\bfe_2,\ldots, \hat\gamma^{(2,+)}_n-m\bfe_1-(m-1)\bfe_2, \hat\gamma^{(2,+)}_n-m\bfe_1-m\bfe_2,\ldots,\\
+&\hat\gamma^{(i,+)}_n+\bfe_i, \hat\gamma^{(i,+)}_n+\bfe_i-\bfe_2,\ldots, \hat\gamma^{(i,+)}_n+ m\bfe_i-(m-1)\bfe_2, \hat\gamma^{(i,+)}_n+ m\bfe_i-m\bfe_2,\ldots
+\end{align*}
+for $3\le i\le d$, and 
+\begin{align*}
+\hat\gamma^{(i,-)}_n-\bfe_i, \hat\gamma^{(i,-)}_n-\bfe_i-\bfe_2,\ldots, \hat\gamma^{(i,-)}_n- m\bfe_i-(m-1)\bfe_2, \hat\gamma^{(i,-)}_n- m\bfe_i-m\bfe_2,\ldots
+\end{align*}
+for $k+1\le i\le d$. 
+The properties~\eqref{eq:n+} and~\eqref{eq:n-} remain valid except for $\gamma^{(2,+)}_n$. But the extended part $\gamma^{(2,+)}_n$ has nonpositive and decreasing first coordinates while the other $\gamma_n^{(i,\pm)}$'s have nonnegative first coordinates. Therefore the collection $\{\gamma_n^{(i,\pm)}\}_{i=2}^d$ remains disjoint and satisfies~\eqref{eq:ps1'}. Note also that in this case, the path $\gamma_{n+1}^{(1)}$ and any of the paths in $\{\gamma_n^{(i,\pm)}\}_{i=2}^d$ are at least $(1-2\delta^2)n$ away form each other in the first coordinate. This completes the construction in this case.\\
+
+\noindent
+\textbf{Case 3} ($x_{n+1}=(n+1)\bfe_j$ for some $1 \le j \le d$ and two of the coordinates of $x_n$ are positive but $x_n(j)=0$): By changing the order of coordinates, we may assume $j=1$ and that $x_n$ has the form 
+\begin{align*}
+  x_n=(0,x_n(2),\ldots,x_n(k),0,\ldots,0)
+\end{align*}
+with $k \ge 2$, $\min_{2\le i \le k}x_n(i) >0$ and $x_n(2)=\max_{2\le i \le k}x_n(i)$. The path $\gamma^{(1)}_{n+1}$ is constructed in the same way as in Case 2. Next, we construct the first parts of the paths starting from $x_n$ as follows: 
+\begin{equation}
+\label{eq:1st2steps}
+\begin{split}
+&\gamma^{(i,+)}_n:= (x_n+\bfe_i, x_n+\bfe_i-\bfe_{i+1})\text{ for } 2\le i\le k-1,\\
+&\gamma^{(k,+)}_n:= (x_n+\bfe_k, x_n+\bfe_k-\bfe_2),\\
+&\gamma^{(i,\pm)}_n:= (x_n\pm \bfe_i, x_n\pm \bfe_i-\bfe_2)\text{ for } k+1\le i\le d.
+\end{split}
+\end{equation}
+These paths are edge-disjoint and have their endpoints on $\{x\in \Z^d\colon x(1)=0\} \cap \partial D_n$. Using these endpoints in place of $\hat{\gamma}_n^{(i,\pm)}$, we can apply the same procedure as in Case 2 to extend the above paths so that $\gamma_{n+1}^{(1)}$ and $\{\gamma_n^{(i,+)}\}_{i=2}^d\cup\{\gamma_n^{(i,-)}\}_{i=k+1}^d$ satisfy the desired properties.  
+
+In this case, since $x_n$ has an extra zero coordinate $x_n(1)=0$ compared to Case 2, we need an extra path to satisfy~\eqref{eq:xn_neq_ne}. This is given by
+\begin{align*}
+  \gamma_n^{(1,+)}:=(x_n+ \bfe_1,x_n+ \bfe_1-\bfe_2, \ldots, x_n+ m \bfe_1-(m-1)\bfe_2, x_n+ m \bfe_1-m\bfe_2,\ldots).
+\end{align*}
+Since $x_n(2)$ is a maximal coordinate, it is necessarily larger than $n/d$ and hence up to $m=\delta^2 (n+1)$, the above path stays in $\partial D_n\cup \partial D_{n+1}$. This path has positive and increasing first coordinates while $\{\gamma_n^{(i,\pm)}\}_{i=2}^k$ have nonpositive first coordinates. Moreover, as in Case 2, we can apply Lemma~\ref{lem:path-separation} to the paths $\gamma_n^{(1,+)}$ and $\gamma_{n+1}^{(1)}$ by looking at the first coordinate. Therefore by adding this $\gamma_n^{(1,+)}$, we get the desired collection of paths.\\
+
+\noindent
+\textbf{Case 4} ($x_{n+1}=(n+1)\bfe_j$ for some $1 \le j \le d$ and $x_n=n \bfe_i$): When $i\neq j$, we can assume $j=1$ and $i=2$ and apply the same construction as in Case 3 except for $\gamma_n^{(2,+)}$. 
+When $i=j$, we can assume $i=j=1$ and apply the same construction as in Case 2 but keeping $k=2$, although $x_n(2)=0$. This is because otherwise $\gamma_n^{(2,-)}$ would intersect with $\gamma_{n+1}^{(1)}$. In either case, we get a path starting from $x_{n+1}$ and $2d-3$ paths starting from $x_n$ which satisfy the requirements of Lemma~\ref{lem:2d-2}.\\
+
+Next, we consider $x_{n+1}$ and $x_n$ are neighbors. Recalling from the assumption \eqref{eq: both non-negative}, all their coordinates are non-negative. Hence, since $\|x_{n+1}\|_1 = n+1 \geq n =\|x_{n}\|_1$, the only possibility is that $x_{n+1}=x_n+\bfe_j$ for some $1\le j\le d$.
+
+\noindent
+\textbf{Case 5} ($x_{n+1}=x_n+\bfe_j$ for some $1\le j\le d$): We exclude the case $x_n=n\bfe_j$ since it is included in Case 4. By changing the order of coordinates, we may assume $j=1$ and that 
+\begin{align}
+  \label{eq:k}
+  x_n=(x_n(1),x_n(2),\ldots,x_n(k),0,\ldots,0)
+\end{align}
+with $\min_{2\le i \le k}x_n(i) >0$ and $x_n(2)=\max_{2\le i \le d}x_n(i)$. Then the first $k$ coordinates of $x_{n+1}$ are positive and others are zero. Set $J:=\{2,\ldots,k\}$. We first assume $x_n(1)>0$ in addition and construct the paths $\{\gamma_n^{(i,\pm)}\}_{i=2}^d$ in the same way as in Case 2 or 3. 
+For $2\le j\le k$, we construct the first part of the path $\gamma_{n+1}^{(j)}$ by 
+\begin{align*}
+\gamma_{n+1}^{(j)}&:=(x_{n+1}-\bfe_j, x_{n+1}-\bfe_j+\bfe_1, \ldots, x_{n+1}-m\bfe_j+(m-1)\bfe_1, x_{n+1}-m\bfe_j+m\bfe_1, \ldots)
+\end{align*}
+for the first \(\lfloor \delta^2(n+1)\rfloor\) steps, or until the $j$-th coordinate becomes zero, whichever happens first.\footnote{The first coordinate cannot reach $n+1$ before the $j$-th coordinate becomes zero. Indeed, along $\gamma_{n+1}^{(j)}$ all coordinates remain nonnegative and only the first and $j$-th coordinates change. Hence, if the first coordinate were $n+1$, then all the other coordinates would have to be zero because the path stays in $\partial D_n\cup \partial D_{n+1}$. In particular, the $j$-th coordinate would already be zero.} 
+When the path $\gamma_{n+1}^{(j)}$ reaches $\{x\in \Z^d\colon x(j)=0\} \cap \partial D_n$, at least one of the coordinates, say the $p$-th one, is larger than $\delta^2 (n+1)$. Thus we can extend $\gamma_{n+1}^{(j)}$ by adding $-\bfe_j$ and $-\bfe_p$ alternately $\delta^2 (n+1)$ times. 
+
+We show that the collection of paths $\{\gamma_n^{(i,\pm)}\}_{i=2}^d\cup \{\gamma_{n+1}^{(j)}\}_{j\in J}$ satisfy the requirements of Lemma~\ref{lem:2d-2}. Recall that we assume the second to $d$-th coordinates of $x_n$ and $x_{n+1}$ to be the same. If $x_n(1)\ge \delta^2 (n+1)$, then we take $p=1$ in the above.
+\begin{align}
+    &\text{for $2\le i \le d$, the $i$-th coordinate increases along $\gamma_n^{(i,+)}$ and not along the others,}\label{eq:ni+}\\
+    &\text{for $2\le j \le k$, the $j$-th coordinate decreases along $\gamma_{n+1}^{(j)}$ and not along the others,}\label{eq:n+1i+}\\
+    &\text{for $k+1\le i \le d$, the $i$-th coordinate decreases along $\gamma_n^{(i,-)}$ and not along the others.}\label{eq:ni-}
+\end{align}
+These allow us to use Lemma~\ref{lem:path-separation} to ensure that the paths constructed above satisfy the requirements of Lemma~\ref{lem:2d-2}. 
+
+If $x_n(1)<\delta^2 (n+1)$, then~\eqref{eq:ni+}--\eqref{eq:ni-} remain true only for $i\ge 3$ and we need separate considerations for $\gamma_{n+1}^{(2)}$ and $\gamma_n^{(2,+)}$. Recall that the second coordinate is maximal in this case and thus it is necessarily larger than $n/d$. This implies that we can take $p=2$ in the above and that $\gamma_{n+1}^{(2)}$ has only the first part of length at least $\lfloor \delta^2(n+1)\rfloor$. In every two steps along this path, the first coordinate increases and the second coordinate decreases.
+Now note that the path $\gamma_{n+1}^{(j)}$ $(3\le j \le k)$ either has only the first part along which the second coordinate is unchanged, or stops before $\delta^2(n+1)$ steps and the first coordinate remains unchanged afterwards. In either case, $\gamma_{n+1}^{(2)}$ and $\gamma_{n+1}^{(j)}$ $(3\le j \le k)$ satisfy~\eqref{eq:ps1'}. Similarly, the first coordinates of $\{\gamma_n^{(i,\pm)}\}_{i=2}^d$ are non-increasing and hence $\gamma_{n+1}^{(2)}$ and every path in $\{\gamma_n^{(k,\pm)}\}_{2\le k\le d}$ satisfy~\eqref{eq:ps1'}. As for the extended part of $\gamma_n^{(2,+)}$, it is the only path that has negative first coordinates that decreases in every two steps. This enables us to apply Lemma~\ref{lem:path-separation} to $\gamma_n^{(2,+)}$ and any other paths. This completes the construction of the paths with desired properties when $x_n(1)>0$.
+
+When $x_n(1)=0$, we need to construct an extra path and it can be done as follows: recall that $x_n(2)$ is the maximal coordinate, which is necessarily larger than $d\delta^2(n+1)$, and define $\gamma_n^{(1,-)}$ starting from $x_n$ by repeating the $2d-2$ operations
+\begin{align*}
+  - \bfe_1,\quad -\bfe_2, \quad +\bfe_3,\quad -\bfe_2,\quad +\bfe_4,\quad -\bfe_2,\quad \ldots, \quad +\bfe_d,\quad -\bfe_2,
+\end{align*}
+for $\delta^2 (n+1)$ times. This is the only path along which both the first and second coordinates decrease and all the other coordinates increase in every $2d-2$ steps. Noting that 
+\begin{itemize}
+    \item every $\gamma_n^{(i,\pm)}$ $(2\le i \le d)$ has a coordinate that is unchanged and
+    \item in this case, the first coordinates of $\{\gamma_{n+1}^{(j)}\}_{j\in J}$ are non-decreasing since $p\neq 1$ in the second part of the construction,
+\end{itemize}
+we can apply Lemma~\ref{lem:path-separation} to ensure that the new path $\gamma_n^{(1,-)}$ satisfies the requirement of Lemma~\ref{lem:2d-2}. Thus we can add this path to complete the construction.\\
+
+\noindent
+\textbf{Case 6} ($x_{n+1}$ has at least two positive coordinates and $|x_n-x_{n+1}|_1 \ge 2$): Note that at least one of the coordinates of $x_{n+1}$ must be larger than that of $x_n$ (recall \eqref{eq: both non-negative}). By changing the order of coordinates, we may assume 
+\begin{align}
+  \label{eq:max-diff-1}
+  x_{n+1}(1)-x_n(1) \ge 1
+\end{align}
+and that 
+\begin{align}
+  \label{eq:k-case6}
+  x_n=(x_n(1),x_n(2),\ldots,x_n(k),0,\ldots,0)
+\end{align}
+with $\min_{2\le i \le k}x_n(i) >0$ and $x_n(2)=\max_{2\le i \le d}x_n(i)$. We define 
+\begin{align}
+  J=\{j\in \{2,3,\ldots,d\} \colon x_{n+1}(j)>0\}.
+\end{align}
+Since $x_{n+1}\neq x_n+\bfe_1$ in this case, we have
+\begin{align}
+\label{eq:diff-reverted}
+    \text{there exists $r\in\{2,3,\ldots, k\}$ such that $x_n(r)>x_{n+1}(r)$.}
+\end{align}
+Let us first assume additionally that $x_n\neq n\bfe_2$ and construct the paths $\{\gamma_n^{(i,\pm)}\}_{i=2}^d$ and the first parts of $\{\gamma_{n+1}^{(j)}\}_{j\in J}$ in the same way as in Case 5, with the same truncation bounds \(\lfloor\delta^2(n+1)\rfloor\) and \(\lfloor2d\delta^2(n+1)\rfloor\).
+Then $\{\gamma_n^{(i,\pm)}\}_{i=2}^d$ has already been shown to satisfy the requirement in Lemma~\ref{lem:2d-2}. Recall that along $\gamma_n^{(i,\pm)}$ and the first part of $\gamma_{n+1}^{(j)}$, the difference of the first coordinates increases. Thus by the assumption \eqref{eq:max-diff-1}, they are disjoint for any pair $(i,j)$. Furthermore, since $\gamma_{n+1}^{(j)}$ moves away from $x_{n+1}$ in the $j$-th direction for any $j\in J$, the first parts of $\{\gamma_{n+1}^{(j)}\}_{j\in J}$ are disjoint. When the path $\gamma_{n+1}^{(j)}$ reaches $\{x\in \Z^d\colon x(j)=0\} \cap \partial D_n$ before $2\delta^2(n+1)$ steps, we need to extend it. We fix such a $j\in J$. We write $\widehat\gamma_{n+1}^{(j)}$ for the point where the path stops. 
+
+Let us first deal with the case where $x_{n+1}(1)<(1-2d\delta^2)(n+1)$.  In this case, there exists $p\in\{2,3,\ldots,d\}$ such that $x_{n+1}(p) > 2\delta^2(n+1)$. Since this implies $j\neq p$, the $p$-th coordinate does not decrease along $\gamma_{n+1}^{(j)}$ and hence $\widehat\gamma_{n+1}^{(j)}(p)>2\delta^2(n+1)$. 
+Then we can extend $\gamma_{n+1}^{(j)}$ by repeating the four operations
+\begin{align*}
+    -\bfe_j,\quad -\bfe_p,\quad  +\bfe_1, \quad  -\bfe_p
+\end{align*}
+for $\delta^2(n+1)$ times. Just as in Case 5, the paths $\{\gamma_{n+1}^{(j)}\}_{j\in J}$ extended this way satisfy the requirement in Lemma~\ref{lem:2d-2}.  Moreover, every path in $\{\gamma_n^{(i,\pm)}\}_{i=2}^d$ has decreasing first coordinate, whereas the first coordinates of $\{\gamma_{n+1}^{(j)}\}_{j \in J}$ are non-decreasing. Hence the endpoint of each $\gamma_n^{(i,\pm)}$ has first coordinate at most $x_n(1)-(\delta^2-\delta^3)(n+1)/2$, while every point of each $\gamma_{n+1}^{(j)}$ has first coordinate at least $x_{n+1}(1)\ge x_n(1)+1$. In particular, the endpoint of each $\gamma_n^{(i,\pm)}$ is at first-coordinate distance at least $\delta^3(n+1)$ from every $\gamma_{n+1}^{(j)}$. Conversely, Lemma~\ref{lem:path-separation} applied in the first coordinate gives the separation of the endpoints of $\gamma_{n+1}^{(j)}$ from the paths $\gamma_n^{(i,\pm)}$. Therefore, the whole collection satisfies the desired property. 
+
+Next, we deal with the case where $x_{n+1}(1)\ge (1-2d\delta^2)(n+1)$. Note that the other coordinates are necessarily smaller than $2d\delta^2(n+1)$. In this case, we have $\widehat\gamma_{n+1}^{(j)}(1)>(n+1)/2$ and we can extend $\gamma_{n+1}^{(j)}$ by first adding $-\bfe_j$ and $-\bfe_r$ alternately until the $r$-th coordinate becomes zero (we omit this step if $j=r$), and then continue by repeating the four operations 
+\begin{align*}
+    -\bfe_j,\quad -\bfe_1,\quad -\bfe_r, \quad -\bfe_1
+\end{align*}
+for $\delta^2(n+1)$ times. Now, recalling \eqref{eq:diff-reverted} and that the $r$-th coordinates do not decrease along $\{\gamma_n^{(i,\pm)}\}_{i=2}^d$, we can apply Lemma~\ref{lem:path-separation} to any pair $\gamma_n^{(i,\pm)}$ and $\gamma_{n+1}^{(j)}$.\footnote{The quoted monotonicity is not automatic from the earlier Case~5 construction. In particular, if one is in the subcase $x_n(1)<\delta^2(n+1)$ and the coordinate furnished by \eqref{eq:diff-reverted} is $r=2$, then several of the Case~5-type extensions use $-\bfe_2$, so their $r$-th coordinates do decrease. A fix is to split off this configuration and choose a different comparison coordinate, or to redesign the extension so that the chosen comparison coordinate is monotone on both path families.} This completes the construction when $x_n(1)>0$. 
+
+When $x_n(1)=0$, we need to construct an additional path. Recall that $x_n(2)$ is the maximal coordinate, which is necessarily larger than $4\delta^2(n+1)$. Thus we can define a path $\gamma_n^{(1,-)}$ starting from $x_n$ and repeating the four operations 
+\begin{align*}
+    -\bfe_1,\quad -\bfe_2,\quad +\bfe_3,\quad -\bfe_2
+\end{align*}
+for $\delta^2 (n+1)$ times. This path has negative and decreasing first coordinate while $\{\gamma_n^{(i,\pm)}\}_{i=3}^d\cup \{\gamma_{n+1}^{(j)}\}_{j\in J}$ have nonnegative first coordinates. Hence the endpoint of $\gamma_n^{(1,-)}$ is at first-coordinate distance at least $\delta^3(n+1)$ from each of these paths. For the paths $\{\gamma_n^{(i,\pm)}\}_{i=3}^d$, the first coordinate stays equal to $0$, so Lemma~\ref{lem:path-separation} applied in the first coordinate gives the reverse separation. For the paths $\{\gamma_{n+1}^{(j)}\}_{j\in J}$, the constructions above give endpoints whose first coordinate is at least $\delta^3(n+1)$, so these endpoints are also at distance at least $\delta^3(n+1)$ from $\gamma_n^{(1,-)}$. Note also that the first steps of $\gamma_n^{(1,-)}$ and $\gamma_n^{(2,+)}$ are different and then the difference between the third coordinates grows afterwards. Thus Lemma~\ref{lem:path-separation} also applies to the pair $\gamma_n^{(1,-)}$ and $\gamma_n^{(2,+)}$, and we can add this path to complete the construction. 
+
+Finally, let us turn to the remaining case that $x_n=n \bfe_2$. We can apply the same construction as above except that we cannot construct $\gamma_n^{(2,+)}$. 
+But in this case, we have the above extra path $\gamma_n^{(1,-)}$. 
+Therefore, we have $2d-3$ paths starting from $x_n$. 
+\end{proof}
