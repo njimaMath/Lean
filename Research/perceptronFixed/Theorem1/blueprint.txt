@@ -1,0 +1,835 @@
+Blueprint: Theorem 1 (main.tex `\label{thm:main}`) — existence/uniqueness of the RS fixed point
+===============================================================================================
+
+Goal (paper statement)
+----------------------
+Fix `κ ≥ 0`. Define
+
+  Cκ := 𝔼[(κ - Z)_+^2],        αc(κ) := 2 / (π * Cκ),
+
+where `Z ~ N(0,1)` and `(x)_+ := max x 0`. For `α ∈ (0, αc(κ))`, show there exists a *unique*
+solution `(q,r) ∈ [0,1) × [0,∞)` to the system
+
+  q = P(r),
+  r = Rκ(q, α),
+
+where
+
+  P(r) := 𝔼[tanh^2(√r Z)],
+  F_q(x) := (1/√(1-q)) * E((κ - x)/√(1-q)),     (inverse Mills ratio E = φ/Φbar),
+  Rκ(q,α) := α * 𝔼[F_q(√q Z)^2].
+
+Moreover, if `α ≥ αc(κ)`, then the system has **no** solution.
+
+Lean target file
+----------------
+Create a Lean file (suggested) `perceptronFixed/Theorem1/Theorem1.lean` with a theorem named
+`theorem_main` (or similar), and this blueprint explains the exact proof structure and the
+lemmas/modules to import.
+
+
+===============================================================================================
+0. Global setup / conventions (Lean)
+===============================================================================================
+
+0.1  Ambient measure / expectation
+----------------------------------
+Use the *standard normal measure* on `ℝ`:
+
+  γ : Measure ℝ := ProbabilityTheory.gaussianReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0)).
+
+Then “expectation w.r.t. Z ~ N(0,1)” is just `∫ z, f z ∂γ`.
+
+Mathlib references:
+- `ProbabilityTheory.gaussianReal` (mathlib)
+- `ProbabilityTheory.integral_gaussianReal_eq_integral_smul` (used already in
+  `perceptronFixed/derivative_of_B/derivative_B.lean`)
+
+Remark: The existing files `perceptronFixed/decreasing_g/decreasing_g.lean` and
+`perceptronFixed/uniform_bound_of_g/uniform_bound_of_g.lean` work with the Lebesgue measure
+and density `φ`. If you want to reuse their statements directly, either:
+  (A) define everything using the same `φ`-weighted integrals (volume + density), OR
+  (B) add “bridge lemmas” converting `∫ f ∂γ` to `∫ f(z) * φ(z) dz` via
+      `ProbabilityTheory.integral_gaussianReal_eq_integral_smul`.
+This blueprint is compatible with either approach; pick one and stick to it project-wide.
+
+
+0.2  Core special functions
+---------------------------
+Use the inverse Mills ratio `E(u) := φ(u) / Φbar(u)` with
+  φ(u) = exp(-u^2/2) / sqrt(2π),   Φbar(u) = ∫_{x≥u} φ(x) dx.
+
+Already implemented (and reused across the project) as:
+- `DecreasingG.φ`, `DecreasingG.Φbar`, `DecreasingG.E` in
+  `perceptronFixed/decreasing_g/decreasing_g.lean`.
+
+
+===============================================================================================
+1. Definitions for Theorem 1 (matching main.tex)
+===============================================================================================
+
+All definitions below should be made in the theorem file (unless you already have a central
+definitions file). Use `noncomputable` since integrals are involved.
+
+1.1  P : [0,∞) → [0,1)
+----------------------
+Define (domain choice):
+
+Option 1 (recommended): `P : ℝ≥0 → ℝ`:
+  P(r) := ∫ z, (Real.tanh (Real.sqrt r * z))^2 ∂γ
+where `Real.sqrt r` is definitional on `ℝ≥0`.
+
+Option 2: `P : ℝ → ℝ` with `P r := P (Real.toNNReal r)` and always prove/use `0 ≤ r`.
+
+You will need:
+  - `0 ≤ P r` (integrand ≥ 0).
+  - `P 0 = 0` (since tanh(0)=0).
+  - `P r < 1` for all finite r.
+  - `Continuous P` (on `ℝ≥0` or on `[0,∞)`).
+  - `StrictMono P` (or `StrictMonoOn P (Set.Ici 0)`).
+  - `Tendsto P atTop (𝓝 1)`.
+
+These are exactly main.tex Lemma `\ref{lem:P_properties-TOBECHECKED}`.
+
+Lean proof sketch for these properties is in Section 3 below.
+
+
+1.2  B : [0,1) → ℝ  (depends on κ)
+----------------------------------
+Define `U_q(z)` and `B(q)`:
+
+  U(q,z) := (κ - Real.sqrt q * z) / Real.sqrt (1 - q)
+  B(q) := (1 - q) * ∫ z, (E (U(q,z)))^2 ∂γ
+
+Domain: `q ∈ Iio (1 : ℝ)` (or `q : Icc 0 1` with `q.2 < 1`).
+In Lean it is usually cleanest to define `B : {q : ℝ // q < 1} → ℝ` or to define it on `ℝ`
+and always carry hypotheses `0 ≤ q` and `q < 1`. Either is fine.
+
+You will need:
+  - `B` is finite and continuous on `[0,1)` (main.tex Lemma `B_cont0`).
+  - `B 0 = (E κ)^2` (main.tex Lemma `B_endpoints`).
+  - `Tendsto (fun q => B q) (𝓝[<] 1) (𝓝 Cκ)` where
+      Cκ := ∫ z, (max (κ - z) 0)^2 ∂γ.
+  - **Strict decrease**: `StrictAntiOn B (Set.Icc 0 1)` or equivalently `StrictMono (-B)`
+    (main.tex Theorem `\ref{thm:B_monotone}`).
+
+For strict decrease, see dependencies in Section 2.
+
+
+1.3  Rκ(q,α) and the fixed-point system
+---------------------------------------
+Define
+  Rκ(q,α) := α * ∫ z, (F_q(Real.sqrt q * z))^2 ∂γ
+with
+  F_q(x) := (1 / Real.sqrt (1 - q)) * E ((κ - x) / Real.sqrt (1 - q)).
+
+Then prove the algebraic identity (main.tex eq. `r_in_terms_of_B`):
+
+  Rκ(q,α) = α * B(q) / (1 - q)^2.
+
+Lean hint:
+- unfold `Rκ`, `B`, `F_q`; simplify; use `ring`/`field_simp` under hypotheses `q < 1` and
+  `q ≠ 1` (follows from `q < 1`).
+
+The system is:
+  q = P(r)
+  r = Rκ(q,α)
+
+and the solution set is restricted to `q ∈ [0,1)`, `r ∈ [0,∞)`.
+
+
+1.4  A : [0,∞) → [0,2/π)
+------------------------
+Define
+  A(r) := r * (1 - P(r))^2.
+
+You will need:
+  - `A 0 = 0`.
+  - `Continuous A`.
+  - `StrictMonoOn A (Set.Ioi 0)` (strictly increasing on `(0,∞)`).
+  - `Tendsto A atTop (𝓝 (2 / Real.pi))`.
+  - (Optional but convenient) `range A = Set.Iio (2/π)`; i.e. bijection `[0,∞) → [0,2/π)`.
+
+These are main.tex Lemma `\ref{lem:A-TOBECHECKED}`.
+
+
+===============================================================================================
+2. Dependencies from mathlib + perceptronFixed (with exact places)
+===============================================================================================
+
+2.1  Strict decrease of B (“Theorem B_monotone” in main.tex)
+------------------------------------------------------------
+This theorem is *not* proved in `main.tex` using only abstract facts: it uses the analytic
+work on the auxiliary function `g`. In this repo the relevant components already exist:
+
+Derivative formula (B' = 𝔼[g(U_t)]):
+- `MillsBlueprint.Proof.deriv_B_eq_expect_g` in
+  `perceptronFixed/derivative_of_B/derivative_B.lean`.
+
+Monotonicity of g on [0,∞):
+- `DecreasingG.g_strictAntiOn_Ici : StrictAntiOn DecreasingG.g (Set.Ici (0:ℝ))` in
+  `perceptronFixed/decreasing_g/decreasing_g.lean`.
+- `DecreasingG.g_le_g0_of_nonneg` and `DecreasingG.g0_eq` in the same file.
+
+Uniform bound of g on (-∞,0]:
+- `UniformBoundOfG.g_le_one_div_18_of_nonpos` (and `UniformBoundOfG.g_le_one_div_18`) in
+  `perceptronFixed/uniform_bound_of_g/uniform_bound_of_g.lean`.
+
+Sub-lemmas used internally (already proved):
+- Polynomial negativity region lemma:
+  `Numcheck.F_neg_of_constraints` in `perceptronFixed/negative_F_bound/FnegLemma.lean`.
+- Rational function bound:
+  `Numcheck2.ratio_bound` in `perceptronFixed/rational_function_bound/RatioBound.lean`.
+- Truncated Gaussian moment identities used for the Hankel constraints:
+  `TruncatedNormalMoments` namespace in `perceptronFixed/conditionalGaussianMoments/CGM.lean`.
+
+From these, build a file (suggested) `perceptronFixed/MonotoneB/MonotoneB.lean` exporting:
+
+  theorem B_strictAntiOn_Icc (κ : ℝ) (hκ : 0 ≤ κ) :
+    StrictAntiOn (B κ) (Set.Icc (0:ℝ) 1)
+
+or an equivalent statement `StrictAntiOn (B κ) (Set.Iio (1:ℝ))`.
+
+Theorem 1 below assumes exactly this monotonicity statement as an input.
+
+
+2.2  Continuity + endpoints of B
+--------------------------------
+You can prove these directly (dominated convergence) using Mills-type bounds already available:
+- `MillsBlueprint.Proof.E_le_abs_add_C` (a global Mills bound) in
+  `perceptronFixed/derivative_of_B/derivative_B.lean`.
+
+Targets (main.tex Lemmas `B_cont0` and `B_endpoints`):
+  - `ContinuousOn (B κ) (Set.Iio (1:ℝ))`
+  - `B κ 0 = (E κ)^2`
+  - `Tendsto (fun q => B κ q) (𝓝[<] 1) (𝓝 (C κ))` with `C κ := ∫ z, (max (κ - z) 0)^2 ∂γ`
+
+These lemmas are used in Theorem 1 only through:
+  (i) continuity of `f(r)` on `[0,∞)`,
+  (ii) the limit `lim_{r→∞} B(P(r)) = Cκ`.
+
+
+===============================================================================================
+3. Auxiliary lemmas needed specifically for Theorem 1
+===============================================================================================
+
+This section matches main.tex Section 2 (“Auxiliary results for Theorem 1”).
+You can either:
+  - prove these lemmas in `Theorem1/Theorem1.lean`, or
+  - put them in a shared file `perceptronFixed/FixedPoint/Basic.lean` and import.
+
+3.1  Lemma: properties of P  (main.tex Lemma P_properties)
+----------------------------------------------------------
+Prove:
+
+Lemma P_properties:
+  (a) `Continuous P`
+  (b) `StrictMono P` on `[0,∞)`
+  (c) `P 0 = 0`
+  (d) `∀ r, P r < 1`
+  (e) `Tendsto P atTop (𝓝 1)`
+
+Lean details:
+- (a) continuity: use dominated convergence with domination by `1`:
+    `0 ≤ tanh^2 ≤ 1` pointwise, and `IsFiniteMeasure γ`.
+  Use mathlib’s dominated-convergence lemma for integrals (search:
+    `MeasureTheory.tendsto_integral_of_dominated_convergence` / `tendsto_integral_of_dominated_convergence`).
+
+- (b) strict monotonicity:
+  For `r1 < r2`, show `(Real.tanh (sqrt r1 * z))^2 < (Real.tanh (sqrt r2 * z))^2` for all `z ≠ 0`.
+  Then use an “integral is strictly increasing under a.e. strict inequality” lemma:
+    `MeasureTheory.integral_lt_integral_of_ae_lt` (name may vary; use `#find`).
+  You also need `γ {0} = 0` (for standard normal). This follows from
+    `ProbabilityTheory.gaussianReal.ae_eq` / “no atoms” lemmas:
+    search `Measure.map` / `Measure.atom` / `MeasureTheory.Measure.IsAtom`.
+
+- (d) `P r < 1`:
+  Use `|tanh x| < 1` for all real `x` (mathlib lemma about `Real.tanh`),
+  hence `tanh^2 < 1` pointwise, hence integral < 1 by `integral_lt_integral_of_ae_lt`.
+
+- (e) limit `P r → 1`:
+  For each `z ≠ 0`, `sqrt r * z → ±∞` as `r→∞`, so `tanh(...)^2 → 1`.
+  Apply dominated convergence with bound `1` again.
+  (If needed, split into `z>0` and `z<0` and use `Real.tanh_tendsto_one` / `Real.tanh_tendsto_neg_one`
+   for `x→±∞`.)
+
+
+3.2  Lemma: properties of A  (main.tex Lemma A)
+-----------------------------------------------
+Recall `A(r) = r * (1 - P(r))^2`.
+
+Prove:
+  - `A 0 = 0` by simp.
+  - `Continuous A` from continuity of `P`.
+  - `StrictMonoOn A (Set.Ioi 0)`.
+  - `Tendsto A atTop (𝓝 (2 / Real.pi))`.
+
+Lean proof plan (main.tex proof, but Lean-friendly):
+1) Define `S(r) := ∫ z, (Real.sech (Real.sqrt r * z))^2 ∂γ`.
+   Then `S(r) = 1 - P(r)` since `sech^2 = 1 - tanh^2`.
+2) Show `A(r) = r * S(r)^2`.
+3) Perform the change of variables `y = sqrt r * z` using
+   `ProbabilityTheory.integral_gaussianReal_eq_integral_smul` + `Measure.map` under scaling,
+   or rewrite directly via density integrals (whichever convention you fixed).
+   Target identity:
+     A(r) = (1/(2π)) * I(r)^2,
+     I(r) := ∫ y, (sech y)^2 * exp(-y^2/(2r)) dy.
+4) Show `I` is strictly increasing on `(0,∞)`:
+   - Either differentiate under the integral sign to show `I'(r) > 0`,
+   - Or use monotonicity of the integrand in `r` plus “strict” via a positive-measure set.
+5) Show `I(r) → ∫ sech^2 = 2` as `r→∞` by monotone convergence since
+   `exp(-y^2/(2r)) ↑ 1`.
+   Also use the calculus lemma `∫ sech^2 = tanh|_{-∞}^{∞} = 2` (exists in mathlib as an improper
+   integral computation; otherwise prove it).
+6) Conclude `A(r) → (1/(2π))*2^2 = 2/π`.
+
+Note: This is the most analysis-heavy part outside the `B`-monotonicity work. It is independent of
+the `g`-technology and can be formalized as a standalone file if desired.
+
+
+3.3  Lemma: reduction to a 1D equation (main.tex eq. one-dimensional)
+---------------------------------------------------------------------
+With `f(r) := A(r) - α * B( P(r) )`, show:
+
+Lemma system_equiv:
+  For `r ≥ 0`, define `q := P(r)`. Then
+    (q,r) solves the system  ↔  f(r) = 0.
+
+Lean details:
+- “→”: from `q = P(r)` and `r = Rκ(q,α)`, rewrite `r = α * B(q)/(1-q)^2`, multiply by `(1-q)^2`,
+  and replace `q` by `P(r)` to get `A(r) = α * B(P(r))`.
+- “←”: if `f(r)=0`, set `q := P(r)`; then the same algebra gives `r = Rκ(q,α)` and trivially
+  `q=P(r)`.
+
+Keep this lemma in the exact shape you will use to transfer existence/uniqueness between
+roots of `f` and solutions `(q,r)`.
+
+
+3.4  Lemma: strict monotonicity of f (main.tex Lemma main_reduction)
+--------------------------------------------------------------------
+Assume:
+  - `StrictMonoOn A (Set.Ioi 0)` (from 3.2),
+  - `StrictMono P` on `[0,∞)` (from 3.1),
+  - `StrictAntiOn (B κ) (Set.Iio 1)` (from Section 2 / B_monotone).
+
+Then show:
+  - `StrictMonoOn (fun r => B κ (P r)) (Set.Ioi 0)` is **false**; instead it is strictly *decreasing*:
+      `StrictAntiOn (fun r => B κ (P r)) (Set.Ioi 0)`
+    by composing strict anti-monotone `B` with strict mono `P`.
+  - Hence `f(r) = A(r) - α * B κ (P r)` is strictly increasing on `(0,∞)`:
+      `StrictMonoOn f (Set.Ioi 0)`.
+  - In particular, `f` has **at most one** root on `[0,∞)` (use `StrictMonoOn` + `eq_of_lt_of_lt`).
+
+This is exactly main.tex Lemma `\ref{lem:main_reduction-TOBECHECKED}`.
+
+
+===============================================================================================
+4. Proof of Theorem 1 (main.tex proof, Lean step-by-step)
+===============================================================================================
+
+Fix `κ ≥ 0` and let `α > 0` be arbitrary.
+Define
+  f(r) := A(r) - α * B κ (P(r)).
+
+4.1  Basic facts about f
+------------------------
+1) `f` is continuous on `[0,∞)`:
+   - `A` is continuous (Lemma A),
+   - `P` is continuous (Lemma P_properties),
+   - `B` is continuous on `[0,1)` (Lemma B_cont0),
+   - and `P(r) < 1` for all `r`, so the composition is well-defined.
+
+2) `f` is strictly increasing on `(0,∞)`:
+   apply Lemma main_reduction (Section 3.4), using B_monotone.
+
+3) Value at 0:
+   Use `A(0)=0`, `P(0)=0`, and `B(0)=(E κ)^2` to compute
+     f(0) = -α * B(0) < 0.
+
+Lean note: show `B(0) > 0` since `E(u) > 0` (already `DecreasingG.E_pos` provides this for the
+density-based version; for the `γ`-version prove it similarly).
+
+4.2  Limit of f at infinity
+---------------------------
+Show:
+  Tendsto f atTop (𝓝 (2/π - α * Cκ)).
+
+Steps:
+1) `A(r) → 2/π` (Lemma A).
+2) `P(r) → 1` (Lemma P_properties).
+3) `B(q) → Cκ` as `q → 1-` (Lemma B_endpoints).
+4) Conclude `B(P(r)) → Cκ` by composing limits, using that `P(r) < 1` and tends to 1.
+5) Combine with algebra to get the limit of `f`.
+
+4.3  Existence + uniqueness when α < αc(κ)
+------------------------------------------
+Assume `hα : α < αc(κ) = 2/(π*Cκ)`.
+Then `2/π - α*Cκ > 0` (use `Cκ > 0` to justify multiplication).
+
+Existence of a root:
+1) From `Tendsto f atTop (𝓝 L)` with `L > 0`, obtain `R ≥ 0` with `f(R) > 0`.
+   Lean: use `tendsto_atTop'.1` or `Filter.eventually_atTop.1` on `f` and neighborhood of `L`.
+2) Since `f` is continuous on `[0,R]` and `f(0) < 0 < f(R)`, apply IVT to get `r* ∈ (0,R]`
+   with `f(r*) = 0`.
+
+Uniqueness of the root:
+3) Since `f` is strictly increasing on `(0,∞)`, the root `r*` is unique.
+   (Formally: if `f r1 = 0` and `f r2 = 0` with `r1,r2 > 0`, strict monotonicity forces `r1=r2`.)
+
+Convert to a solution of the system:
+4) Set `q* := P(r*)`. Then `q* ∈ [0,1)` and the algebra in Section 3.3 gives
+   `r* = Rκ(q*, α)`. Hence `(q*,r*)` solves the fixed point system.
+5) Uniqueness of `(q,r)` follows from uniqueness of `r` and `q = P(r)`.
+
+In Lean, package the result as:
+  `∃! s : ℝ×ℝ, IsSolution κ α s`  (or `∃!` over a sigma-type with constraints).
+
+4.4  Nonexistence when α ≥ αc(κ)
+--------------------------------
+Assume `hα : α ≥ αc(κ)`. Then `L := 2/π - α*Cκ ≤ 0`.
+
+Argue by contradiction:
+1) Suppose there exists `r0 ≥ 0` with `f(r0)=0`. (By Section 3.3 this corresponds to a system solution.)
+2) Since `f` is strictly increasing on `(0,∞)`, for any `r > r0` we have `f(r) > 0`.
+   Pick e.g. `r = r0 + 1` to get `0 < f(r0+1)`.
+3) But also `f(r0+1) ≤ lim_{r→∞} f(r) = L ≤ 0` (because an increasing function is bounded above by its
+   limit at `∞`). Contradiction.
+4) Therefore `f` has no root, hence the system has no solution.
+
+
+===============================================================================================
+End of Theorem 1 blueprint.
+===============================================================================================
+
+
+Blueprint: Theorem 2 (main.tex `\label{thm:2ndmain}`) — blow-up as α ↑ αc
+===============================================================================================
+
+Goal (paper statement)
+----------------------
+Fix `κ ≥ 0`. For each `α ∈ (0, αc(κ))`, let `(q_α, r_α)` be the **unique** solution to the fixed
+point system `eq:system` from Theorem 1. Prove that as `α ↑ αc(κ)`:
+
+  q_α → 1   and   r_α → +∞.
+
+In Lean, it is most convenient to prove the sequential version:
+
+  For every sequence `α_n` with `0 < α_n < αc(κ)` and `α_n → αc(κ)`, we have
+    `q_{α_n} → 1` and `r_{α_n} → +∞`.
+
+Then (optionally) derive the filter statement using first-countability of `ℝ`.
+
+Dependencies (exact places)
+---------------------------
+This theorem uses only:
+1) Theorem 1 (no solution at/above αc): from the Lean formalization of Theorem 1
+   (the file you will build from the first blueprint section).
+2) `P` properties (continuity, `P r < 1` for finite r, and `P r → 1` as r→∞):
+   main.tex Lemma `P_properties` (to be formalized in the same development as Theorem 1).
+3) Continuity of `B` on `[0,1)`:
+   main.tex Lemma `B_cont0` (to be formalized; see Section 2.2 of Theorem 1 blueprint).
+4) The fixed-point identity written as `r = α * B(q) / (1-q)^2` (Section 1.3 above).
+5) Bolzano–Weierstrass in `ℝ` for bounded sequences (mathlib):
+   `tendsto_subseq_of_frequently_bounded` or `tendsto_subseq_of_bounded` in
+   `Mathlib/Topology/MetricSpace/Sequences.lean`.
+
+
+===============================================================================================
+5. Lean-level statement (recommended)
+===============================================================================================
+
+You likely already defined functions `qSol κ α` and `rSol κ α` for `α < αc` by classical choice
+from the `∃!` statement of Theorem 1. If not, do it now:
+
+  - Define `Sol κ α` as the unique pair `(q,r)` solving the system (for `α∈(0,αc)`).
+  - Define `qSol κ α := (Sol κ α).1` and `rSol κ α := (Sol κ α).2`.
+
+Also expose lemmas (by `simp`/`have` from the chosen solution):
+  - `qSol_eq_P : qSol κ α = P (rSol κ α)`
+  - `rSol_eq : rSol κ α = α * B κ (qSol κ α) / (1 - qSol κ α)^2`
+  - `rSol_nonneg : 0 ≤ rSol κ α`
+  - `qSol_lt_one : qSol κ α < 1`
+
+Now state the sequential theorem:
+
+Theorem (sequential form of thm:2ndmain):
+  Fix `κ ≥ 0`. Let `αc := αc(κ)`.
+  For any sequence `α : ℕ → ℝ` with
+    (i)  `∀ n, 0 < α n ∧ α n < αc`
+    (ii) `Tendsto α atTop (𝓝 αc)`,
+  define `q n := qSol κ (α n)` and `r n := rSol κ (α n)`.
+  Then:
+    (a) `Tendsto r atTop atTop`  (i.e. `r n → +∞`),
+    (b) `Tendsto q atTop (𝓝 1)` (i.e. `q n → 1`).
+
+From (a)+(b) you can conclude the “α ↑ αc” statement in the paper.
+
+
+===============================================================================================
+6. Proof blueprint (matches main.tex proof of thm:2ndmain)
+===============================================================================================
+
+Fix `κ ≥ 0`. Let `αc := αc(κ)`.
+Take any sequence `α_n` with `0 < α_n < αc` and `α_n → αc`. Put
+
+  q_n := qSol κ (α_n),   r_n := rSol κ (α_n).
+
+Goal: show `r_n → +∞`. Once done, `q_n → 1` follows from `q_n = P(r_n)` and `P(r) → 1`.
+
+6.1  Reduce `q_n → 1` to `r_n → ∞`
+-----------------------------------
+Use:
+  - `q_n = P(r_n)` (from the definition of solution),
+  - `Tendsto P atTop (𝓝 1)` (Lemma `P_properties`),
+  - the composition rule: if `Tendsto r atTop atTop` and `Tendsto P atTop (𝓝 1)` then
+    `Tendsto (P ∘ r) atTop (𝓝 1)`.
+Conclude: once `r_n → +∞`, we get `q_n → 1` immediately.
+
+So it suffices to prove `Tendsto r_n atTop atTop`.
+
+6.2  Contradiction setup: extract a bounded subsequence
+-------------------------------------------------------
+Assume, for contradiction, that `¬ Tendsto r_n atTop atTop`.
+
+Expand `Tendsto r_n atTop atTop` using the order-filter characterization:
+  `Tendsto r_n atTop atTop`  ↔  `∀ R, ∀ᶠ n in atTop, R ≤ r_n`.
+Negating, obtain some `R : ℝ` and a **frequent** set of indices where `r_n ≤ R`:
+  `∃ R, ∃ᶠ n in atTop, r_n ≤ R`.
+
+Also use `r_n ≥ 0` for all n (from `rSol_nonneg`).
+Therefore, frequently `r_n ∈ Set.Icc (0:ℝ) R`.
+
+Now apply Bolzano–Weierstrass in `ℝ` to get a convergent subsequence:
+Use `tendsto_subseq_of_frequently_bounded` with
+  - `X := ℝ` (a proper metric space),
+  - `s := Set.Icc 0 R` (bounded),
+  - `x := r_n`,
+to obtain:
+  ∃ r_* ∈ closure (Set.Icc 0 R), ∃ φ : ℕ → ℕ, StrictMono φ ∧ Tendsto (r ∘ φ) atTop (𝓝 r_*).
+Since `Set.Icc 0 R` is closed, `closure (Set.Icc 0 R) = Set.Icc 0 R`; so `r_* ∈ Set.Icc 0 R`.
+In particular `r_* < ∞` and `r_* ≥ 0`.
+
+Rename the subsequence:
+  r'_k := r_{φ k},  q'_k := q_{φ k},  α'_k := α_{φ k}.
+We have:
+  Tendsto r'_k (𝓝 r_*),  Tendsto α'_k (𝓝 αc) (subsequence of a convergent sequence).
+
+6.3  Take limits in the first fixed-point equation: q' → q*
+------------------------------------------------------------
+From Theorem 1 (solution property):
+  q'_k = P(r'_k)  for all k.
+By continuity of P:
+  Tendsto q'_k atTop (𝓝 (P r_*)).
+Set `q_* := P r_*`.
+
+Key fact: `q_* < 1`.
+Reason: `r_*` is finite, and `P r < 1` for every finite r (Lemma `P_properties`).
+So `q_* = P r_* < 1`.
+This implies `1 - q_* ≠ 0`, so expressions like `(1 - q_*)^2` and its inverse are well-defined.
+
+6.4  Take limits in the second fixed-point equation to get a solution at α = αc
+--------------------------------------------------------------------------------
+Use the algebraic form of the second equation (from Section 1.3):
+  r'_k = α'_k * B(q'_k) / (1 - q'_k)^2.
+
+We know:
+  - `α'_k → αc`.
+  - `q'_k → q_*`.
+  - `B` is continuous on `[0,1)`, hence `B(q'_k) → B(q_*)`.
+  - Since `q_* < 1`, the map `x ↦ (1 - x)^(-2)` is continuous at `q_*`,
+    hence `(1 - q'_k)^(-2) → (1 - q_*)^(-2)`.
+
+Therefore, taking limits in the identity gives:
+  r_* = αc * B(q_*) / (1 - q_*)^2.
+
+Combine this with `q_* = P(r_*)` to conclude that `(q_*, r_*)` satisfies the fixed-point system
+at `α = αc`:
+  q_* = P(r_*),
+  r_* = Rκ(q_*, αc).
+
+6.5  Contradiction with Theorem 1 (no solution at α = αc)
+---------------------------------------------------------
+Theorem 1 says: if `α ≥ αc(κ)` then the system has **no** solution.
+Apply this at `α = αc(κ)` to get “no solution at αc”. This contradicts the existence of
+`(q_*, r_*)` constructed in 6.4.
+
+Hence the assumption `¬ Tendsto r_n atTop atTop` is false; therefore
+  `Tendsto r_n atTop atTop`.
+
+6.6  Conclude q_n → 1
+---------------------
+As explained in 6.1:
+  q_n = P(r_n),  r_n → +∞,  and `P(r) → 1` as `r → +∞`.
+Therefore `q_n → 1`.
+
+This proves Theorem 2 (sequential formulation). Optionally convert to “α ↑ αc” in filter form
+using first-countability of `ℝ`.
+
+
+===============================================================================================
+End of Theorem 2 blueprint.
+===============================================================================================
+
+
+Blueprint: Theorem 3 (RS* → -∞ as α ↑ αc)
+==========================================
+
+Target statement in `main.tex`
+------------------------------
+
+This is Theorem `\label{thm: bound for threshold}` in `perceptronFixed/main.tex`
+(around lines 103–118). The proof is in the section
+`Proof of Theorem~\ref{thm:main},\,\ref{thm:2ndmain},\,\ref{thm: bound for threshold}`
+starting at `main.tex` line ~1028.
+
+In paper notation (fix κ ≥ 0):
+
+  RS*(α,κ) := 𝓕κ(α; qα, rα),
+
+where (qα,rα) is the unique solution to the fixed point system for α < αc(κ),
+and the theorem states:
+
+  lim_{α ↑ αc(κ)} RS*(α,κ) = -∞.
+
+In your notation this is the desired “fRS(α) → -∞ as α → αc from below”.
+
+--------------------------------------------------------------------------------
+
+0. Definitions to have in Lean (match main.tex)
+-----------------------------------------------
+
+Fix κ : ℝ with κ ≥ 0.
+
+1) Standard Gaussian Z:
+   Work with either
+     (a) a random variable Z : Ω → ℝ with law N(0,1), or
+     (b) directly the Gaussian measure γ on ℝ.
+   (The project already uses both styles in different files.)
+
+2) Fixed point system (already defined in `perceptronFixed/Theorem1/Theorem.lean`):
+   P(r) := 𝔼[tanh(√r Z)^2]
+   U(κ,q,Z) := (κ - √q Z) / √(1-q)
+   B(κ,q) := (1-q) 𝔼[ E(U(κ,q,Z))^2 ]   (E is inverse Mills ratio)
+   r = α * B(κ,q) / (1-q)^2
+   q = P(r)
+   (Paper writes this as `q = P(r)`, `r = Rκ(q,α)` and then rewrites R using B.)
+
+3) RS functional 𝓕κ (paper equation (RSfunctional), `main.tex` line ~106):
+   𝓕κ(α;q,r) :=
+       - r(1-q)/2
+       + 𝔼[ log(2 cosh(√r Z)) ]
+       + α 𝔼[ log Φ̄( (κ - √q Z)/√(1-q) ) ].
+
+4) RS*(α,κ) := 𝓕κ(α; qα, rα) for the (unique) solution (qα,rα).
+
+Lean note: In the proof we will use the split
+  log(2 cosh x) = log 2 + log(cosh x),
+so RS* = log 2 - r(1-q)/2 + 𝔼[log(cosh(√r Z))] + α⋯
+as in `main.tex` lines 1045–1050.
+
+--------------------------------------------------------------------------------
+
+1. Dependencies already available (and where)
+---------------------------------------------
+
+(A) Hyperbolic identities / P,S:
+  - `PropAP.tanh_sq_add_sech_sq` and `PropAP.sech_sq_eq_one_sub_tanh_sq`
+  - `PropAP.S_eq_one_sub_P`
+  File: `perceptronFixed/Prop_A_P/Prop_A_P.lean`
+
+(B) Mills ratio / tail bounds infrastructure:
+  - `MillsBlueprint.Proof.Φbar_eq_phi_div_sub_integral` (gives Φ̄(u) ≤ φ(u)/u for u>0)
+  - `MillsBlueprint.Proof.E_le_add_inv` (u>0 ⇒ E(u) ≤ u + 1/u)
+  - `MillsBlueprint.Proof.E_le_inv_Φbar_one_of_le_one` (u ≤ 1 ⇒ E(u) bounded by constant)
+  File: `perceptronFixed/derivative_of_B/derivative_B.lean`
+
+(C) Chernoff/MGF for Gaussian (Mathlib):
+  - `ProbabilityTheory.mgf_id_gaussianReal` / `ProbabilityTheory.mgf_fun_id_gaussianReal`
+    File: `Mathlib/Probability/Distributions/Gaussian/Real.lean`
+  - Chernoff bound lemma `MomentGeneratingFunction.measure_ge_le_exp_mul_mgf`
+    File: `Mathlib/Probability/Moments/Basic.lean`
+
+(D) Integration by parts on ℝ (Mathlib):
+  - `MeasureTheory.integral_mul_deriv_eq_deriv_mul` (improper IBP on (-∞,∞))
+  File: `Mathlib/MeasureTheory/Integral/IntegralEqImproper.lean`
+
+(D) Theorem 1 and Theorem 2 inputs (paper prerequisites):
+  - Existence/uniqueness of (qα,rα) for α < αc(κ)
+  - As α ↑ αc(κ): qα → 1 and rα → +∞
+  File (scaffold): `perceptronFixed/Theorem1/Theorem.lean`
+  These correspond to `main.tex` Theorem `\ref{thm:main}` and `\ref{thm:2ndmain}`.
+
+--------------------------------------------------------------------------------
+
+2. Proof outline (Lean-friendly, follows `main.tex` proof)
+----------------------------------------------------------
+
+We follow `main.tex` lines ~1028–1192.
+
+Step 2.1 (Sequence reduction).
+  Let αₙ be any sequence with αₙ ↑ αc(κ) and αₙ < αc(κ).
+  Define (qₙ,rₙ) := (q_{αₙ}, r_{αₙ}) and εₙ := 1 - qₙ.
+
+  From Theorem 2 (`thm:2ndmain`):
+    εₙ → 0,   rₙ → +∞.
+
+  From the fixed point equations (Theorem 1, `thm:main`):
+    (FP1) qₙ = 𝔼[tanh(√rₙ Z)^2]
+    (FP2) rₙ = αₙ * B(κ,qₙ) / εₙ^2.
+
+  Define also:
+    Uₙ := (κ - √qₙ Z) / √εₙ
+    Aₙ := 𝔼[(κ - √qₙ Z)_+^2].
+
+Step 2.2 (Rewrite RS* at (qₙ,rₙ)).
+  Expand 𝓕κ and split the `log(2cosh)` term:
+    RS*(αₙ,κ)
+      = log 2
+        - (rₙ εₙ)/2
+        + 𝔼[log(cosh(√rₙ Z))]
+        + αₙ 𝔼[ log Φ̄(Uₙ) ].
+
+Step 2.3 (Bound the “spin” term).
+  Goal: bound
+      - (rₙ εₙ)/2 + 𝔼[log(cosh(√rₙ Z))]
+  from above by  (αₙ/(2εₙ)) * B(κ,qₙ).
+
+  Substep (S1): pointwise inequality on ℝ:
+    log(cosh x) ≤ x * tanh x.
+    (This is the lemma used at `main.tex` line 1052.)
+    Lean proof idea:
+      define f(x) := x*tanh x - log(cosh x),
+      show f(0)=0 and f'(x)= x*sech(x)^2 ≥ 0, and note f is even.
+
+  Substep (S2): Gaussian integration by parts (Stein identity) for Z~N(0,1):
+    𝔼[ Z * tanh(√r Z) ] = √r * 𝔼[ sech(√r Z)^2 ].
+    Lean:
+      use `φ'(z) = -z φ(z)` and integrate by parts on ℝ, e.g. via
+      `MeasureTheory.integral_mul_deriv_eq_deriv_mul` from
+      `Mathlib/MeasureTheory/Integral/IntegralEqImproper.lean`.
+
+  Substep (S3): identify 𝔼[sech(√rₙ Z)^2].
+    Using `PropAP.S_eq_one_sub_P` and (FP1),
+      𝔼[sech(√rₙ Z)^2] = 1 - 𝔼[tanh(√rₙ Z)^2] = 1 - qₙ = εₙ.
+
+  Combine:
+    𝔼[log(cosh(√rₙ Z))]
+      ≤ √rₙ 𝔼[ Z * tanh(√rₙ Z) ]
+      = rₙ 𝔼[sech(√rₙ Z)^2]
+      = rₙ εₙ,
+  hence
+    - (rₙ εₙ)/2 + 𝔼[log(cosh(√rₙ Z))] ≤ (rₙ εₙ)/2.
+
+  Substitute (FP2): rₙ εₙ / 2 = (αₙ/(2εₙ)) * B(κ,qₙ).
+
+Step 2.4 (Constraint term: upper bound on 𝔼[log Φ̄(Uₙ)]).
+  Fix any δ ∈ (0,1).
+
+  Substep (C1): event where Uₙ is large positive.
+    Since qₙ → 1, for all large n, √qₙ ≥ 1/2.
+    On the event {Z ≤ κ - δ}:
+      κ - √qₙ Z ≥ κ - √qₙ(κ-δ) = κ(1-√qₙ) + √qₙ δ ≥ δ/2,
+    so Uₙ ≥ δ/(2√εₙ) > 0 on {Z ≤ κ-δ}.
+
+  Substep (C2): two tail bounds for Φ̄(u) for u>0.
+    (i) Chernoff bound:
+        Φ̄(u) = P(Z ≥ u) ≤ exp(-u^2/2).
+        (Use Mathlib: mgf for gaussian + Chernoff lemma.)
+        Hence log Φ̄(u) ≤ -u^2/2.
+
+    (ii) One-sided Mills bound:
+        Φ̄(u) ≤ φ(u)/u  (u>0),
+        where φ(u) = exp(-u^2/2)/sqrt(2π).
+        (Derive from `MillsBlueprint.Proof.Φbar_eq_phi_div_sub_integral`.)
+        Then Φ̄(u) ≤ u^{-1} exp(-u^2/2), hence
+          log Φ̄(u) ≤ -u^2/2 - log u.
+
+    Also always log Φ̄(u) ≤ 0.
+
+  Substep (C3): pointwise bound for log Φ̄(Uₙ).
+    For large n, using (C1) to know Uₙ>0 on {Z≤κ-δ}:
+      log Φ̄(Uₙ)
+        ≤ -(Uₙ^2)/2 * 1_{Uₙ>0}
+          - (log Uₙ) * 1_{Z ≤ κ-δ}.
+    (This matches `main.tex` lines 1097–1103.)
+
+  Substep (C4): take expectations.
+    Note: Uₙ^2 * 1_{Uₙ>0} = εₙ^{-1} (κ - √qₙ Z)_+^2, so
+      𝔼[ -(Uₙ^2)/2 * 1_{Uₙ>0} ] = - Aₙ/(2εₙ).
+
+    On {Z≤κ-δ}:
+      log Uₙ = log(κ - √qₙ Z) - (1/2) log εₙ,
+    hence
+      -𝔼[(log Uₙ) 1_{Z≤κ-δ}]
+        = (Φ(κ-δ)/2) * log εₙ
+          - 𝔼[ log(κ - √qₙ Z) * 1_{Z≤κ-δ} ].
+
+    Since κ - √qₙ Z ≥ δ/2 on this event for large n,
+      log(κ - √qₙ Z) ≥ log(δ/2),
+    so the negative expectation term is bounded above by the constant
+      C(δ) := -log(δ/2).
+
+    Conclusion (paper eq. (constraint_bd...)):
+      𝔼[log Φ̄(Uₙ)]
+        ≤ -Aₙ/(2εₙ) + (Φ(κ-δ)/2) log εₙ + C(δ).
+
+Step 2.5 (Compare B(κ,qₙ) and Aₙ, and bound B-A).
+  Recall
+    B(κ,qₙ) = εₙ * 𝔼[ E(Uₙ)^2 ],
+    Aₙ      = εₙ * 𝔼[ (Uₙ)_+^2 ].
+
+  Substep (BA1): pointwise inequality E(u)^2 ≥ (u_+)^2.
+    - For u>0: from Φ̄(u) ≤ φ(u)/u we get E(u)=φ/Φ̄ ≥ u, hence E(u)^2 ≥ u^2 = (u_+)^2.
+    - For u≤0: (u_+)^2 = 0 ≤ E(u)^2 since squares are nonnegative.
+    Therefore B(κ,qₙ) ≥ Aₙ, hence B(κ,qₙ) - Aₙ ≥ 0.
+
+  Substep (BA2): uniform bound on the gap.
+    Show: ∃ C0, ∀ u, 0 ≤ E(u)^2 - (u_+)^2 ≤ C0.
+    (This is `main.tex` lines 1143–1156; it is a pure 1D inequality.)
+    Proof by cases:
+      • u ≤ 0:
+        Φ̄(u) ≥ 1/2, φ(u) ≤ φ(0) ⇒ E(u) ≤ 2φ(0) = √(2/π),
+        so E(u)^2 - (u_+)^2 = E(u)^2 ≤ 2/π.
+      • u ≥ 1:
+        use `E(u) ≤ u + 1/u` (Lemma `MillsBlueprint.Proof.E_le_add_inv`),
+        so 0 ≤ E(u)^2 - u^2 ≤ (u+1/u)^2 - u^2 = 2 + 1/u^2 ≤ 3.
+      • u ∈ [0,1]:
+        continuity of u ↦ (E(u)^2 - u^2) gives boundedness on compact.
+    Let C0 be a max of the three bounds.
+
+    Then
+      0 ≤ B(κ,qₙ) - Aₙ
+        = εₙ * 𝔼[ E(Uₙ)^2 - (Uₙ)_+^2 ]
+        ≤ εₙ * C0
+    so (B(κ,qₙ)-Aₙ)/εₙ ≤ C0.
+
+Step 2.6 (Combine all bounds into RS* ≤ (const)*log εₙ + O(1)).
+  Use Step 2.3 and Step 2.4:
+
+    RS*(αₙ,κ)
+      ≤ log 2
+        + (αₙ/(2εₙ)) B(κ,qₙ)
+        + αₙ[ -Aₙ/(2εₙ) + (Φ(κ-δ)/2) log εₙ + C(δ) ].
+
+  Rearrange:
+    RS*(αₙ,κ)
+      ≤ (αₙ Φ(κ-δ)/2) log εₙ
+        + log 2
+        + (αₙ/(2εₙ)) (B(κ,qₙ) - Aₙ)
+        + αₙ C(δ).
+
+  Apply Step 2.5 (BA2) and αₙ ≤ αc(κ) for large n:
+    (αₙ/(2εₙ))(B-A) ≤ (C0 αc(κ))/2,
+    αₙ C(δ) ≤ αc(κ) C(δ).
+
+  Therefore
+    RS*(αₙ,κ) ≤ (αₙ Φ(κ-δ)/2) log εₙ + CONST(κ,δ),
+  where the constant does not depend on n.
+
+Step 2.7 (Conclude divergence to -∞).
+  Since εₙ → 0, we have log εₙ → -∞.
+  Also αₙ → αc(κ) and αc(κ) > 0; and Φ(κ-δ) > 0.
+  Hence the right-hand side tends to -∞, so RS*(αₙ,κ) → -∞.
+
+  Since the sequence αₙ ↑ αc(κ) was arbitrary, this proves
+    lim_{α ↑ αc(κ)} RS*(α,κ) = -∞.

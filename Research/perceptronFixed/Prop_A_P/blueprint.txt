@@ -1,0 +1,213 @@
+Blueprint: properties of P(r) and A(r) (main.tex Lemmas `P_properties` and `A`)
+===============================================================================
+
+This blueprint records the analytic properties of the two auxiliary functions
+used in the reduction of the RS saddle point system to a 1D equation:
+
+  - P(r) := 𝔼[tanh^2(√r Z)]         (r ≥ 0)
+  - A(r) := r * (1 - P(r))^2       (r ≥ 0)
+
+where Z ~ N(0,1).
+
+The goal is to provide a Lean-friendly proof outline matching main.tex:
+  - Lemma `\ref{lem:P_properties-TOBECHECKED}` (properties of P)
+  - Lemma `\ref{lem:A-TOBECHECKED}` (properties of A)
+
+--------------------------------------------------------------------------------
+
+Settings
+--------
+Work with the standard normal law on ℝ. In Lean, pick one convention:
+
+(1) Gaussian measure:
+    γ : Measure ℝ := ProbabilityTheory.gaussianReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0))
+    𝔼[f(Z)] is `∫ z, f z ∂γ`.
+
+or
+
+(2) Lebesgue measure + density:
+    φ(z) := exp(-z^2/2) / sqrt(2π)
+    𝔼[f(Z)] is `∫ z, f z * φ z ∂volume`.
+
+Either is fine; just keep it consistent across the Lean development.
+
+We use the following standard hyperbolic functions:
+  tanh : ℝ → ℝ
+  cosh : ℝ → ℝ
+Define (if not already in the project):
+  sech(x) := 1 / cosh(x), so sech(x)^2 = 1 / (cosh x)^2.
+
+Identity:  tanh(x)^2 + sech(x)^2 = 1  for all x.
+
+--------------------------------------------------------------------------------
+
+Definitions (matching main.tex)
+-------------------------------
+Let Z ~ N(0,1).
+
+1) P : [0,∞) → [0,1)
+   P(r) := 𝔼[ tanh(√r Z)^2 ].
+
+2) S : [0,∞) → (0,1]
+   S(r) := 𝔼[ sech(√r Z)^2 ].
+   Then S(r) = 1 - P(r) by tanh^2 + sech^2 = 1.
+
+3) A : [0,∞) → [0,∞)
+   A(r) := r * (1 - P(r))^2 = r * S(r)^2.
+
+--------------------------------------------------------------------------------
+
+Statements (paper targets)
+--------------------------
+
+Lemma P_properties (main.tex Lemma `\ref{lem:P_properties-TOBECHECKED}`):
+  The function P : [0,∞) → [0,1) satisfies
+    (P1) P is continuous on [0,∞).
+    (P2) P is strictly increasing on [0,∞).
+    (P3) P(0) = 0.
+    (P4) For every finite r, P(r) < 1.
+    (P5) lim_{r→∞} P(r) = 1.
+
+Lemma A_properties (main.tex Lemma `\ref{lem:A-TOBECHECKED}`):
+  The function A : [0,∞) → [0,∞) satisfies
+    (A1) A is continuous on [0,∞).
+    (A2) A is strictly increasing on (0,∞).
+    (A3) A(0) = 0.
+    (A4) lim_{r→∞} A(r) = 2/π.
+  Consequently, A is a bijection from [0,∞) onto [0, 2/π).
+
+--------------------------------------------------------------------------------
+
+Dependencies / facts used (math + Lean hints)
+---------------------------------------------
+
+Hyperbolic facts:
+  - tanh is continuous and strictly increasing.
+  - |tanh x| < 1 for all x, hence tanh(x)^2 < 1.
+  - tanh x → 1 as x→+∞ and tanh x → -1 as x→-∞.
+  - sech(x)^2 = 1 - tanh(x)^2.
+
+Measure-theoretic facts:
+  - Dominated convergence theorem for Bochner/Lebesgue integrals on ℝ.
+    (In practice: functions bounded by an integrable bound, plus a.e. pointwise
+     convergence, give convergence of integrals.)
+  - Standard normal has no atoms, so P(Z=0)=0 (equivalently γ {0} = 0).
+
+Change-of-variables (for the A lemma):
+  - Represent the expectation S(r) as an integral against φ(z) dz, then apply
+    the substitution y = √r z.
+
+Integral of sech^2:
+  - On finite intervals:
+      ∫_{-R}^{R} sech(y)^2 dy = tanh(R) - tanh(-R) = 2 * tanh(R).
+  - Letting R→∞ and using tanh(R)→1 gives
+      ∫_{ℝ} sech(y)^2 dy = 2.
+
+Lean notes:
+  - Use `ProbabilityTheory.noAtoms_gaussianReal` (or similar) to get γ {0} = 0.
+  - For strict inequality of integrals, use lemmas of the form:
+      `integral_lt_integral_of_ae_lt` / `integral_lt_integral_of_lt_of_measure_ne_zero`
+    (exact names depend on imports; use `#find`).
+  - For dominated convergence, search for:
+      `tendsto_integral_of_dominated_convergence` (or variants).
+
+--------------------------------------------------------------------------------
+
+Proof outline: Lemma P_properties
+---------------------------------
+
+Step P0 (measurability / integrability setup).
+  For each r ≥ 0, the map z ↦ tanh(√r z)^2 is measurable.
+  Also 0 ≤ tanh(√r z)^2 ≤ 1, so it is integrable under γ (probability measure)
+  or under φ(z) dz (since ∫ φ = 1).
+
+Step P1 (continuity of P).
+  Fix r0 ≥ 0 and take rn → r0.
+  For each z, continuity of sqrt and tanh gives
+      tanh(√rn z)^2 → tanh(√r0 z)^2.
+  Dominate by 1 and apply dominated convergence to conclude
+      P(rn) → P(r0).
+
+Step P2 (monotonicity of P).
+  For r1 ≤ r2 and each z:
+    - If z = 0, both sides are 0.
+    - If z > 0, √r1 z ≤ √r2 z and tanh is increasing, hence tanh(√r1 z)^2 ≤ tanh(√r2 z)^2.
+    - If z < 0, use oddness tanh(-x) = -tanh(x), so the same inequality holds after squaring.
+  Integrate to get P(r1) ≤ P(r2).
+
+Step P3 (strictness of P).
+  Fix 0 ≤ r1 < r2. For every z ≠ 0, the inequality in Step P2 is strict:
+    √r1 |z| < √r2 |z|  and tanh is strictly increasing ⇒ |tanh(√r1 z)| < |tanh(√r2 z)|.
+  Therefore tanh(√r1 z)^2 < tanh(√r2 z)^2 for all z ≠ 0.
+  Since the standard normal has no atoms, P(Z=0)=0, so the set {z : z ≠ 0}
+  has full measure. Hence the integral inequality is strict:
+      P(r1) < P(r2).
+
+Step P4 (P(0)=0).
+  P(0) = 𝔼[tanh(0)^2] = 0.
+
+Step P5 (P(r) < 1 for finite r).
+  For every z, |tanh(√r z)| < 1, hence tanh(√r z)^2 < 1.
+  Since the set where strictness fails is empty, we get
+      P(r) = 𝔼[tanh(√r Z)^2] < 𝔼[1] = 1.
+
+Step P6 (limit P(r) → 1 as r → ∞).
+  For z ≠ 0, √r z → ±∞, hence tanh(√r z) → sign(z) and tanh(√r z)^2 → 1.
+  Dominate by 1 and apply dominated convergence to conclude:
+      lim_{r→∞} P(r) = 𝔼[1] = 1.
+
+--------------------------------------------------------------------------------
+
+Proof outline: Lemma A_properties
+---------------------------------
+
+Step A0 (basic identities).
+  Define S(r) := 𝔼[sech(√r Z)^2]. Then S(r) = 1 - P(r), so
+      A(r) = r * (1 - P(r))^2 = r * S(r)^2.
+  From P(0)=0, A(0)=0.
+
+Step A1 (continuity).
+  Since P is continuous (Lemma P_properties) and A(r) is built from continuous
+  algebraic operations in r and P(r), A is continuous on [0,∞).
+
+Step A2 (rewrite A via a single scalar integral).
+  Write S(r) using the standard normal density:
+      S(r) = ∫ sech(√r z)^2 * φ(z) dz.
+  Substitute y = √r z (so z = y/√r and dz = dy/√r) to obtain, for r>0:
+      S(r) = (1 / √(2π r)) * I(r),
+  where
+      I(r) := ∫ sech(y)^2 * exp(-y^2/(2r)) dy   (Lebesgue integral on ℝ).
+  Then
+      A(r) = r * S(r)^2 = (1/(2π)) * I(r)^2.
+
+Step A3 (strict monotonicity of I, hence A, on (0,∞)).
+  Fix 0 < r1 < r2. For all y:
+      exp(-y^2/(2r1)) ≤ exp(-y^2/(2r2)),
+  and the inequality is strict for y ≠ 0.
+  Since sech(y)^2 > 0 for all y, we have
+      sech(y)^2 * exp(-y^2/(2r1)) < sech(y)^2 * exp(-y^2/(2r2))    for y ≠ 0.
+  The set {y ≠ 0} has positive Lebesgue measure, so integrating yields
+      I(r1) < I(r2).
+  Therefore I is strictly increasing on (0,∞), and since A(r) = (1/(2π)) I(r)^2
+  with I(r) > 0, A is strictly increasing on (0,∞).
+
+  (Alternative proof, closer to main.tex: differentiate under the integral sign
+   to show I'(r) = ∫ sech(y)^2 * exp(-y^2/(2r)) * (y^2/(2r^2)) dy > 0.)
+
+Step A4 (limit r→∞).
+  For each y, exp(-y^2/(2r)) ↑ 1 as r→∞.
+  Also 0 ≤ sech(y)^2 * exp(-y^2/(2r)) ≤ sech(y)^2 and sech(y)^2 is integrable.
+  By dominated (or monotone) convergence:
+      I(r) → ∫ sech(y)^2 dy.
+  Compute the limiting integral:
+      ∫_{ℝ} sech(y)^2 dy = 2.
+  Hence
+      A(r) = (1/(2π)) I(r)^2 → (1/(2π)) * 2^2 = 2/π.
+
+Step A5 (range / bijection).
+  From A(0)=0, strict monotonicity on (0,∞), and the limit 2/π, A maps [0,∞)
+  onto [0,2/π) and is injective; thus it is a bijection onto that range.
+
+--------------------------------------------------------------------------------
+
+End of blueprint.
