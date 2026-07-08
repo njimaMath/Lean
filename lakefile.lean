@@ -29,6 +29,11 @@ lean_lib oriented_animal where
   srcDir := "."
   globs := #[.submodules `oriented_animal]
 
+-- The SYK formalization, including the model and concentration theorem.
+lean_lib SYK where
+  srcDir := "."
+  globs := #[.submodules `SYK]
+
 @[default_target]
 lean_exe njimaLean where
   root := `Main
