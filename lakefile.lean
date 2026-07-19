@@ -34,6 +34,12 @@ lean_lib SYK where
   srcDir := "."
   globs := #[.submodules `SYK]
 
+
+lean_lib GeneralizedLatala where
+  srcDir := "GeneralizedLatala"
+  globs := #[.one `latala]
+
+
 @[default_target]
 lean_exe njimaLean where
   root := `Main
