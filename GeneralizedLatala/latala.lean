@@ -1129,7 +1129,7 @@ lemma coupled_excess_derivative
     (hN : 0 < N)
     (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
     {t Λ : ℝ} (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
-    ∃ crossMoment : ℝ,
+    (∃ crossMoment : ℝ,
       0 ≤ crossMoment ∧
       deriv
         (fun s => coupledFreeEnergy
@@ -1140,7 +1140,15 @@ lemma coupled_excess_derivative
           4 * deriv
             (fun L => coupledFreeEnergy
               (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t L)
-            Λ - 2 * crossMoment) := by
+            Λ - 2 * crossMoment)) ∧
+    ∀ {coupling u : ℝ}, 0 < coupling → u ∈ Set.Icc (0 : ℝ) 1 →
+      logQuadraticMoment
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+          u coupling
+        ≤ Real.exp (β ^ 2 * u / (2 * coupling)) *
+          logQuadraticMoment
+            (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+            0 ((2 * coupling + β ^ 2 * u) / 2) := by
   sorry
 
 /-- Positivity of the coupling scale in the improved region. -/
@@ -1265,7 +1273,28 @@ lemma endpoint_movingCoupling
     exact Real.log_le_log (by positivity) hratio
   exact hend.trans (mul_le_mul_of_nonneg_left hlog (by norm_num))
 
-/-- Proposition `quadratic-estimate` from the blueprint. -/
+/-- The moving-coupling estimate obtained by following the characteristic
+`Λ(s) = 2 * coupling + β² * (t - s)` in the coupled interpolation. -/
+lemma logQuadraticMoment_le_endpoint
+    (hN : 0 < N)
+    (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
+    {coupling t : ℝ} (hcoupling : 0 < coupling)
+    (ht : t ∈ Set.Icc (0 : ℝ) 1) :
+    logQuadraticMoment
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+        t coupling
+      ≤ Real.exp (β ^ 2 * t / (2 * coupling)) *
+        logQuadraticMoment
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+          0 ((2 * coupling + β ^ 2 * t) / 2) := by
+  have hmid : (1 / 2 : ℝ) ∈ Set.Ioo (0 : ℝ) 1 := by norm_num
+  exact (coupled_excess_derivative
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+    (Λ := 0) hN hIndep hmid).2 hcoupling ht
+
+/-
+Proposition `quadratic-estimate` from the blueprint.
+-/
 theorem uniform_quadratic_coupling
     (hN : 0 < N) (hβ : 0 ≤ β) (hq0 : 0 ≤ q) (hq1 : q < 1)
     (hfp : IsRSFixedPoint β h q)
@@ -1276,7 +1305,25 @@ theorem uniform_quadratic_coupling
         (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
         t (lambdaStar β q)
       ≤ quadraticConstant β q := by
-  sorry
+  -- Apply the lemma `logQuadraticMoment_le_endpoint` with coupling `lambdaStar β q`.
+  have h_logQuadraticMoment_le_endpoint : logQuadraticMoment N β h q sk sim t (lambdaStar β q) ≤ Real.exp (β ^ 2 * t / (2 * lambdaStar β q)) * logQuadraticMoment N β h q sk sim 0 ((2 * lambdaStar β q + β ^ 2 * t) / 2) := by
+    apply logQuadraticMoment_le_endpoint;
+    · exact hN;
+    · exact hIndep;
+    · exact lambdaStar_pos (β := β) (q := q) hq0 hq1 hρ
+    · exact ht;
+  have h_logQuadraticMoment_le_endpoint : logQuadraticMoment N β h q sk sim 0 ((2 * lambdaStar β q + β ^ 2 * t) / 2) ≤ (1 / 2) * Real.log (2 / (1 - rho β q)) := by
+    apply_rules [ endpoint_movingCoupling ];
+  refine' le_trans ‹_› ( le_trans ( mul_le_mul_of_nonneg_left h_logQuadraticMoment_le_endpoint ( Real.exp_nonneg _ ) ) _ );
+  -- Simplify the exponent using the fact that `β^2 / (2 * lambdaStar β q) = 2 * rho β q / (1 - rho β q)`.
+  have h_exp_simplified : Real.exp (β ^ 2 * t / (2 * lambdaStar β q)) ≤ Real.exp (2 * rho β q / (1 - rho β q)) := by
+    have h_exp_bound : β ^ 2 / (2 * lambdaStar β q) = 2 * rho β q / (1 - rho β q) :=
+      beta_sq_div_two_lambdaStar (β := β) (q := q) hq0 hq1 hρ
+    exact Real.exp_le_exp.mpr ( by rw [ ← h_exp_bound ] ; exact div_le_div_of_nonneg_right ( mul_le_of_le_one_right ( sq_nonneg _ ) ht.2 ) ( mul_nonneg zero_le_two ( by exact le_of_lt ( lambdaStar_pos ( hq0 := hq0 ) ( hq1 := hq1 ) ( hρ := hρ ) ) ) ) );
+  refine' le_trans ( mul_le_mul_of_nonneg_right h_exp_simplified ( mul_nonneg ( by norm_num ) ( Real.log_nonneg _ ) ) ) _;
+  · rw [le_div_iff₀] <;>
+      linarith [rho_nonneg (β := β) (q := q) hq0 hq1]
+  · unfold quadraticConstant; ring_nf; norm_num;
 
 /-! ## Consequences -/
 
