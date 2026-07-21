@@ -111,8 +111,6 @@ variable (N : ℕ) [NeZero N] (β h q : ℝ)
 variable (sk : SKDisorder (Ω := Ω) N β h)
 variable (sim : SimpleDisorder (Ω := Ω) N β q)
 
-include ‹NeZero N›
-
 /-- Centered overlap `Q_ab = R_ab - q`. -/
 noncomputable def centeredOverlap {n : ℕ} (a b : Fin n) : ReplicaFun N n :=
   fun σs => overlap N (σs a) (σs b) - q
