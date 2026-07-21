@@ -2033,11 +2033,6 @@ lemma characteristicQuadraticMoment_differential_inequality
         characteristicQuadraticMoment
           (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
           coupling u s := by
-  have hjoint : DifferentiableAt ℝ
-      (fun p : ℝ × ℝ => logQuadraticMoment
-        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) p.1 p.2)
-      (s, characteristicCoupling β coupling u s) := by
-    fun_prop
   sorry
 
 /-- Continuity on the closed characteristic, including both endpoints.
