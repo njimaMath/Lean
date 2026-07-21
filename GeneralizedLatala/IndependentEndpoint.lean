@@ -2,6 +2,13 @@ import SpinGlass.Replicas
 import Mathlib.Probability.Distributions.Gaussian.CharFun
 import Mathlib.Probability.Distributions.Gaussian.HasGaussianLaw.Independence
 
+/-!
+# Permanent support for the independent endpoint
+
+This module contains the Gaussian-law, reference-field, and product-spin identities used by
+the independent endpoint of the generalized Latała argument.
+-/
+
 open MeasureTheory ProbabilityTheory Real BigOperators
 open PhysLean.Probability.GaussianIBP
 open scoped ENNReal NNReal

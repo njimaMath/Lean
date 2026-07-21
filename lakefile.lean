@@ -37,7 +37,7 @@ lean_lib SYK where
 
 lean_lib GeneralizedLatala where
   srcDir := "GeneralizedLatala"
-  globs := #[.one `latala]
+  globs := #[.one `IndependentEndpoint, .one `latala]
 
 
 @[default_target]
