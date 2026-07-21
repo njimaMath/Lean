@@ -1498,6 +1498,80 @@ The lemmas in this section deliberately use `HasDerivAt`.  Thus the differential
 also carry the regularity needed by the later chain-rule and endpoint arguments.
 -/
 
+private lemma tiltedLog_hasDerivAt_coupling
+    (H : EnergySpace N) (coupling : ℝ) :
+    HasDerivAt
+      (fun c => Real.log (tiltedReplicaPartitionDet (N := N) (q := q) H c))
+      ((N : ℝ) * tiltedCenteredOverlapSqDet (N := N) (q := q) H coupling)
+      coupling := by
+  classical
+  let A : ReplicaSpace N 2 → ℝ := fun σs =>
+    (N : ℝ) * centeredOverlapSq N q σs
+  let W : ReplicaSpace N 2 → ℝ := fun σs =>
+    ∏ l, gibbs_pmf N H (σs l)
+  have hterm (σs : ReplicaSpace N 2) :
+      HasDerivAt (fun c : ℝ => Real.exp (c * A σs) * W σs)
+        (A σs * Real.exp (coupling * A σs) * W σs) coupling := by
+    have hi : HasDerivAt (fun c : ℝ => c * A σs) (A σs) coupling := by
+      simpa using (hasDerivAt_id coupling).mul_const (A σs)
+    simpa [Function.comp_def, mul_comm, mul_left_comm] using
+      ((Real.hasDerivAt_exp _).comp coupling hi).mul_const (W σs)
+  have hpart : HasDerivAt
+      (fun c => tiltedReplicaPartitionDet (N := N) (q := q) H c)
+      (∑ σs : ReplicaSpace N 2,
+        A σs * Real.exp (coupling * A σs) * W σs) coupling := by
+    simpa [tiltedReplicaPartitionDet, gibbs_average_n_det, A, W, mul_assoc] using
+      (HasDerivAt.fun_sum (u := (Finset.univ : Finset (ReplicaSpace N 2)))
+        (A := fun σs => fun c : ℝ => Real.exp (c * A σs) * W σs)
+        (A' := fun σs => A σs * Real.exp (coupling * A σs) * W σs)
+        (x := coupling) (fun σs _ => hterm σs))
+  have hlog := (Real.hasDerivAt_log
+    (ne_of_gt (tiltedReplicaPartitionDet_pos (N := N) (q := q) H coupling))).comp
+      coupling hpart
+  simpa [Function.comp_def, tiltedCenteredOverlapSqDet,
+    tiltedReplicaPartitionDet, gibbs_average_n_det, A, W, div_eq_mul_inv,
+    Finset.mul_sum, mul_comm, mul_left_comm, mul_assoc] using hlog
+
+private lemma norm_tiltedLog_deriv_le
+    (H : EnergySpace N) (coupling : ℝ) :
+    ‖(N : ℝ) * tiltedCenteredOverlapSqDet (N := N) (q := q) H coupling‖ ≤
+      ∑ σs : ReplicaSpace N 2, (N : ℝ) * centeredOverlapSq N q σs := by
+  classical
+  let A : ReplicaSpace N 2 → ℝ := fun σs =>
+    (N : ℝ) * centeredOverlapSq N q σs
+  let P : ReplicaSpace N 2 → ℝ := fun σs =>
+    Real.exp (coupling * A σs) * ∏ l, gibbs_pmf N H (σs l)
+  have hA (σs : ReplicaSpace N 2) : 0 ≤ A σs :=
+    mul_nonneg (Nat.cast_nonneg N) (sq_nonneg _)
+  have hP (σs : ReplicaSpace N 2) : 0 ≤ P σs :=
+    mul_nonneg (Real.exp_nonneg _) (Finset.prod_nonneg fun l _ =>
+      gibbs_pmf_nonneg (N := N) (H := H) (σ := σs l))
+  have hsum : 0 < ∑ σs : ReplicaSpace N 2, P σs := by
+    simpa [P, A, tiltedReplicaPartitionDet, gibbs_average_n_det,
+      mul_comm, mul_left_comm, mul_assoc] using
+      tiltedReplicaPartitionDet_pos (N := N) (q := q) H coupling
+  have hnonneg : 0 ≤ (N : ℝ) *
+      tiltedCenteredOverlapSqDet (N := N) (q := q) H coupling := by
+    apply mul_nonneg (Nat.cast_nonneg N)
+    unfold tiltedCenteredOverlapSqDet gibbs_average_n_det
+    exact div_nonneg (Finset.sum_nonneg fun σs _ =>
+      mul_nonneg (mul_nonneg (sq_nonneg _) (Real.exp_nonneg _))
+        (Finset.prod_nonneg fun l _ =>
+          gibbs_pmf_nonneg (N := N) (H := H) (σ := σs l)))
+      (le_of_lt (tiltedReplicaPartitionDet_pos (N := N) (q := q) H coupling))
+  rw [Real.norm_eq_abs, abs_of_nonneg hnonneg]
+  have hratio (σs : ReplicaSpace N 2) : P σs / (∑ τ, P τ) ≤ 1 :=
+    (div_le_one hsum).2
+      (Finset.single_le_sum (fun τ _ => hP τ) (Finset.mem_univ σs))
+  have hle : (∑ σs : ReplicaSpace N 2, A σs * (P σs / ∑ τ, P τ)) ≤
+      ∑ σs : ReplicaSpace N 2, A σs := by
+    apply Finset.sum_le_sum
+    intro σs _
+    simpa using mul_le_mul_of_nonneg_left (hratio σs) (hA σs)
+  simpa [tiltedCenteredOverlapSqDet, tiltedReplicaPartitionDet,
+    gibbs_average_n_det, A, P, div_eq_mul_inv, Finset.mul_sum,
+    mul_comm, mul_left_comm, mul_assoc] using hle
+
 /-- Coupling derivative of the logarithmic quadratic moment.
 
 The factor `N` comes from differentiating `exp (coupling * N * Q₁₂²)`.  The quotient defining
@@ -1509,7 +1583,102 @@ lemma logQuadraticMoment_hasDerivAt_coupling_formula (t coupling : ℝ) :
       ((N : ℝ) * tiltedCenteredOverlapSq
         (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
         t coupling) coupling := by
-  sorry
+  classical
+  let F : ℝ → Ω → ℝ := fun c ω => Real.log
+    (tiltedReplicaPartitionDet (N := N) (q := q)
+      (H_t (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) t ω) c)
+  let F' : ℝ → Ω → ℝ := fun c ω => (N : ℝ) *
+    tiltedCenteredOverlapSqDet (N := N) (q := q)
+      (H_t (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) t ω) c
+  let B : ℝ := ∑ σs : ReplicaSpace N 2, (N : ℝ) * centeredOverlapSq N q σs
+  have hdiff (c : ℝ) (ω : Ω) : HasDerivAt (F · ω) (F' c ω) c := by
+    simpa [F, F'] using tiltedLog_hasDerivAt_coupling (N := N) (q := q)
+      (H_t (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) t ω) c
+  have hbound (c : ℝ) (ω : Ω) : ‖F' c ω‖ ≤ B := by
+    simpa [F', B] using norm_tiltedLog_deriv_le (N := N) (q := q)
+      (H_t (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) t ω) c
+  have hU_meas : Measurable sk.U := sk.hU.repr_measurable
+  have hV_meas : Measurable sim.V := sim.hV.repr_measurable
+  have hHt_meas : Measurable
+      (H_t (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) t) := by
+    have h1 : Measurable (fun ω => (Real.sqrt t) • sk.U ω) :=
+      hU_meas.const_smul (Real.sqrt t)
+    have h2 : Measurable (fun ω => (Real.sqrt (1 - t)) • sim.V ω) :=
+      hV_meas.const_smul (Real.sqrt (1 - t))
+    have h3 : Measurable (fun _ω : Ω => H_field (N := N) (h := h)) := measurable_const
+    simpa [H_t, H_gauss] using ((h1.add h2).add h3)
+  have hpmf_meas (σ : Config N) : Measurable fun ω =>
+      gibbs_pmf N
+        (H_t (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) t ω) σ :=
+    (SpinGlass.contDiff_gibbs_pmf (N := N) (σ := σ)).continuous.measurable.comp hHt_meas
+  have hpart_meas (c : ℝ) : Measurable fun ω =>
+      tiltedReplicaPartitionDet (N := N) (q := q)
+        (H_t (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) t ω) c := by
+    unfold tiltedReplicaPartitionDet gibbs_average_n_det
+    apply Finset.measurable_sum
+    intro σs _
+    apply measurable_const.mul
+    apply Finset.measurable_prod
+    intro l _
+    exact hpmf_meas (σs l)
+  have hnum_meas (c : ℝ) : Measurable fun ω =>
+      gibbs_average_n_det (N := N) (n := 2)
+        (H_t (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) t ω)
+        (fun σs => centeredOverlapSq N q σs *
+          Real.exp (c * (N : ℝ) * centeredOverlapSq N q σs)) := by
+    unfold gibbs_average_n_det
+    apply Finset.measurable_sum
+    intro σs _
+    apply measurable_const.mul
+    apply Finset.measurable_prod
+    intro l _
+    exact hpmf_meas (σs l)
+  have hF_meas (c : ℝ) : AEStronglyMeasurable (F c) ℙ := by
+    exact ((hpart_meas c).log).aestronglyMeasurable
+  have hF'_meas (c : ℝ) : AEStronglyMeasurable (F' c) ℙ := by
+    apply Measurable.aestronglyMeasurable
+    dsimp only [F', tiltedCenteredOverlapSqDet]
+    exact measurable_const.mul ((hnum_meas c).div (hpart_meas c))
+  have hzero (ω : Ω) : F 0 ω = 0 := by
+    dsimp only [F]
+    rw [show tiltedReplicaPartitionDet (N := N) (q := q)
+        (H_t (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) t ω) 0 = 1 by
+      unfold tiltedReplicaPartitionDet gibbs_average_n_det
+      simp only [zero_mul, Real.exp_zero, one_mul]
+      exact sum_prod_gibbs_pmf_eq_one (N := N) (n := 2) _]
+    exact Real.log_one
+  have hF_int : Integrable (F coupling) ℙ := by
+    apply Integrable.of_bound (hF_meas coupling) (B * ‖coupling‖)
+    filter_upwards with ω
+    have hm := convex_univ.norm_image_sub_le_of_norm_hasDerivWithin_le
+      (f := fun c => F c ω) (f' := fun c => F' c ω)
+      (C := B) (x := 0) (y := coupling)
+      (fun c _ => (hdiff c ω).hasDerivWithinAt)
+      (fun c _ => hbound c ω) (by simp) (by simp)
+    simpa [hzero] using hm
+  have hmain :=
+    (hasDerivAt_integral_of_dominated_loc_of_deriv_le
+      (μ := (ℙ : Measure Ω)) (F := F) (F' := F') (x₀ := coupling)
+      (bound := fun _ => B) (s := Set.univ) Filter.univ_mem
+      (Filter.Eventually.of_forall hF_meas) hF_int (hF'_meas coupling)
+      (ae_of_all _ fun ω c _ => hbound c ω) (integrable_const B)
+      (ae_of_all _ fun ω c _ => hdiff c ω)).2
+  rw [show logQuadraticMoment
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t =
+      fun c => ∫ ω, F c ω ∂ℙ by
+        funext c
+        rfl]
+  rw [tiltedCenteredOverlapSq, ← integral_const_mul]
+  exact hmain
 
 /-- Coupling derivative of the normalized coupled free energy.
 
@@ -1523,7 +1692,34 @@ lemma coupledFreeEnergy_hasDerivAt_coupling_formula (t Λ : ℝ) :
       ((1 / 4) * tiltedCenteredOverlapSq
         (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
         t (Λ / 2)) Λ := by
-  sorry
+  have hlog := logQuadraticMoment_hasDerivAt_coupling_formula
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t (Λ / 2)
+  have hinner : HasDerivAt (fun L : ℝ => L / 2) (1 / 2) Λ := by
+    simpa using (hasDerivAt_id Λ).div_const 2
+  have hcomp : HasDerivAt
+      (fun L => logQuadraticMoment
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t (L / 2))
+      (((N : ℝ) * tiltedCenteredOverlapSq
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+        t (Λ / 2)) * (1 / 2)) Λ :=
+    by simpa only [Function.comp_apply] using hlog.comp Λ hinner
+  have hscaled := hcomp.const_mul (1 / (2 * (N : ℝ)))
+  have hcoeff :
+      (1 / (2 * (N : ℝ))) *
+          (((N : ℝ) * tiltedCenteredOverlapSq
+            (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+            t (Λ / 2)) * (1 / 2)) =
+        (1 / 4) * tiltedCenteredOverlapSq
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+          t (Λ / 2) := by
+    have hN : (N : ℝ) ≠ 0 := by exact_mod_cast NeZero.ne N
+    field_simp [hN]
+    ring
+  rw [hcoeff] at hscaled
+  simpa only [coupledFreeEnergy, coupledExcess, physicalLogQuadraticMoment] using
+    hscaled.const_add
+      (interpolatedPressure
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t)
 
 /-- Differentiate the coupled smart path before Gaussian integration by parts.
 
@@ -1593,7 +1789,39 @@ lemma logQuadraticMoment_hasDerivAt_time
         (fun s => logQuadraticMoment
           (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
           s coupling) dt t := by
-  sorry
+  have hcoupled := coupledFreeEnergy_hasDerivAt_time_ibp
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+    hN hIndep (Λ := 2 * coupling) ht
+  have hpressure := pressure_derivative
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+    hN hIndep ht
+  have hexcess := hcoupled.sub hpressure
+  have hscaled := hexcess.const_mul (2 * (N : ℝ))
+  have hN0 : (N : ℝ) ≠ 0 := by exact_mod_cast (ne_of_gt hN)
+  have hfun :
+      (fun s => logQuadraticMoment
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+        s coupling) =
+      fun s => (2 * (N : ℝ)) *
+        (coupledFreeEnergy
+            (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+            s (2 * coupling) -
+          interpolatedPressure
+            (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s) := by
+    funext s
+    simp only [coupledFreeEnergy, coupledExcess, physicalLogQuadraticMoment]
+    rw [show (2 : ℝ) * coupling / 2 = coupling by ring]
+    calc
+      logQuadraticMoment
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+          s coupling =
+          (2 * (N : ℝ)) * (1 / (2 * (N : ℝ)) *
+            logQuadraticMoment
+              (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+              s coupling) := by field_simp [hN0]
+      _ = _ := by ring
+  rw [hfun]
+  exact ⟨_, hscaled⟩
 
 /-- Compatibility form of the explicit coupling derivative. -/
 lemma deriv_logQuadraticMoment_coupling (t coupling : ℝ) :
@@ -1630,7 +1858,126 @@ lemma logQuadraticMoment_differential_inequality
           logQuadraticMoment
             (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
             t coupling := by
-  sorry
+  let L : ℝ → ℝ := fun s => logQuadraticMoment
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s coupling
+  let V : ℝ := overlapVariance
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t
+  let T : ℝ := tiltedCenteredOverlapSq
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t coupling
+  let X : ℝ := coupledCrossMoment
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t coupling
+  have hC := coupledFreeEnergy_hasDerivAt_time_ibp
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+    hN hIndep (t := t) (Λ := 2 * coupling) ht
+  have hP := pressure_derivative
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+    hN hIndep ht
+  have hdiff := hC.sub hP
+  have hNr : (N : ℝ) ≠ 0 := by exact_mod_cast (Nat.ne_of_gt hN)
+  have hfun : L = fun s => (2 * (N : ℝ)) *
+      (coupledFreeEnergy
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+          s (2 * coupling) -
+        interpolatedPressure
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s) := by
+    funext s
+    simp only [L, coupledFreeEnergy, coupledExcess, physicalLogQuadraticMoment]
+    rw [show (2 : ℝ) * coupling / 2 = coupling by ring]
+    calc
+      logQuadraticMoment N β h q sk sim s coupling =
+          (2 * (N : ℝ)) * (1 / (2 * (N : ℝ)) *
+            logQuadraticMoment N β h q sk sim s coupling) := by field_simp [hNr]
+      _ = _ := by ring
+  have hLraw := hdiff.const_mul (2 * (N : ℝ))
+  change HasDerivAt
+      (fun s => (2 * (N : ℝ)) *
+        (coupledFreeEnergy
+            (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+            s (2 * coupling) -
+          interpolatedPressure
+            (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s))
+      _ t at hLraw
+  rw [← hfun] at hLraw
+  have hL : HasDerivAt L
+      ((N : ℝ) * (β ^ 2 / 2) * (T + V - 2 * X)) t := by
+    convert hLraw using 1 <;> simp [T, V, X] <;> ring
+  have htime : deriv L t =
+      (N : ℝ) * (β ^ 2 / 2) * (T + V - 2 * X) := hL.deriv
+  have hcouplingDeriv : deriv
+      (fun c => logQuadraticMoment
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t c)
+      coupling = (N : ℝ) * T := by
+    simpa [T] using deriv_logQuadraticMoment_coupling
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t coupling
+  have hX : 0 ≤ X := coupledCrossMoment_nonneg
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t coupling
+  have hleft : deriv L t - (β ^ 2 / 2) * ((N : ℝ) * T)
+      ≤ (β ^ 2 / 2) * ((N : ℝ) * V) := by
+    rw [htime]
+    calc
+      (N : ℝ) * (β ^ 2 / 2) * (T + V - 2 * X) -
+          (β ^ 2 / 2) * ((N : ℝ) * T) =
+          (β ^ 2 / 2) * ((N : ℝ) * V) -
+            ((N : ℝ) * β ^ 2) * X := by ring
+      _ ≤ (β ^ 2 / 2) * ((N : ℝ) * V) :=
+        sub_le_self _ (mul_nonneg
+          (mul_nonneg (Nat.cast_nonneg N) (sq_nonneg β)) hX)
+  have hscaled : coupling * (N : ℝ) * V ≤ logQuadraticMoment
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+      t coupling := by
+    refine' trans _ (MeasureTheory.integral_mono_of_nonneg _ _ _)
+    case refine'_2 =>
+      exact fun ω => coupling * N * gibbs_average_n_det N 2
+        (H_t N β h q sk sim t ω) (centeredOverlapSq N q)
+    · rw [MeasureTheory.integral_const_mul]
+      rfl
+    · exact Filter.Eventually.of_forall fun ω =>
+        mul_nonneg (mul_nonneg (le_of_lt hcoupling) (Nat.cast_nonneg _))
+          (by
+            apply Finset.sum_nonneg
+            intro σs _
+            exact mul_nonneg (sq_nonneg _)
+              (Finset.prod_nonneg fun l _ => gibbs_pmf_nonneg
+                (N := N) (H := H_t N β h q sk sim t ω) (σ := σs l)))
+    · have hi : Integrable (fun ω => gibbs_average_n N β h q sk sim 2 t
+          (fun σs => Real.exp (coupling * N * centeredOverlapSq N q σs)) ω) ℙ := by
+        apply SpinGlass.integrable_gibbs_average_n
+      refine hi.mono'
+        (Real.measurable_log.comp_aemeasurable hi.aemeasurable).aestronglyMeasurable ?_
+      filter_upwards with ω
+      rw [Real.norm_eq_abs, abs_of_nonneg (Real.log_nonneg (by
+        simpa [tiltedReplicaPartition, tiltedReplicaPartitionDet, gibbs_average_n] using
+          tiltedReplicaPartitionDet_one_le (N := N) (q := q)
+            (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω)
+            (le_of_lt hcoupling)))]
+      refine (Real.log_le_sub_one_of_pos ?_).trans (by linarith)
+      simpa [tiltedReplicaPartition, tiltedReplicaPartitionDet, gibbs_average_n] using
+        tiltedReplicaPartition_pos
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+          t coupling ω
+    · filter_upwards with ω
+      exact scaled_centeredOverlapSq_le_log_gibbs_exp
+        (N := N) (q := q)
+        (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω)
+        coupling
+  rw [hcouplingDeriv]
+  refine hleft.trans ?_
+  have hv : (N : ℝ) * V ≤
+      logQuadraticMoment
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+        t coupling / coupling := (le_div_iff₀ hcoupling).2 (by
+          simpa [mul_comm, mul_left_comm, mul_assoc] using hscaled)
+  calc
+    (β ^ 2 / 2) * ((N : ℝ) * V)
+        ≤ (β ^ 2 / 2) *
+            (logQuadraticMoment
+              (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+              t coupling / coupling) :=
+      mul_le_mul_of_nonneg_left hv (div_nonneg (sq_nonneg β) (by norm_num))
+    _ = (β ^ 2 / (2 * coupling)) *
+          logQuadraticMoment
+            (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+            t coupling := by field_simp
 
 /-- Nonnegativity of the logarithmic quadratic moment for nonnegative exponential coupling. -/
 lemma logQuadraticMoment_nonneg
@@ -1851,8 +2198,7 @@ lemma gronwall_le_endpoint
   have hmul := mul_le_mul_of_nonneg_left hgu hexp.le
   have hinv : Real.exp (a * u) * Real.exp (-a * u) = 1 := by
     rw [← Real.exp_add]
-    convert Real.exp_zero using 1
-    ring
+    simp
   calc
     f u = Real.exp (a * u) * (Real.exp (-a * u) * f u) := by rw [← mul_assoc, hinv, one_mul]
     _ ≤ Real.exp (a * u) * (Real.exp (-a * 0) * f 0) := hmul
