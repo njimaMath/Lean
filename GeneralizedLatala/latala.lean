@@ -22,9 +22,10 @@ disorders from `SpinGlass.SKModel` and the smart path, replica Gibbs averages, a
 expectation `nu` from `SpinGlass.Replicas`.
 
 The scalar order parameter `q` is kept as an input satisfying the replica-symmetric fixed-point
-equation.  This is preferable to making an arbitrary global choice of a fixed point.  The main
-analytic ingredients of the blueprint are currently stated as lemmas with `sorry`; the final
-overlap and free-energy bounds are assembled from those ingredients.
+equation.  This is preferable to making an arbitrary global choice of a fixed point.  The
+remaining analytic work is split into small lemmas below, with comments recording the intended
+Gaussian-IBP and characteristic arguments.  The final overlap and free-energy bounds are then
+assembled from those ingredients.
 -/
 
 variable {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
@@ -1021,6 +1022,120 @@ lemma pressure_derivative_before_ibp
       hF_meas hF_int hF'_meas h_bound hbound_int h_diff).2
   simpa [interpolatedPressure, F] using hMain
 
+/-!
+### How to invoke the Hilbert-space Gaussian IBP theorem
+
+The theorem intended here is
+`PhysLean.Probability.GaussianIBP.gaussian_integration_by_parts_hilbert_cov_op` from
+`SpinGlass.Mathlib.Probability.Distributions.Gaussian_IBP_Hilbert`.  Its schematic form is
+
+```
+E[⟪g, e⟫ * F(g)] = E[(fderiv ℝ F (g)) ((covOp hg) e)].
+```
+
+It requires `hg : IsGaussianHilbert g`, `ContDiff ℝ 1 F`, and
+`HasModerateGrowth F`.  The disorder structures already provide the Gaussian models
+`sk.hU` and `sim.hV`, while `sk.cov_eq` and `sim.cov_eq` identify the matrix entries of their
+covariance operators in the configuration basis.
+
+There is one important formal point.  The first-variation test function depends on both
+`sk.U` and `sim.V`, so calling the theorem on `sk.hU` while leaving `sim.V ω` inside the test
+function is not valid.  A convenient bridge is a local lemma constructing
+
+```
+G ω := (sk.U ω, sim.V ω)
+```
+
+as an `IsGaussianHilbert` random variable on the product Hilbert space.  Build its basis from
+the two component bases, and use `hIndep` to prove that the two coordinate families are jointly
+independent.  Its covariance operator is block diagonal.  This bridge is the only additional
+Gaussian-model construction needed by the two lemmas below.
+
+For the SK term, set
+
+```
+Φ p := free_energy_density (N := N) (a • p.1 + b • p.2 + field)
+Fσ p := (fderiv ℝ Φ p) (std_basis N σ, 0)
+```
+
+and expand the random direction in the configuration basis.  For each `σ`, the main call is
+schematically
+
+```
+have hIBP :=
+  PhysLean.Probability.GaussianIBP.gaussian_integration_by_parts_hilbert_cov_op
+    (hg := hG) (h := (std_basis N σ, 0)) (F := Fσ)
+    (hF_diff := hFσ_diff) (hF_growth := hFσ_growth)
+```
+
+The derivative of `Fσ` is the Hessian of the pressure.  Expand the block covariance vector in
+the configuration basis, use `sk.cov_eq σ τ`, interchange the finite sums with the integral,
+and collect `a * a'`.  The simple-disorder term uses `(0, std_basis N σ)` and
+`sim.cov_eq σ τ` in exactly the same way.
+
+The required smoothness follows from `contDiff_free_energy_density`.  For moderate growth,
+prove a small helper for each `Fσ`; the explicit Gibbs Hessian is uniformly bounded in finite
+volume, so a constant polynomial bound suffices.  The integrability helpers surrounding the
+IBP theorem then justify every finite-sum and expectation interchange.
+-/
+
+/-- The `SKDisorder` contribution to joint Gaussian integration by parts.
+
+Proof route: use the joint Gaussian model `G` described above and apply
+`gaussian_integration_by_parts_hilbert_cov_op` along `(std_basis N σ, 0)`.  The derivative of
+the test function is `hessian_free_energy`; reconstruct the SK covariance block from its basis
+entries and rewrite them with `sk.cov_eq`. -/
+lemma sk_affine_firstVariation_ibp
+    (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
+    (a b a' : ℝ) (field : EnergySpace N) :
+    (∫ w,
+      fderiv ℝ (fun H : EnergySpace N => free_energy_density (N := N) H)
+        (a • sk.U w + b • sim.V w + field) (a' • sk.U w) ∂ℙ) =
+      (a * a') * ∫ w, (∑ σ : Config N, ∑ τ : Config N,
+        sk_cov_kernel N β σ τ * hessian_free_energy N
+          (a • sk.U w + b • sim.V w + field)
+          (std_basis N σ) (std_basis N τ)) ∂ℙ := by
+  sorry
+
+/-- The `SimpleDisorder` contribution to joint Gaussian integration by parts.
+
+Use the same joint model and the same operator-form theorem, now along
+`(0, std_basis N σ)`.  Block diagonality removes all cross-covariance terms, and `sim.cov_eq`
+turns the remaining covariance entries into `simple_cov_kernel`. -/
+lemma simple_affine_firstVariation_ibp
+    (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
+    (a b b' : ℝ) (field : EnergySpace N) :
+    (∫ w,
+      fderiv ℝ (fun H : EnergySpace N => free_energy_density (N := N) H)
+        (a • sk.U w + b • sim.V w + field) (b' • sim.V w) ∂ℙ) =
+      (b * b') * ∫ w, (∑ σ : Config N, ∑ τ : Config N,
+        simple_cov_kernel N β (fun x => q * x) σ τ * hessian_free_energy N
+          (a • sk.U w + b • sim.V w + field)
+          (std_basis N σ) (std_basis N τ)) ∂ℙ := by
+  sorry
+
+/-- Gaussian integration by parts for an affine combination of two independent Gaussian
+Hamiltonians, expressed in the canonical configuration basis.
+
+Proof route: use linearity of the first variation in its direction, split the integral into the
+`sk.U` and `sim.V` parts, apply `sk_affine_firstVariation_ibp` and
+`simple_affine_firstVariation_ibp`, and collect the scalar coefficients. -/
+lemma independent_gaussian_affine_ibp
+    (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
+    (a b a' b' : ℝ) (field : EnergySpace N) :
+    (∫ w,
+      fderiv ℝ (fun H : EnergySpace N => free_energy_density (N := N) H)
+        (a • sk.U w + b • sim.V w + field) (a' • sk.U w + b' • sim.V w) ∂ℙ) =
+      (a * a') * ∫ w, (∑ σ : Config N, ∑ τ : Config N,
+        sk_cov_kernel N β σ τ * hessian_free_energy N
+          (a • sk.U w + b • sim.V w + field)
+          (std_basis N σ) (std_basis N τ)) ∂ℙ +
+      (b * b') * ∫ w, (∑ σ : Config N, ∑ τ : Config N,
+        simple_cov_kernel N β (fun x => q * x) σ τ * hessian_free_energy N
+          (a • sk.U w + b • sim.V w + field)
+          (std_basis N σ) (std_basis N τ)) ∂ℙ := by
+  sorry
+
 /-- Joint Gaussian integration by parts for the raw smart-path derivative, before evaluating
 its two covariance traces. -/
 lemma pressure_derivative_ibp_trace
@@ -1039,7 +1154,195 @@ lemma pressure_derivative_ibp_trace
             (H_t (N := N) (β := β) (h := h) (q := q)
               (sk := sk) (sim := sim) t w)
             (std_basis N σ) (std_basis N τ)) ∂ℙ := by
-  sorry
+  have ht0 : t > 0 := ht.1
+  have ht1 : t < 1 := ht.2
+  -- Set up the IBP parameters
+  set a := Real.sqrt t with ha_def
+  set b := Real.sqrt (1 - t) with hb_def
+  set a' := 1 / (2 * Real.sqrt t) with ha'_def
+  set b' := -1 / (2 * Real.sqrt (1 - t)) with hb'_def
+  -- Apply the independent_gaussian_affine_ibp lemma
+  have h_ibp := independent_gaussian_affine_ibp (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) hIndep a b a' b' (H_field (N := N) (h := h))
+  -- Show that a * a' = 1/2 and b * b' = -1/2
+  have ha_aa' : a * a' = 1 / 2 := by
+    simp [ha_def, ha'_def]
+    field_simp [ne_of_gt (Real.sqrt_pos.mpr ht0)]
+  have hb_bb' : b * b' = -(1 / 2) := by
+    simp [hb_def, hb'_def]
+    field_simp [ne_of_gt (Real.sqrt_pos.mpr (sub_pos.mpr ht1))]
+  -- Show that a • sk.U w + b • sim.V w + H_field = H_t t w
+  have h_eq_H : H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t =
+      fun w => a • sk.U w + b • sim.V w + H_field (N := N) (h := h) := by
+    unfold H_t H_gauss
+    simp [ha_def, hb_def]
+  -- Show that a' • sk.U w + b' • sim.V w = dH_t t w
+  have h_eq_dH : dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t =
+      fun w => a' • sk.U w + b' • sim.V w := by
+    unfold dH_t
+    ext w
+    simp [ha'_def, hb'_def]
+    ring
+  -- Rewrite h_ibp using the equalities
+  have h_ibp' : ∫ w, fderiv ℝ (fun H : EnergySpace N => free_energy_density (N := N) H) (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) ∂ℙ =
+    (a * a') * ∫ w, (∑ σ : Config N, ∑ τ : Config N,
+      sk_cov_kernel N β σ τ * hessian_free_energy N (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (std_basis N σ) (std_basis N τ)) ∂ℙ +
+    (b * b') * ∫ w, (∑ σ : Config N, ∑ τ : Config N,
+      simple_cov_kernel N β (fun x => q * x) σ τ * hessian_free_energy N (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (std_basis N σ) (std_basis N τ)) ∂ℙ := by
+    simp only [h_eq_H, h_eq_dH] at *
+    convert h_ibp using 2
+  -- Substitute a * a' = 1/2 and b * b' = -1/2
+  rw [ha_aa', hb_bb'] at h_ibp'
+  -- Combine the integrals
+  convert h_ibp' using 1
+  have integral_eq : ∀ w, ∑ σ, ∑ τ, (sk_cov_kernel N β σ τ - simple_cov_kernel N β (fun x => q * x) σ τ) *
+      hessian_free_energy N (H_t N β h q sk sim t w) (std_basis N σ) (std_basis N τ) =
+      (∑ σ, ∑ τ, sk_cov_kernel N β σ τ * hessian_free_energy N (H_t N β h q sk sim t w) (std_basis N σ) (std_basis N τ)) -
+      (∑ σ, ∑ τ, simple_cov_kernel N β (fun x => q * x) σ τ * hessian_free_energy N (H_t N β h q sk sim t w) (std_basis N σ) (std_basis N τ)) := by
+    intro w
+    simp_rw [sub_mul]
+    simp only [Finset.sum_sub_distrib]
+  -- Bound on hessian_free_energy for standard basis
+  have std_basis_apply : ∀ σ τ : Config N, (std_basis N σ) τ = if σ = τ then 1 else 0 := by
+    intro σ τ
+    simp [std_basis]
+  have hess_bound : ∀ H : EnergySpace N, ∀ σ τ : Config N,
+      |hessian_free_energy N H (std_basis N σ) (std_basis N τ)| ≤ 1 / (N : ℝ) := by
+    intro H σ τ
+    simp only [hessian_free_energy, std_basis_apply]
+    -- Simplify the sums
+    have sum1 : ∑ x : Config N, gibbs_pmf N H x * (if σ = x then (1 : ℝ) else 0) = gibbs_pmf N H σ := by
+      simp_rw [mul_ite, mul_one, mul_zero]
+      rw [Finset.sum_ite_eq (s := Finset.univ)]
+      simp [Finset.mem_univ]
+    have sum2 : ∑ x : Config N, gibbs_pmf N H x * (if τ = x then (1 : ℝ) else 0) = gibbs_pmf N H τ := by
+      simp_rw [mul_ite, mul_one, mul_zero]
+      rw [Finset.sum_ite_eq (s := Finset.univ)]
+      simp [Finset.mem_univ]
+    -- Note: the actual form is (gibbs_pmf N H x * if σ = x then 1 else 0) * if τ = x then 1 else 0
+    have sum_cross : ∑ x : Config N, (gibbs_pmf N H x * (if σ = x then (1 : ℝ) else 0)) * (if τ = x then (1 : ℝ) else 0) =
+        if σ = τ then gibbs_pmf N H σ else 0 := by
+      by_cases hστ : σ = τ
+      · subst hστ
+        simp_rw [mul_ite, mul_one, mul_zero]
+        rw [Finset.sum_ite_eq (s := Finset.univ)]
+        simp
+      · simp [hστ]
+    rw [sum1, sum2, sum_cross]
+    split_ifs with hστ
+    · -- Case σ = τ
+      subst hστ
+      have hp := gibbs_pmf_nonneg N H σ
+      have hp' := gibbs_pmf_le_one N H σ
+      have habs : |gibbs_pmf N H σ - gibbs_pmf N H σ * gibbs_pmf N H σ| ≤ 1 := by
+        rw [abs_le]
+        constructor <;> nlinarith
+      have hN_nonneg : (0 : ℝ) ≤ 1 / N := by positivity
+      rw [abs_mul, abs_of_nonneg hN_nonneg]
+      by_cases hN0 : N = 0
+      · simp [hN0]
+      · have hN_pos : (0 : ℝ) < N := Nat.cast_pos.mpr (Nat.pos_of_ne_zero hN0)
+        have hNge : 1 ≤ N := Nat.pos_of_ne_zero hN0
+        have hN : (1 : ℝ) / N ≤ 1 := by
+          rw [div_le_iff₀ hN_pos]
+          simp [hNge]
+        exact mul_le_of_le_one_right hN_nonneg habs
+    · -- Case σ ≠ τ
+      have hp := gibbs_pmf_nonneg N H σ
+      have hp := gibbs_pmf_nonneg N H σ
+      have hp' := gibbs_pmf_le_one N H σ
+      have hq := gibbs_pmf_nonneg N H τ
+      have hq' := gibbs_pmf_le_one N H τ
+      have hprod : |gibbs_pmf N H σ * gibbs_pmf N H τ| ≤ 1 := by
+        rw [abs_mul, abs_of_nonneg hp, abs_of_nonneg hq]
+        nlinarith
+      have hN_nonneg : (0 : ℝ) ≤ 1 / N := by positivity
+      rw [abs_mul, abs_of_nonneg hN_nonneg]
+      by_cases hN0 : N = 0
+      · simp [hN0]
+      · have hN_pos : (0 : ℝ) < N := Nat.cast_pos.mpr (Nat.pos_of_ne_zero hN0)
+        have hNge : 1 ≤ N := Nat.pos_of_ne_zero hN0
+        have hN : (1 : ℝ) / N ≤ 1 := by
+          rw [div_le_iff₀ hN_pos]
+          simp [hNge]
+        have heq : |0 - gibbs_pmf N H σ * gibbs_pmf N H τ| = |gibbs_pmf N H σ * gibbs_pmf N H τ| := by
+          rw [zero_sub, abs_neg]
+        nlinarith
+  -- Integrability of finite sums of bounded functions
+  have h_int1 : MeasureTheory.Integrable
+      (fun x => ∑ σ : Config N, ∑ τ : Config N,
+        sk_cov_kernel N β σ τ * hessian_free_energy N (H_t N β h q sk sim t x) (std_basis N σ) (std_basis N τ))
+      ℙ := by
+    apply MeasureTheory.integrable_finset_sum _
+    intro σ _
+    apply MeasureTheory.integrable_finset_sum _
+    intro τ _
+    refine MeasureTheory.Integrable.const_mul ?_ (sk_cov_kernel N β σ τ)
+    refine MeasureTheory.Integrable.mono' (MeasureTheory.integrable_const (1 / (N : ℝ))) ?_ ?_
+    · have hH_meas : Measurable (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t) := by
+        have hU := sk.hU.repr_measurable.const_smul (Real.sqrt t)
+        have hV := sim.hV.repr_measurable.const_smul (Real.sqrt (1 - t))
+        simpa [H_t, H_gauss] using (hU.add hV).add measurable_const
+      have hheff_meas : Measurable (fun H => hessian_free_energy N H (std_basis N σ) (std_basis N τ)) := by
+        have h1 : Measurable (fun H => gibbs_pmf N H σ) := (contDiff_gibbs_pmf (N := N) (σ := σ)).continuous.measurable
+        have h2 : Measurable (fun H => gibbs_pmf N H τ) := (contDiff_gibbs_pmf (N := N) (σ := τ)).continuous.measurable
+        simp_rw [hessian_free_energy]
+        apply Measurable.mul measurable_const
+        apply Measurable.sub
+        · exact Finset.measurable_sum _ fun x _ => by
+            apply Measurable.mul _ measurable_const
+            apply Measurable.mul _ measurable_const
+            exact (contDiff_gibbs_pmf (N := N) (σ := x)).continuous.measurable
+        · apply Measurable.mul
+          · exact Finset.measurable_sum _ fun x _ => by
+              apply Measurable.mul
+              · exact (contDiff_gibbs_pmf (N := N) (σ := x)).continuous.measurable
+              exact measurable_const
+          · exact Finset.measurable_sum _ fun x _ => by
+              apply Measurable.mul
+              · exact (contDiff_gibbs_pmf (N := N) (σ := x)).continuous.measurable
+              exact measurable_const
+      exact (hheff_meas.comp hH_meas).aestronglyMeasurable
+    · filter_upwards with x
+      exact hess_bound (H_t N β h q sk sim t x) σ τ
+  have h_int2 : MeasureTheory.Integrable
+      (fun x => ∑ σ : Config N, ∑ τ : Config N,
+        simple_cov_kernel N β (fun x => q * x) σ τ * hessian_free_energy N (H_t N β h q sk sim t x) (std_basis N σ) (std_basis N τ))
+      ℙ := by
+    apply MeasureTheory.integrable_finset_sum _
+    intro σ _
+    apply MeasureTheory.integrable_finset_sum _
+    intro τ _
+    refine MeasureTheory.Integrable.const_mul ?_ (simple_cov_kernel N β (fun x => q * x) σ τ)
+    refine MeasureTheory.Integrable.mono' (MeasureTheory.integrable_const (1 / (N : ℝ))) ?_ ?_
+    · have hH_meas : Measurable (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t) := by
+        have hU := sk.hU.repr_measurable.const_smul (Real.sqrt t)
+        have hV := sim.hV.repr_measurable.const_smul (Real.sqrt (1 - t))
+        simpa [H_t, H_gauss] using (hU.add hV).add measurable_const
+      have hheff_meas : Measurable (fun H => hessian_free_energy N H (std_basis N σ) (std_basis N τ)) := by
+        have h1 : Measurable (fun H => gibbs_pmf N H σ) := (contDiff_gibbs_pmf (N := N) (σ := σ)).continuous.measurable
+        have h2 : Measurable (fun H => gibbs_pmf N H τ) := (contDiff_gibbs_pmf (N := N) (σ := τ)).continuous.measurable
+        simp_rw [hessian_free_energy]
+        apply Measurable.mul measurable_const
+        apply Measurable.sub
+        · exact Finset.measurable_sum _ fun x _ => by
+            apply Measurable.mul _ measurable_const
+            apply Measurable.mul _ measurable_const
+            exact (contDiff_gibbs_pmf (N := N) (σ := x)).continuous.measurable
+        · apply Measurable.mul
+          · exact Finset.measurable_sum _ fun x _ => by
+              apply Measurable.mul
+              · exact (contDiff_gibbs_pmf (N := N) (σ := x)).continuous.measurable
+              exact measurable_const
+          · exact Finset.measurable_sum _ fun x _ => by
+              apply Measurable.mul
+              · exact (contDiff_gibbs_pmf (N := N) (σ := x)).continuous.measurable
+              exact measurable_const
+      exact (hheff_meas.comp hH_meas).aestronglyMeasurable
+    · filter_upwards with x
+      exact hess_bound (H_t N β h q sk sim t x) σ τ
+  rw [funext integral_eq, MeasureTheory.integral_sub h_int1 h_int2]
+  rw [mul_sub]
+  ring
 
 /-
 The covariance-trace difference is the centered-overlap square, pointwise in the disorder.
@@ -1055,7 +1358,7 @@ lemma pressure_trace_algebra
         gibbs_average_n_det (N := N) (n := 2) H (centeredOverlapSq N q)) := by
   unfold gibbs_average_n_det centeredOverlapSq;
   have h_sum_gibbs_pmf : ∑ σ : Config N, gibbs_pmf N H σ = 1 := by
-    exact?;
+    exact sum_gibbs_pmf (N := N) (H := H)
   have h_sum_prod_gibbs_pmf : ∑ σs : ReplicaSpace N 2, (∏ l, gibbs_pmf N H (σs l)) * (overlap N (σs 0) (σs 1) - q) ^ 2 = ∑ σ : Config N, ∑ τ : Config N, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ - q) ^ 2 := by
     rw [ ← Finset.sum_product' ];
     refine' Finset.sum_bij ( fun x _ => ( x 0, x 1 ) ) _ _ _ _ <;> simp +decide;
@@ -1124,32 +1427,211 @@ lemma pressure_derivative
   exact pressure_derivative_before_ibp
     (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) ht
 
-/-- Derivative identity for the coupled interpolation. -/
-lemma coupled_excess_derivative
+/-! ## Coupled smart path and its characteristic
+
+The lemmas in this section deliberately use `HasDerivAt`.  Thus the differential identities
+also carry the regularity needed by the later chain-rule and endpoint arguments.
+-/
+
+/-- Differentiability of the coupled free energy in the coupling variable.
+
+Proof route: for fixed disorder the partition sum is a finite sum of exponentials, so it is
+smooth in `Λ`.  Differentiate the logarithm, identify the result as the tilted Gibbs expectation
+of `N * Q₁₂² / 2`, and then differentiate under the disorder integral.  A uniform finite-volume
+bound on `Q₁₂²` gives the required domination. -/
+lemma coupledFreeEnergy_hasDerivAt_coupling
+    (t Λ : ℝ) :
+    HasDerivAt
+      (fun L => coupledFreeEnergy
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t L)
+      (deriv
+        (fun L => coupledFreeEnergy
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t L) Λ) Λ := by
+  sorry
+
+/-- Gaussian IBP formula for the time derivative of the coupled free energy.
+
+The witness `crossMoment` is the annealed four-replica square generated by the covariance
+trace.  Its explicit finite-sum representation should be introduced in the proof, the IBP trace
+expanded in the configuration basis, and its nonnegativity discharged pointwise as a square.
+
+Use the same joint Gaussian model and the same call to
+`gaussian_integration_by_parts_hilbert_cov_op` as in the ordinary pressure calculation.  Replace
+`Φ` by the normalized logarithm of the coupled two-replica partition sum.  Its first derivative
+is the tilted two-replica Gibbs average, while its second derivative is the corresponding Gibbs
+covariance.  After applying `sk.cov_eq` and `sim.cov_eq`, introduce enough replicas to express
+that covariance as the ordinary overlap term minus the nonnegative four-replica cross moment.
+Finite configuration space again gives `ContDiff` and a constant moderate-growth bound for each
+basis-direction test function. -/
+lemma coupledFreeEnergy_hasDerivAt_time_ibp
     (hN : 0 < N)
     (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
     {t Λ : ℝ} (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
-    (∃ crossMoment : ℝ,
+    ∃ crossMoment : ℝ,
       0 ≤ crossMoment ∧
-      deriv
+      HasDerivAt
         (fun s => coupledFreeEnergy
           (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s Λ)
-        t =
-      (β ^ 2 / 4) *
-        ((1 - q) ^ 2 +
-          4 * deriv
-            (fun L => coupledFreeEnergy
-              (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t L)
-            Λ - 2 * crossMoment)) ∧
-    ∀ {coupling u : ℝ}, 0 < coupling → u ∈ Set.Icc (0 : ℝ) 1 →
-      logQuadraticMoment
+        ((β ^ 2 / 4) *
+          ((1 - q) ^ 2 +
+            4 * deriv
+              (fun L => coupledFreeEnergy
+                (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t L) Λ -
+            2 * crossMoment)) t := by
+  sorry
+
+/-- The logarithmic quadratic moment is differentiable in the smart-path variable away from
+the endpoints.
+
+Proof route: subtract `pressure_derivative` from
+`coupledFreeEnergy_hasDerivAt_time_ibp`, unfold `coupledExcess`, and rescale by `2N`.
+The resulting derivative is retained existentially because only its inequality is used later. -/
+lemma logQuadraticMoment_hasDerivAt_time
+    (hN : 0 < N)
+    (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
+    {t coupling : ℝ} (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
+    ∃ dt : ℝ,
+      HasDerivAt
+        (fun s => logQuadraticMoment
           (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
-          u coupling
-        ≤ Real.exp (β ^ 2 * u / (2 * coupling)) *
+          s coupling) dt t := by
+  sorry
+
+/-- The logarithmic quadratic moment is differentiable in its coupling variable.
+
+This is the rescaled coupling derivative from
+`coupledFreeEnergy_hasDerivAt_coupling`. -/
+lemma logQuadraticMoment_hasDerivAt_coupling
+    (t coupling : ℝ) :
+    HasDerivAt
+      (fun c => logQuadraticMoment
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+        t c)
+      (deriv
+        (fun c => logQuadraticMoment
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+          t c) coupling) coupling := by
+  sorry
+
+/-- The first-order differential inequality behind the moving-coupling estimate.
+
+Proof route: combine the two preceding derivative lemmas with the coupled Gaussian-IBP
+identity.  Drop the nonnegative cross moment, cancel the ordinary pressure derivative, and use
+the standard tilted-moment estimate to bound the remaining covariance term by
+`β² * logQuadraticMoment / (2 * coupling)`. -/
+lemma logQuadraticMoment_differential_inequality
+    (hN : 0 < N)
+    (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
+    {t coupling : ℝ} (ht : t ∈ Set.Ioo (0 : ℝ) 1) (hcoupling : 0 < coupling) :
+    deriv
+        (fun s => logQuadraticMoment
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+          s coupling) t -
+        (β ^ 2 / 2) * deriv
+          (fun c => logQuadraticMoment
+            (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+            t c) coupling
+      ≤ (β ^ 2 / (2 * coupling)) *
           logQuadraticMoment
             (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
-            0 ((2 * coupling + β ^ 2 * u) / 2) := by
+            t coupling := by
   sorry
+
+/-- Coupling followed backwards from time `u` to the independent endpoint. -/
+noncomputable def characteristicCoupling (coupling u s : ℝ) : ℝ :=
+  coupling + (β ^ 2 / 2) * (u - s)
+
+/-- The logarithmic moment restricted to the moving-coupling characteristic. -/
+noncomputable def characteristicQuadraticMoment (coupling u s : ℝ) : ℝ :=
+  logQuadraticMoment
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+    s (characteristicCoupling β coupling u s)
+
+/-- The moving coupling stays at least as large as its terminal value. -/
+lemma characteristicCoupling_ge
+    {coupling u s : ℝ} (hs : s ∈ Set.Icc (0 : ℝ) u) :
+    coupling ≤ characteristicCoupling β coupling u s := by
+  unfold characteristicCoupling
+  have hus : 0 ≤ u - s := sub_nonneg.mpr hs.2
+  nlinarith [sq_nonneg β]
+
+/-- Chain rule and PDE inequality along the characteristic.
+
+Proof route: obtain `HasDerivAt` in both variables, note that the coupling path has derivative
+`-β² / 2`, and use `HasDerivAt.scomp` or the two-variable Fréchet chain rule.  Apply
+`logQuadraticMoment_differential_inequality`; then use `characteristicCoupling_ge` and
+nonnegativity of the logarithmic moment to replace the moving denominator by `coupling`. -/
+lemma characteristicQuadraticMoment_differential_inequality
+    (hN : 0 < N)
+    (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
+    {coupling u s : ℝ} (hcoupling : 0 < coupling)
+    (hu : u ∈ Set.Icc (0 : ℝ) 1) (hs : s ∈ Set.Ioo (0 : ℝ) u) :
+    ∃ d : ℝ,
+      HasDerivAt
+        (characteristicQuadraticMoment
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+          coupling u) d s ∧
+      d ≤ (β ^ 2 / (2 * coupling)) *
+        characteristicQuadraticMoment
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+          coupling u s := by
+  sorry
+
+/-- Continuity on the closed characteristic, including both endpoints.
+
+Proof route: use the same dominated-convergence argument as
+`interpolatedPressure_continuousOn`.  The finite replica sum is continuous jointly in time and
+coupling.  On the compact characteristic its exponential tilt is uniformly bounded, which
+provides an integrable disorder-independent dominator. -/
+lemma characteristicQuadraticMoment_continuousOn
+    {coupling u : ℝ} (hcoupling : 0 < coupling) (hu : u ∈ Set.Icc (0 : ℝ) 1) :
+    ContinuousOn
+      (characteristicQuadraticMoment
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+        coupling u) (Set.Icc (0 : ℝ) u) := by
+  sorry
+
+/-- One-dimensional integrating-factor estimate with explicit endpoint hypotheses.
+
+Proof route: multiply `f` by `exp (-a * s)`, use the product rule to show that the result has
+nonpositive derivative on `Ioo 0 u`, apply monotonicity on `Icc 0 u`, and rearrange. -/
+lemma gronwall_le_endpoint
+    {f : ℝ → ℝ} {a u : ℝ} (hu : 0 ≤ u)
+    (hcont : ContinuousOn f (Set.Icc (0 : ℝ) u))
+    (hderiv : ∀ s ∈ Set.Ioo (0 : ℝ) u, ∃ d : ℝ,
+      HasDerivAt f d s ∧ d ≤ a * f s) :
+    f u ≤ Real.exp (a * u) * f 0 := by
+  sorry
+
+/-- Characteristic (Grönwall) estimate for the logarithmic quadratic moment.
+
+This theorem is now only the assembly of the characteristic regularity, its differential
+inequality, and the generic integrating-factor lemma. -/
+lemma logQuadraticMoment_characteristic
+    (hN : 0 < N)
+    (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
+    {coupling u : ℝ} (hcoupling : 0 < coupling)
+    (hu : u ∈ Set.Icc (0 : ℝ) 1) :
+    logQuadraticMoment
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+        u coupling
+      ≤ Real.exp (β ^ 2 * u / (2 * coupling)) *
+        logQuadraticMoment
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+          0 ((2 * coupling + β ^ 2 * u) / 2) := by
+  have hgronwall := gronwall_le_endpoint
+    (f := characteristicQuadraticMoment
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+      coupling u)
+    (a := β ^ 2 / (2 * coupling)) hu.1
+    (characteristicQuadraticMoment_continuousOn
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+      hcoupling hu)
+    (fun s hs => characteristicQuadraticMoment_differential_inequality
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+      hN hIndep hcoupling hu hs)
+  simp only [characteristicQuadraticMoment, characteristicCoupling] at hgronwall ⊢
+  convert hgronwall using 1 <;> ring
 
 /-- Positivity of the coupling scale in the improved region. -/
 lemma lambdaStar_pos
@@ -1287,16 +1769,15 @@ lemma logQuadraticMoment_le_endpoint
         logQuadraticMoment
           (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
           0 ((2 * coupling + β ^ 2 * t) / 2) := by
-  have hmid : (1 / 2 : ℝ) ∈ Set.Ioo (0 : ℝ) 1 := by norm_num
-  exact (coupled_excess_derivative
+  exact logQuadraticMoment_characteristic
     (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
-    (Λ := 0) hN hIndep hmid).2 hcoupling ht
+    hN hIndep hcoupling ht
 
 /-
 Proposition `quadratic-estimate` from the blueprint.
 -/
 theorem uniform_quadratic_coupling
-    (hN : 0 < N) (hβ : 0 ≤ β) (hq0 : 0 ≤ q) (hq1 : q < 1)
+    (hN : 0 < N) (hq0 : 0 ≤ q) (hq1 : q < 1)
     (hfp : IsRSFixedPoint β h q)
     (hρ : rho β q < 1)
     (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
@@ -1373,7 +1854,7 @@ lemma scaled_overlapVariance_le_logQuadraticMoment
 /-- Convexity of the log moment converts the quadratic exponential estimate into an overlap
 second-moment estimate, uniformly along the smart path. -/
 theorem overlap_concentration_uniform
-    (hN : 0 < N) (hβ : 0 ≤ β) (hq0 : 0 ≤ q) (hq1 : q < 1)
+    (hN : 0 < N) (hq0 : 0 ≤ q) (hq1 : q < 1)
     (hfp : IsRSFixedPoint β h q)
     (hρ : rho β q < 1)
     (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
@@ -1436,7 +1917,7 @@ theorem overlap_concentration_uniform
     exact hiver
   -- Use uniform_quadratic_coupling
   have h2 : logQuadraticMoment (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t (lambdaStar β q) ≤ quadraticConstant β q :=
-    uniform_quadratic_coupling (hN := hN) (hβ := hβ) (hq0 := hq0) (hq1 := hq1)
+    uniform_quadratic_coupling (hN := hN) (hq0 := hq0) (hq1 := hq1)
       (hfp := hfp) (hρ := hρ) (hIndep := hIndep) (ht := ht)
   -- Combine and divide
   have h3 : lambdaStar β q * (N : ℝ) * overlapVariance (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ≤ quadraticConstant β q := h1.trans h2
@@ -1745,7 +2226,7 @@ At `t = 1`, `H_t` is the SK disorder plus the external-field vector.  The theore
 the `O(1/N)` centered-overlap estimate and the corresponding replica-symmetric pressure error.
 -/
 theorem generalized_latala
-    (hN : 0 < N) (hβ : 0 ≤ β) (hq0 : 0 ≤ q) (hq1 : q < 1)
+    (hN : 0 < N) (hq0 : 0 ≤ q) (hq1 : q < 1)
     (hfp : IsRSFixedPoint β h q)
     (hρ : rho β q < 1)
     (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω)) :
@@ -1764,7 +2245,7 @@ theorem generalized_latala
   have hoverlap :=
     overlap_concentration_uniform
       (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
-      hN hβ hq0 hq1 hfp hρ hIndep (t := (1 : ℝ)) (by simp)
+      hN hq0 hq1 hfp hρ hIndep (t := (1 : ℝ)) (by simp)
   have hsum :=
     replica_symmetric_sum_rule
       (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
@@ -1789,7 +2270,7 @@ theorem generalized_latala
     simpa [C] using
       overlap_concentration_uniform
         (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
-        hN hβ hq0 hq1 hfp hρ hIndep ht
+        hN hq0 hq1 hfp hρ hIndep ht
   have hconstInt : MeasureTheory.IntegrableOn
       (fun _ : ℝ => C) (Set.Icc (0 : ℝ) 1) (MeasureTheory.volume : Measure ℝ) :=
     MeasureTheory.integrableOn_const (hs := by
