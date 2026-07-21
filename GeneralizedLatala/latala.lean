@@ -107,9 +107,11 @@ lemma lambdaStar_eq (β q : ℝ) :
 
 /-! ## Smart-path observables -/
 
-variable (N : ℕ) (β h q : ℝ)
+variable (N : ℕ) [NeZero N] (β h q : ℝ)
 variable (sk : SKDisorder (Ω := Ω) N β h)
 variable (sim : SimpleDisorder (Ω := Ω) N β q)
+
+include ‹NeZero N›
 
 /-- Centered overlap `Q_ab = R_ab - q`. -/
 noncomputable def centeredOverlap {n : ℕ} (a b : Fin n) : ReplicaFun N n :=
@@ -263,7 +265,25 @@ lemma coupledCrossMoment_nonneg (t coupling : ℝ) :
     0 ≤ coupledCrossMoment
       (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
       t coupling := by
-  sorry
+  classical
+  apply integral_nonneg
+  intro ω
+  unfold coupledCrossMomentDet gibbs_average_n_det
+  apply div_nonneg
+  · apply Finset.sum_nonneg
+    intro σs _
+    apply mul_nonneg
+    · apply mul_nonneg
+      · unfold crossPairCenteredOverlapSq
+        positivity
+      · exact Real.exp_nonneg _
+    · exact Finset.prod_nonneg fun l _ =>
+        gibbs_pmf_nonneg
+          (N := N)
+          (H := H_t (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) t ω)
+          (σ := σs l)
+  · positivity
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 /-- Finite-volume Jensen inequality for an arbitrary replica observable. -/
@@ -1222,7 +1242,32 @@ lemma measurable_hessian_free_energy_std_basis (σ τ : Config N) :
 lemma abs_hessian_free_energy_std_basis_le
     (H : EnergySpace N) (σ τ : Config N) :
     |hessian_free_energy N H (std_basis N σ) (std_basis N τ)| ≤ 1 / (N : ℝ) := by
-  sorry
+  classical
+  have hσ0 : 0 ≤ gibbs_pmf N H σ := gibbs_pmf_nonneg N H σ
+  have hτ0 : 0 ≤ gibbs_pmf N H τ := gibbs_pmf_nonneg N H τ
+  have hσ1 : gibbs_pmf N H σ ≤ 1 := gibbs_pmf_le_one N H σ
+  have hτ1 : gibbs_pmf N H τ ≤ 1 := gibbs_pmf_le_one N H τ
+  by_cases hστ : σ = τ
+  · subst τ
+    simp [hessian_free_energy, std_basis]
+    have hp : 0 ≤ gibbs_pmf N H σ - gibbs_pmf N H σ * gibbs_pmf N H σ := by
+      nlinarith
+    rw [abs_of_nonneg hp]
+    have hN0 : (0 : ℝ) ≤ (N : ℝ) := Nat.cast_nonneg N
+    have hp1 : gibbs_pmf N H σ - gibbs_pmf N H σ * gibbs_pmf N H σ ≤ 1 := by
+      nlinarith
+    calc
+      (N : ℝ)⁻¹ * (gibbs_pmf N H σ - gibbs_pmf N H σ * gibbs_pmf N H σ)
+          ≤ (N : ℝ)⁻¹ * 1 := mul_le_mul_of_nonneg_left hp1 (inv_nonneg.mpr hN0)
+      _ = (N : ℝ)⁻¹ := mul_one _
+  · simp [hessian_free_energy, std_basis, hστ]
+    rw [abs_of_nonneg hσ0, abs_of_nonneg hτ0]
+    calc
+      (N : ℝ)⁻¹ * (gibbs_pmf N H σ * gibbs_pmf N H τ)
+          ≤ (N : ℝ)⁻¹ * 1 := by
+            have hN0 : (0 : ℝ) ≤ (N : ℝ) := Nat.cast_nonneg N
+            exact mul_le_mul_of_nonneg_left (by nlinarith) (inv_nonneg.mpr hN0)
+      _ = (N : ℝ)⁻¹ := by ring
 
 /-- Gaussian integration by parts for an affine combination of two independent Gaussian
 Hamiltonians, expressed in the canonical configuration basis.
