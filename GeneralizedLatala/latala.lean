@@ -1700,7 +1700,111 @@ lemma characteristicQuadraticMoment_continuousOn
       (characteristicQuadraticMoment
         (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
         coupling u) (Set.Icc (0 : ℝ) u) := by
-  sorry
+  classical
+  let K : ℝ := ∑ σs : ReplicaSpace N 2,
+    Real.exp ((coupling + β ^ 2 / 2) * (N : ℝ) * centeredOverlapSq N q σs)
+  unfold characteristicQuadraticMoment logQuadraticMoment
+  apply MeasureTheory.continuousOn_of_dominated (bound := fun _ : Ω => K)
+  · intro s _
+    have hHt_meas : Measurable
+        (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s) := by
+      have hU := sk.hU.repr_measurable.const_smul (Real.sqrt s)
+      have hV := sim.hV.repr_measurable.const_smul (Real.sqrt (1 - s))
+      simpa [H_t, H_gauss] using (hU.add hV).add measurable_const
+    have hpart : Measurable fun w =>
+        gibbs_average_n
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+          2 s
+          (fun σs => Real.exp
+            (characteristicCoupling β coupling u s * (N : ℝ) *
+              centeredOverlapSq N q σs)) w := by
+      unfold gibbs_average_n gibbs_average_n_det
+      apply Finset.measurable_sum
+      intro σs _
+      apply measurable_const.mul
+      apply Finset.measurable_prod
+      intro l _
+      exact (SpinGlass.contDiff_gibbs_pmf (N := N) (σ := σs l)).continuous.measurable.comp
+        hHt_meas
+    exact hpart.log.aestronglyMeasurable
+  · intro s hs
+    filter_upwards with w
+    let c := characteristicCoupling β coupling u s
+    have hc0 : 0 ≤ c :=
+      le_trans (le_of_lt hcoupling)
+        (characteristicCoupling_ge (β := β) (coupling := coupling) hs)
+    have hcu : c ≤ coupling + β ^ 2 / 2 := by
+      dsimp only [c, characteristicCoupling]
+      have hus : u - s ≤ 1 := by linarith [hu.2, hs.1]
+      nlinarith [sq_nonneg β]
+    have hpart_one : 1 ≤
+        gibbs_average_n
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+          2 s (fun σs => Real.exp
+            (c * (N : ℝ) * centeredOverlapSq N q σs)) w := by
+      simpa [tiltedReplicaPartition, tiltedReplicaPartitionDet, c] using
+        tiltedReplicaPartitionDet_one_le
+          (N := N) (q := q)
+          (H_t (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) s w) hc0
+    have hpart_le :
+        gibbs_average_n
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+          2 s (fun σs => Real.exp
+            (c * (N : ℝ) * centeredOverlapSq N q σs)) w ≤ K := by
+      calc
+        gibbs_average_n
+              (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+              2 s (fun σs => Real.exp
+                (c * (N : ℝ) * centeredOverlapSq N q σs)) w
+            ≤ |gibbs_average_n
+                (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+                2 s (fun σs => Real.exp
+                  (c * (N : ℝ) * centeredOverlapSq N q σs)) w| := le_abs_self _
+        _ ≤ ∑ σs : ReplicaSpace N 2,
+              |Real.exp (c * (N : ℝ) * centeredOverlapSq N q σs)| :=
+          abs_gibbs_average_n_le
+            (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+            (n := 2) (t := s)
+            (f := fun σs => Real.exp
+              (c * (N : ℝ) * centeredOverlapSq N q σs)) (w := w)
+        _ ≤ K := by
+          dsimp only [K]
+          apply Finset.sum_le_sum
+          intro σs _
+          rw [abs_of_pos (Real.exp_pos _)]
+          apply Real.exp_le_exp.mpr
+          exact mul_le_mul_of_nonneg_right
+            (mul_le_mul_of_nonneg_right hcu (Nat.cast_nonneg N)) (sq_nonneg _)
+    rw [Real.norm_eq_abs, abs_of_nonneg (Real.log_nonneg hpart_one)]
+    exact (Real.log_le_self (le_trans zero_le_one hpart_one)).trans hpart_le
+  · exact integrable_const K
+  · filter_upwards with w
+    have hHt : Continuous fun s =>
+        H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s w := by
+      simp only [H_t, H_gauss]
+      fun_prop
+    have hc : Continuous fun s => characteristicCoupling β coupling u s := by
+      unfold characteristicCoupling
+      fun_prop
+    have hpart : Continuous fun s =>
+        gibbs_average_n
+          (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+          2 s (fun σs => Real.exp
+            (characteristicCoupling β coupling u s * (N : ℝ) *
+              centeredOverlapSq N q σs)) w := by
+      unfold gibbs_average_n gibbs_average_n_det
+      apply continuous_finset_sum
+      intro σs _
+      apply Continuous.mul
+      · exact (Real.continuous_exp.comp
+          ((hc.mul continuous_const).mul continuous_const))
+      · apply continuous_finset_prod
+        intro l _
+        exact (SpinGlass.contDiff_gibbs_pmf (N := N) (σ := σs l)).continuous.comp hHt
+    exact (hpart.log fun s => (tiltedReplicaPartition_pos
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+      s (characteristicCoupling β coupling u s) w).ne').continuousOn
 
 /-- One-dimensional integrating-factor estimate with explicit endpoint hypotheses.
 
@@ -1712,7 +1816,47 @@ lemma gronwall_le_endpoint
     (hderiv : ∀ s ∈ Set.Ioo (0 : ℝ) u, ∃ d : ℝ,
       HasDerivAt f d s ∧ d ≤ a * f s) :
     f u ≤ Real.exp (a * u) * f 0 := by
-  sorry
+  let g : ℝ → ℝ := fun s => Real.exp (-a * s) * f s
+  have hgcont : ContinuousOn g (Set.Icc (0 : ℝ) u) := by
+    exact (Real.continuous_exp.comp
+      ((continuous_const : Continuous (fun _ : ℝ => -a)).mul continuous_id)).continuousOn.mul hcont
+  have hganti : AntitoneOn g (Set.Icc (0 : ℝ) u) := by
+    refine antitoneOn_of_deriv_nonpos (convex_Icc (0 : ℝ) u) hgcont ?_ ?_
+    · intro s hs
+      rw [interior_Icc] at hs
+      obtain ⟨d, hfd, hd⟩ := hderiv s hs
+      have hinner : HasDerivAt (fun x : ℝ => -a * x) (-a) s := by
+        simpa only [id_eq, mul_one] using (hasDerivAt_id s).const_mul (-a)
+      have hexp : HasDerivAt (fun x : ℝ => Real.exp (-a * x))
+          (Real.exp (-a * s) * (-a)) s :=
+        (Real.hasDerivAt_exp (-a * s)).comp s hinner
+      exact (hexp.mul hfd).differentiableAt.differentiableWithinAt
+    · intro s hs
+      rw [interior_Icc] at hs
+      obtain ⟨d, hfd, hd⟩ := hderiv s hs
+      have hgderiv : HasDerivAt g
+          (Real.exp (-a * s) * (d - a * f s)) s := by
+        have hinner : HasDerivAt (fun x : ℝ => -a * x) (-a) s := by
+          simpa only [id_eq, mul_one] using (hasDerivAt_id s).const_mul (-a)
+        have hexp : HasDerivAt (fun x : ℝ => Real.exp (-a * x))
+            (Real.exp (-a * s) * (-a)) s :=
+          (Real.hasDerivAt_exp (-a * s)).comp s hinner
+        convert (hexp.mul hfd) using 1
+        ring
+      rw [hgderiv.deriv]
+      exact mul_nonpos_of_nonneg_of_nonpos (Real.exp_nonneg _) (sub_nonpos.mpr hd)
+  have hgu : g u ≤ g 0 := hganti (Set.left_mem_Icc.mpr hu) (Set.right_mem_Icc.mpr hu) hu
+  dsimp only [g] at hgu
+  have hexp : 0 < Real.exp (a * u) := Real.exp_pos _
+  have hmul := mul_le_mul_of_nonneg_left hgu hexp.le
+  have hinv : Real.exp (a * u) * Real.exp (-a * u) = 1 := by
+    rw [← Real.exp_add]
+    convert Real.exp_zero using 1
+    ring
+  calc
+    f u = Real.exp (a * u) * (Real.exp (-a * u) * f u) := by rw [← mul_assoc, hinv, one_mul]
+    _ ≤ Real.exp (a * u) * (Real.exp (-a * 0) * f 0) := hmul
+    _ = Real.exp (a * u) * f 0 := by simp
 
 /-- Characteristic (Grönwall) estimate for the logarithmic quadratic moment.
 
