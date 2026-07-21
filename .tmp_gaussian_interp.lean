@@ -332,9 +332,26 @@ lemma test_joint_trace_split
   classical
   simp only [isGaussianHilbert_UV, test_jointAffineCLM, OrthonormalBasis.prod_apply,
     Fintype.sum_sum_type]
-  simp only [WithLp.ofLp_toLp, Prod.smul_fst, Prod.smul_snd, Prod.fst_zero,
-    Prod.snd_zero, smul_zero, add_zero, zero_add]
   simp only [hessian_free_energy, smul_eq_mul, PiLp.smul_apply]
+  ring
+
+lemma test_gaussian_hessian_trace_eq_std_basis
+    {Ω' : Type*} [MeasureSpace Ω'] [IsProbabilityMeasure (ℙ' : Measure Ω')]
+    (g : Ω' → EnergySpace N)
+    (hg : PhysLean.Probability.GaussianIBP.IsGaussianHilbert g)
+    (H : EnergySpace N) :
+    (∑ i : hg.ι, (hg.τ i : ℝ) *
+        hessian_free_energy N H (hg.w i) (hg.w i)) =
+      ∑ σ : Config N, ∑ τ : Config N,
+        inner ℝ ((PhysLean.Probability.GaussianIBP.covOp (g := g) hg)
+          (std_basis N σ)) (std_basis N τ) *
+        hessian_free_energy N H (std_basis N σ) (std_basis N τ) := by
+  classical
+  simp only [hessian_free_energy,
+    PhysLean.Probability.GaussianIBP.covOp_apply, inner_std_basis_apply,
+    map_sum, map_smul, smul_eq_mul, Finset.mul_sum, Finset.sum_mul,
+    Finset.sum_sub_distrib]
+  simp only [real_inner_comm, hg.w.repr_apply_apply]
   ring
 
 example (H : EnergySpace N) (σ τ : Config N) :
