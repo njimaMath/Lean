@@ -369,6 +369,35 @@ private lemma affineIBP_gaussian_ibp_gradient_linear
     _ = _ := by
       rfl
 
+/-- Gaussian integration by parts for the gradient of a function evaluated along
+two linear images of the same finite-dimensional Gaussian Hilbert variable. -/
+lemma gaussian_ibp_gradient_linear
+    {K : Type*}
+    [InnerProductSpace ℝ E] [CompleteSpace E]
+    [MeasurableSpace E] [BorelSpace E]
+    [NormedAddCommGroup K] [InnerProductSpace ℝ K]
+    [CompleteSpace K] [MeasurableSpace K] [BorelSpace K]
+    (g : Ω → E)
+    (hg : PhysLean.Probability.GaussianIBP.IsGaussianHilbert g)
+    (A B : E →L[ℝ] K) (field : K) (F : K → ℝ)
+    (hFi_diff : ∀ i : hg.ι, ContDiff ℝ 1
+      (fun x : E =>
+        fderiv ℝ F (A x + field) (B (hg.w i))))
+    (hFi_growth : ∀ i : hg.ι,
+      PhysLean.Probability.GaussianIBP.HasModerateGrowth
+        (fun x : E =>
+          fderiv ℝ F (A x + field) (B (hg.w i)))) :
+    (∫ w,
+      fderiv ℝ F (A (g w) + field) (B (g w)) ∂ℙ) =
+      ∫ w, ∑ i : hg.ι, (hg.τ i : ℝ) *
+        fderiv ℝ
+          (fun x : E =>
+            fderiv ℝ F
+              (A x + field) (B (hg.w i)))
+          (g w) (hg.w i) ∂ℙ := by
+  exact affineIBP_gaussian_ibp_gradient_linear
+    g hg A B field F hFi_diff hFi_growth
+
 end GenericHelpers
 
 section JointDisorder
