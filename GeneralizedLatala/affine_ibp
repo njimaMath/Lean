@@ -1,0 +1,632 @@
+import SpinGlass.Replicas
+import SpinGlass.GuerraBound
+
+open MeasureTheory ProbabilityTheory Real BigOperators
+open scoped ENNReal NNReal
+
+namespace SpinGlass
+namespace GeneralizedLatala
+
+variable {Ω : Type*} [MeasureSpace Ω]
+  [IsProbabilityMeasure (ℙ : Measure Ω)]
+
+/-!
+# Gaussian IBP for two independent affine Gaussian Hamiltonians
+
+The proof has four stages.
+
+1. Package `(sk.U, sim.V)` as the joint Gaussian Hilbert variable `UV`.
+2. Apply coordinatewise Gaussian integration by parts in its orthonormal basis.
+3. Split the joint trace into the `sk.U` and `sim.V` blocks.
+4. Rewrite each Gaussian eigenbasis trace in the canonical configuration basis.
+-/
+
+section GenericHelpers
+
+variable {N : ℕ}
+variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+
+/-- Chain rule for the first variation of the free energy along an affine map.
+
+This identifies the derivative of the first variation with the pressure Hessian. -/
+private lemma affineIBP_fderiv_firstVariation_affine
+    (A : E →L[ℝ] EnergySpace N)
+    (field v : EnergySpace N)
+    (x y : E) :
+    fderiv ℝ
+        (fun z : E =>
+          fderiv ℝ
+            (fun H : EnergySpace N =>
+              free_energy_density (N := N) H)
+            (A z + field) v)
+        x y =
+      (hessian_free_energy_fderiv
+        (N := N) (A x + field)) (A y) v := by
+  sorry
+
+/-- Polynomial growth of the first variation composed with an affine map.
+
+In finite volume, the first derivative has at most linear growth and its
+derivative—the pressure Hessian—is uniformly bounded. -/
+private noncomputable def
+    affineIBP_hasModerateGrowth_firstVariation_affine
+    (A : E →L[ℝ] EnergySpace N)
+    (field v : EnergySpace N) :
+    PhysLean.Probability.GaussianIBP.HasModerateGrowth
+      (fun x : E =>
+        fderiv ℝ
+          (fun H : EnergySpace N =>
+            free_energy_density (N := N) H)
+          (A x + field) v) := by
+  sorry
+
+/-- Coordinatewise Hilbert-space Gaussian integration by parts.
+
+The random direction `B (g w)` is expanded in the Gaussian eigenbasis.
+Gaussian IBP is then applied separately to every coordinate. -/
+private lemma affineIBP_gaussian_ibp_gradient_linear
+    {K : Type*}
+    [InnerProductSpace ℝ E] [CompleteSpace E]
+    [MeasurableSpace E] [BorelSpace E]
+    [NormedAddCommGroup K] [InnerProductSpace ℝ K]
+    [CompleteSpace K] [MeasurableSpace K] [BorelSpace K]
+    (g : Ω → E)
+    (hg : PhysLean.Probability.GaussianIBP.IsGaussianHilbert g)
+    (A B : E →L[ℝ] K)
+    (field : K)
+    (F : K → ℝ)
+    (hFi_diff : ∀ i : hg.ι, ContDiff ℝ 1
+      (fun x : E =>
+        fderiv ℝ F (A x + field) (B (hg.w i))))
+    (hFi_growth : ∀ i : hg.ι,
+      PhysLean.Probability.GaussianIBP.HasModerateGrowth
+        (fun x : E =>
+          fderiv ℝ F (A x + field) (B (hg.w i)))) :
+    (∫ w,
+      fderiv ℝ F
+        (A (g w) + field)
+        (B (g w)) ∂ℙ) =
+      ∫ w, ∑ i : hg.ι, (hg.τ i : ℝ) *
+        fderiv ℝ
+          (fun x : E =>
+            fderiv ℝ F
+              (A x + field)
+              (B (hg.w i)))
+          (g w) (hg.w i) ∂ℙ := by
+  classical
+
+  let Fi : hg.ι → E → ℝ := fun i x =>
+    fderiv ℝ F (A x + field) (B (hg.w i))
+
+  have hleft (w : Ω) :
+      fderiv ℝ F
+          (A (g w) + field)
+          (B (g w)) =
+        ∑ i : hg.ι,
+          PhysLean.Probability.GaussianIBP.coord
+              hg.w g i w *
+            Fi i (g w) := by
+    rw [show g w =
+        ∑ i : hg.ι,
+          (PhysLean.Probability.GaussianIBP.coord
+            hg.w g i w) • hg.w i by
+      simpa [
+        PhysLean.Probability.GaussianIBP.coord,
+        hg.w.repr_apply_apply,
+        real_inner_comm
+      ] using (hg.w.sum_repr (g w)).symm]
+    simp only [map_sum, map_smul, smul_eq_mul, Fi]
+
+  have hLint : ∀ i : hg.ι, Integrable
+      (fun w =>
+        PhysLean.Probability.GaussianIBP.coord
+            hg.w g i w *
+          Fi i (g w)) ℙ := by
+    intro i
+    exact
+      PhysLean.Probability.GaussianIBP.integrable_coord_mul_F
+        hg (hFi_diff i) (hFi_growth i) i
+
+  have hRint : ∀ i : hg.ι, Integrable
+      (fun w =>
+        fderiv ℝ (Fi i) (g w) (hg.w i)) ℙ := by
+    intro i
+    exact
+      PhysLean.Probability.GaussianIBP.integrable_fderiv_apply
+        hg (hFi_diff i) (hFi_growth i) (hg.w i)
+
+  calc
+    (∫ w,
+      fderiv ℝ F
+        (A (g w) + field)
+        (B (g w)) ∂ℙ) =
+        ∑ i : hg.ι, ∫ w,
+          PhysLean.Probability.GaussianIBP.coord
+              hg.w g i w *
+            Fi i (g w) ∂ℙ := by
+      rw [MeasureTheory.integral_congr_ae
+        (ae_of_all _ hleft)]
+      exact MeasureTheory.integral_finset_sum _
+        (fun i _ => hLint i)
+
+    _ = ∑ i : hg.ι, (hg.τ i : ℝ) *
+          ∫ w,
+            fderiv ℝ (Fi i)
+              (g w) (hg.w i) ∂ℙ := by
+      apply Finset.sum_congr rfl
+      intro i _
+      exact
+        PhysLean.Probability.GaussianIBP.ProbabilityTheory.coord_IBP
+          hg (hFi_diff i) (hFi_growth i) i
+
+    _ = ∫ w, ∑ i : hg.ι, (hg.τ i : ℝ) *
+          fderiv ℝ (Fi i)
+            (g w) (hg.w i) ∂ℙ := by
+      rw [MeasureTheory.integral_finset_sum _]
+      · simp only [MeasureTheory.integral_const_mul]
+      · intro i _
+        exact (hRint i).const_mul _
+
+    _ = _ := by
+      rfl
+
+end GenericHelpers
+
+section JointDisorder
+
+variable (N : ℕ) [NeZero N]
+variable (β h q : ℝ)
+variable (sk : SKDisorder (Ω := Ω) N β h)
+variable (sim : SimpleDisorder (Ω := Ω) N β q)
+
+/-- The affine map `(u,v) ↦ a u + b v` on the joint product Hilbert space. -/
+private noncomputable def affineIBP_jointAffineCLM
+    (a b : ℝ) :
+    WithLp 2 (EnergySpace N × EnergySpace N) →L[ℝ]
+      EnergySpace N :=
+  LinearMap.toContinuousLinearMap
+    {
+      toFun := fun p =>
+        a • (WithLp.ofLp p).1 +
+          b • (WithLp.ofLp p).2
+
+      map_add' := by
+        intro x y
+        simp
+        abel
+
+      map_smul' := by
+        intro c x
+        simp [smul_add, smul_smul, mul_comm]
+    }
+
+/-- Joint Gaussian IBP before rewriting the Gaussian eigenbasis trace.
+
+This is the analytic part of the argument. -/
+private lemma affineIBP_joint_gaussian_affine_ibp_eigenbasis
+    (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
+    (a b a' b' : ℝ)
+    (field : EnergySpace N) :
+    (∫ w,
+      fderiv ℝ
+        (fun H : EnergySpace N =>
+          free_energy_density (N := N) H)
+        (a • sk.U w + b • sim.V w + field)
+        (a' • sk.U w + b' • sim.V w) ∂ℙ) =
+      ∫ w,
+        ∑ i :
+            (isGaussianHilbert_UV
+              (N := N) (β := β) (h := h) (q := q)
+              (sk := sk) (sim := sim) hIndep).ι,
+          (((isGaussianHilbert_UV
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) hIndep).τ i :
+              NNReal) : ℝ) *
+            hessian_free_energy N
+              (a • sk.U w + b • sim.V w + field)
+              (affineIBP_jointAffineCLM
+                (N := N) a b
+                ((isGaussianHilbert_UV
+                  (N := N) (β := β) (h := h) (q := q)
+                  (sk := sk) (sim := sim) hIndep).w i))
+              (affineIBP_jointAffineCLM
+                (N := N) a' b'
+                ((isGaussianHilbert_UV
+                  (N := N) (β := β) (h := h) (q := q)
+                  (sk := sk) (sim := sim) hIndep).w i))
+        ∂ℙ := by
+  let hg :=
+    isGaussianHilbert_UV
+      (N := N) (β := β) (h := h) (q := q)
+      (sk := sk) (sim := sim) hIndep
+
+  let A := affineIBP_jointAffineCLM (N := N) a b
+  let B := affineIBP_jointAffineCLM (N := N) a' b'
+
+  have hFi_diff :
+      ∀ i : hg.ι, ContDiff ℝ 1
+        (fun x =>
+          fderiv ℝ
+            (fun H : EnergySpace N =>
+              free_energy_density (N := N) H)
+            (A x + field) (B (hg.w i))) := by
+    intro i
+
+    have hgrad : ContDiff ℝ 1
+        (fderiv ℝ
+          (fun H : EnergySpace N =>
+            free_energy_density (N := N) H)) :=
+      (contDiff_free_energy_density
+        (N := N)).fderiv_right
+        (m := (1 : WithTop ℕ∞)) (by
+          change
+            (↑(2 : ℕ∞) : WithTop ℕ∞) ≤
+              ↑(⊤ : ℕ∞)
+          exact WithTop.coe_le_coe.mpr le_top)
+
+    exact
+      (hgrad.comp
+        (A.contDiff.add contDiff_const)).clm_apply
+        contDiff_const
+
+  have hFi_growth :
+      ∀ i : hg.ι,
+        PhysLean.Probability.GaussianIBP.HasModerateGrowth
+          (fun x =>
+            fderiv ℝ
+              (fun H : EnergySpace N =>
+                free_energy_density (N := N) H)
+              (A x + field) (B (hg.w i))) := by
+    intro i
+    exact
+      affineIBP_hasModerateGrowth_firstVariation_affine
+        A field (B (hg.w i))
+
+  have hmain :=
+    affineIBP_gaussian_ibp_gradient_linear
+      (g := UV
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim))
+      (hg := hg)
+      A B field
+      (fun H : EnergySpace N =>
+        free_energy_density (N := N) H)
+      hFi_diff hFi_growth
+
+  change
+    (∫ w,
+      fderiv ℝ
+        (fun H : EnergySpace N =>
+          free_energy_density (N := N) H)
+        (A
+          (UV
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) w) + field)
+        (B
+          (UV
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) w))
+      ∂ℙ) = _
+
+  rw [hmain]
+
+  apply MeasureTheory.integral_congr_ae
+  filter_upwards with w
+
+  simp only [
+    hg, A, B, UV, affineIBP_jointAffineCLM
+  ]
+
+  apply Finset.sum_congr rfl
+  intro i _
+
+  rw [
+    affineIBP_fderiv_firstVariation_affine,
+    hessian_free_energy_fderiv_eq_hessian_free_energy
+  ]
+
+  rfl
+
+/-- The joint Gaussian eigenbasis trace splits into its two blocks.
+
+The mixed blocks vanish because the joint covariance is block diagonal. -/
+private lemma affineIBP_joint_trace_split
+    (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
+    (a b a' b' : ℝ)
+    (H : EnergySpace N) :
+    (∑ i :
+        (isGaussianHilbert_UV
+          (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) hIndep).ι,
+      (((isGaussianHilbert_UV
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) hIndep).τ i :
+          NNReal) : ℝ) *
+        hessian_free_energy N H
+          (affineIBP_jointAffineCLM
+            (N := N) a b
+            ((isGaussianHilbert_UV
+              (N := N) (β := β) (h := h) (q := q)
+              (sk := sk) (sim := sim) hIndep).w i))
+          (affineIBP_jointAffineCLM
+            (N := N) a' b'
+            ((isGaussianHilbert_UV
+              (N := N) (β := β) (h := h) (q := q)
+              (sk := sk) (sim := sim) hIndep).w i))) =
+      (a * a') *
+          ∑ i : sk.hU.ι, (sk.hU.τ i : ℝ) *
+            hessian_free_energy N H
+              (sk.hU.w i) (sk.hU.w i) +
+        (b * b') *
+          ∑ i : sim.hV.ι, (sim.hV.τ i : ℝ) *
+            hessian_free_energy N H
+              (sim.hV.w i) (sim.hV.w i) := by
+  classical
+
+  simp only [
+    isGaussianHilbert_UV,
+    affineIBP_jointAffineCLM,
+    OrthonormalBasis.prod_apply,
+    Fintype.sum_sum_type
+  ]
+
+  simp only [
+    hessian_free_energy,
+    smul_eq_mul,
+    PiLp.smul_apply
+  ]
+
+  ring
+
+/-- Rewrite a Gaussian eigenbasis Hessian trace in the configuration basis.
+
+This is a finite-dimensional trace identity:
+`Tr(Σ Hess) = ∑ στ ⟪Σ eσ,eτ⟫ Hess(eσ,eτ)`.
+-/
+private lemma affineIBP_gaussian_hessian_trace_eq_std_basis
+    {Ω' : Type*}
+    [MeasureSpace Ω']
+    [IsProbabilityMeasure (ℙ' : Measure Ω')]
+    (g : Ω' → EnergySpace N)
+    (hg : PhysLean.Probability.GaussianIBP.IsGaussianHilbert g)
+    (H : EnergySpace N) :
+    (∑ i : hg.ι, (hg.τ i : ℝ) *
+      hessian_free_energy N H
+        (hg.w i) (hg.w i)) =
+      ∑ σ : Config N, ∑ τ : Config N,
+        inner ℝ
+            ((PhysLean.Probability.GaussianIBP.covOp
+              (g := g) hg) (std_basis N σ))
+            (std_basis N τ) *
+          hessian_free_energy N H
+            (std_basis N σ) (std_basis N τ) := by
+  classical
+
+  simp only [
+    hessian_free_energy,
+    PhysLean.Probability.GaussianIBP.covOp_apply,
+    inner_std_basis_apply,
+    map_sum,
+    map_smul,
+    smul_eq_mul,
+    Finset.mul_sum,
+    Finset.sum_mul,
+    Finset.sum_sub_distrib
+  ]
+
+  simp only [
+    real_inner_comm,
+    hg.w.repr_apply_apply
+  ]
+
+  ring
+
+/-- Measurability of a canonical-basis Hessian entry. -/
+private lemma affineIBP_measurable_hessian_std_basis
+    (σ τ : Config N) :
+    Measurable
+      (fun H : EnergySpace N =>
+        hessian_free_energy N H
+          (std_basis N σ) (std_basis N τ)) := by
+  sorry
+
+/-- Uniform finite-volume bound for a canonical-basis Hessian entry. -/
+private lemma affineIBP_abs_hessian_std_basis_le
+    (H : EnergySpace N)
+    (σ τ : Config N) :
+    |hessian_free_energy N H
+        (std_basis N σ) (std_basis N τ)| ≤
+      1 / (N : ℝ) := by
+  sorry
+
+/-- Integrability of a finite covariance-kernel Hessian trace. -/
+private lemma affineIBP_integrable_kernel_hessian_trace
+    (K : Config N → Config N → ℝ)
+    (a b : ℝ)
+    (field : EnergySpace N) :
+    Integrable
+      (fun w =>
+        ∑ σ : Config N, ∑ τ : Config N,
+          K σ τ *
+            hessian_free_energy N
+              (a • sk.U w + b • sim.V w + field)
+              (std_basis N σ) (std_basis N τ))
+      ℙ := by
+  have hH_meas :
+      Measurable
+        (fun w =>
+          a • sk.U w + b • sim.V w + field) := by
+    exact
+      ((sk.hU.repr_measurable.const_smul a).add
+        (sim.hV.repr_measurable.const_smul b)).add
+        measurable_const
+
+  apply MeasureTheory.integrable_finset_sum
+  intro σ _
+
+  apply MeasureTheory.integrable_finset_sum
+  intro τ _
+
+  refine
+    MeasureTheory.Integrable.const_mul ?_ (K σ τ)
+
+  refine
+    MeasureTheory.Integrable.mono'
+      (MeasureTheory.integrable_const (1 / (N : ℝ)))
+      ?_ ?_
+
+  · exact
+      ((affineIBP_measurable_hessian_std_basis
+        (N := N) σ τ).comp hH_meas).aestronglyMeasurable
+
+  · filter_upwards with w
+    exact
+      affineIBP_abs_hessian_std_basis_le
+        (N := N)
+        (a • sk.U w + b • sim.V w + field)
+        σ τ
+
+/-- Gaussian integration by parts for an affine combination of two independent
+Gaussian Hamiltonians, expressed in the canonical configuration basis. -/
+lemma independent_gaussian_affine_ibp
+    (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
+    (a b a' b' : ℝ)
+    (field : EnergySpace N) :
+    (∫ w,
+      fderiv ℝ
+        (fun H : EnergySpace N =>
+          free_energy_density (N := N) H)
+        (a • sk.U w + b • sim.V w + field)
+        (a' • sk.U w + b' • sim.V w)
+      ∂ℙ) =
+      (a * a') *
+        ∫ w,
+          (∑ σ : Config N, ∑ τ : Config N,
+            sk_cov_kernel N β σ τ *
+              hessian_free_energy N
+                (a • sk.U w + b • sim.V w + field)
+                (std_basis N σ) (std_basis N τ))
+        ∂ℙ +
+      (b * b') *
+        ∫ w,
+          (∑ σ : Config N, ∑ τ : Config N,
+            simple_cov_kernel N β
+                (fun x => q * x) σ τ *
+              hessian_free_energy N
+                (a • sk.U w + b • sim.V w + field)
+                (std_basis N σ) (std_basis N τ))
+        ∂ℙ := by
+  classical
+
+  have hmain :=
+    affineIBP_joint_gaussian_affine_ibp_eigenbasis
+      (N := N) (β := β) (h := h) (q := q)
+      (sk := sk) (sim := sim)
+      hIndep a b a' b' field
+
+  rw [hmain]
+
+  have hpoint (w : Ω) :
+      (∑ i :
+          (isGaussianHilbert_UV
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) hIndep).ι,
+        (((isGaussianHilbert_UV
+          (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) hIndep).τ i :
+            NNReal) : ℝ) *
+          hessian_free_energy N
+            (a • sk.U w + b • sim.V w + field)
+            (affineIBP_jointAffineCLM
+              (N := N) a b
+              ((isGaussianHilbert_UV
+                (N := N) (β := β) (h := h) (q := q)
+                (sk := sk) (sim := sim) hIndep).w i))
+            (affineIBP_jointAffineCLM
+              (N := N) a' b'
+              ((isGaussianHilbert_UV
+                (N := N) (β := β) (h := h) (q := q)
+                (sk := sk) (sim := sim) hIndep).w i))) =
+        (a * a') *
+          (∑ σ : Config N, ∑ τ : Config N,
+            sk_cov_kernel N β σ τ *
+              hessian_free_energy N
+                (a • sk.U w + b • sim.V w + field)
+                (std_basis N σ) (std_basis N τ)) +
+        (b * b') *
+          (∑ σ : Config N, ∑ τ : Config N,
+            simple_cov_kernel N β
+                (fun x => q * x) σ τ *
+              hessian_free_energy N
+                (a • sk.U w + b • sim.V w + field)
+                (std_basis N σ) (std_basis N τ)) := by
+    rw [
+      affineIBP_joint_trace_split
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim)
+        hIndep a b a' b'
+        (a • sk.U w + b • sim.V w + field)
+    ]
+
+    rw [
+      affineIBP_gaussian_hessian_trace_eq_std_basis
+        (N := N)
+        sk.U sk.hU
+        (a • sk.U w + b • sim.V w + field)
+    ]
+
+    rw [
+      affineIBP_gaussian_hessian_trace_eq_std_basis
+        (N := N)
+        sim.V sim.hV
+        (a • sk.U w + b • sim.V w + field)
+    ]
+
+    simp_rw [sk.cov_eq, sim.cov_eq]
+
+  rw [
+    MeasureTheory.integral_congr_ae
+      (ae_of_all _ hpoint)
+  ]
+
+  have hsk : Integrable
+      (fun w =>
+        ∑ σ : Config N, ∑ τ : Config N,
+          sk_cov_kernel N β σ τ *
+            hessian_free_energy N
+              (a • sk.U w + b • sim.V w + field)
+              (std_basis N σ) (std_basis N τ))
+      ℙ :=
+    affineIBP_integrable_kernel_hessian_trace
+      (N := N) (β := β) (h := h) (q := q)
+      (sk := sk) (sim := sim)
+      (sk_cov_kernel N β)
+      a b field
+
+  have hsim : Integrable
+      (fun w =>
+        ∑ σ : Config N, ∑ τ : Config N,
+          simple_cov_kernel N β
+              (fun x => q * x) σ τ *
+            hessian_free_energy N
+              (a • sk.U w + b • sim.V w + field)
+              (std_basis N σ) (std_basis N τ))
+      ℙ :=
+    affineIBP_integrable_kernel_hessian_trace
+      (N := N) (β := β) (h := h) (q := q)
+      (sk := sk) (sim := sim)
+      (simple_cov_kernel N β (fun x => q * x))
+      a b field
+
+  rw [
+    MeasureTheory.integral_add
+      (hsk.const_mul (a * a'))
+      (hsim.const_mul (b * b')),
+    MeasureTheory.integral_const_mul,
+    MeasureTheory.integral_const_mul
+  ]
+
+end JointDisorder
+
+end GeneralizedLatala
+end SpinGlass
