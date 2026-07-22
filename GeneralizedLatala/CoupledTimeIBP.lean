@@ -385,6 +385,33 @@ lemma sum_crossPairCenteredOverlapSq_workspace
   unfold crossPairCenteredOverlapSq
   ring
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+lemma sum_pairEval_std_basis_product_workspace
+    (D : Config N → Config N → ℝ) (σs : ReplicaSpace N 2) :
+    (∑ σ : Config N, ∑ τ : Config N,
+      D σ τ * pairEval N (std_basis N σ) σs *
+        pairEval N (std_basis N τ) σs) =
+      D (σs 0) (σs 0) + D (σs 0) (σs 1) +
+        D (σs 1) (σs 0) + D (σs 1) (σs 1) := by
+  simp only [pairEval, std_basis]
+  ring_nf
+  simp_rw [Finset.sum_add_distrib]
+  simp
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+lemma sum_pairEval_std_basis_cross_workspace
+    (D : Config N → Config N → ℝ)
+    (σs ρs : ReplicaSpace N 2) :
+    (∑ σ : Config N, ∑ τ : Config N,
+      D σ τ * pairEval N (std_basis N σ) σs *
+        pairEval N (std_basis N τ) ρs) =
+      D (σs 0) (ρs 0) + D (σs 0) (ρs 1) +
+        D (σs 1) (ρs 0) + D (σs 1) (ρs 1) := by
+  simp only [pairEval, std_basis]
+  ring_nf
+  simp_rw [Finset.sum_add_distrib]
+  simp
+
 /-- Pointwise finite-volume trace identity.
 
 This is the main algebraic goal. Unfold `coupledHessianDet`; the first tilted
