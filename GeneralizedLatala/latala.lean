@@ -2,6 +2,7 @@ import SpinGlass.Replicas
 import SpinGlass.GuerraBound
 import SpinGlass.KS_inequality
 import IndependentEndpoint
+import IndependentGaussianAffineIBP
 import Mathlib.Analysis.SpecialFunctions.Artanh
 import Mathlib.Analysis.Convex.SpecificFunctions.Basic
 import Mathlib.Analysis.Convex.Jensen
@@ -28,7 +29,9 @@ Gaussian-IBP and characteristic arguments.  The final overlap and free-energy bo
 assembled from those ingredients.
 -/
 
-variable {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
+universe uΩ uι
+
+variable {Ω : Type uΩ} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
 
 /-!
 **# Hubbard--Stratonovich identity**
@@ -108,8 +111,8 @@ lemma lambdaStar_eq (β q : ℝ) :
 /-! ## Smart-path observables -/
 
 variable (N : ℕ) [NeZero N] (β h q : ℝ)
-variable (sk : SKDisorder (Ω := Ω) N β h)
-variable (sim : SimpleDisorder (Ω := Ω) N β q)
+variable (sk : SKDisorder.{uΩ, uι} (Ω := Ω) N β h)
+variable (sim : SimpleDisorder.{uΩ, uι} (Ω := Ω) N β q)
 
 /-- Centered overlap `Q_ab = R_ab - q`. -/
 noncomputable def centeredOverlap {n : ℕ} (a b : Fin n) : ReplicaFun N n :=
@@ -1289,7 +1292,9 @@ lemma independent_gaussian_affine_ibp
         simple_cov_kernel N β (fun x => q * x) σ τ * hessian_free_energy N
           (a • sk.U w + b • sim.V w + field)
           (std_basis N σ) (std_basis N τ)) ∂ℙ := by
-  sorry
+  exact independent_gaussian_affine_ibp_reproved
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+    hIndep a b a' b' field
 
 /-- Joint Gaussian integration by parts for the raw smart-path derivative, before evaluating
 its two covariance traces. -/

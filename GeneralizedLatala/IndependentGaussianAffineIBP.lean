@@ -887,7 +887,7 @@ private lemma
 
 /-- Gaussian integration by parts for an affine combination of two independent Gaussian
 Hamiltonians, expressed in the canonical configuration basis. -/
-lemma independent_gaussian_affine_ibp
+lemma independent_gaussian_affine_ibp_reproved
     (hIndep :
       IndepFun sk.U sim.V (ℙ : Measure Ω))
     (a b a' b' : ℝ) (field : EnergySpace N) :
