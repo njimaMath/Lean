@@ -9,7 +9,7 @@ import Mathlib.Analysis.Convex.Integral
 import Mathlib.MeasureTheory.Integral.Prod
 
 open MeasureTheory ProbabilityTheory Real BigOperators
-open scoped ENNReal NNReal
+open scoped ENNReal NNReal Topology
 
 namespace SpinGlass
 namespace GeneralizedLatala
@@ -2013,6 +2013,203 @@ lemma characteristicCoupling_ge
   have hus : 0 ≤ u - s := sub_nonneg.mpr hs.2
   nlinarith [sq_nonneg β]
 
+/-- A two-variable function is differentiable when its first partial derivative exists and its
+second partial derivative exists nearby and is continuous. -/
+private lemma hasFDerivAt_prod_of_continuous_snd
+    (f g : ℝ × ℝ → ℝ) {t c a b : ℝ}
+    (ht : HasDerivAt (fun x => f (x, c)) a t)
+    (hc : ∀ p, HasDerivAt (fun y => f (p.1, y)) (g p) p.2)
+    (hg : ContinuousAt g (t, c)) (hb : g (t, c) = b) :
+    HasFDerivAt f
+      (a • ContinuousLinearMap.fst ℝ ℝ ℝ + b • ContinuousLinearMap.snd ℝ ℝ ℝ)
+      (t, c) := by
+  rw [hasFDerivAt_iff_isLittleO_nhds_zero]
+  rw [Asymptotics.isLittleO_iff]
+  intro ε hε
+  have htO := hasFDerivAt_iff_isLittleO_nhds_zero.mp ht.hasFDerivAt
+  have htbound := htO.bound (half_pos hε)
+  have htbound' : ∀ᶠ z : ℝ × ℝ in 𝓝 0,
+      ‖f (t + z.1, c) - f (t, c) - a * z.1‖ ≤ (ε / 2) * ‖z.1‖ := by
+    have hlim : Filter.Tendsto (fun z : ℝ × ℝ => z.1) (𝓝 0) (𝓝 0) :=
+      continuous_fst.continuousAt
+    filter_upwards [hlim.eventually htbound] with z hz
+    simpa [ContinuousLinearMap.toSpanSingleton_apply, mul_comm] using hz
+  have hge : ∀ᶠ p in 𝓝 (t, c), ‖g p - b‖ < ε / 2 := by
+    have hnear := (Metric.tendsto_nhds.mp hg.tendsto) (ε / 2) (half_pos hε)
+    filter_upwards [hnear] with p hp
+    simpa [Real.dist_eq, hb] using hp
+  obtain ⟨δ, hδ, hball⟩ := Metric.eventually_nhds_iff.mp hge
+  have hsmall : ∀ᶠ z : ℝ × ℝ in 𝓝 0, ‖z‖ < δ := by
+    exact Metric.eventually_nhds_iff.mpr ⟨δ, hδ, by
+      intro z hz
+      simpa [dist_zero_right] using hz⟩
+  filter_upwards [htbound', hsmall] with z htime hzδ
+  let x := t + z.1
+  let y := c + z.2
+  have hvertical : ‖f (x, y) - f (x, c) - b * z.2‖ ≤ (ε / 2) * ‖z.2‖ := by
+    let k : ℝ → ℝ := fun w => f (x, w) - b * w
+    have hkderiv (w : ℝ) : HasDerivAt k (g (x, w) - b) w := by
+      simpa [k] using (hc (x, w)).sub ((hasDerivAt_id w).const_mul b)
+    have hclose (w : ℝ) (hw : w ∈ Set.uIcc c y) : ‖g (x, w) - b‖ ≤ ε / 2 := by
+      apply le_of_lt
+      apply hball
+      rw [Prod.dist_eq]
+      have hx : dist x t ≤ ‖z‖ := by
+        simp only [x, Real.dist_eq]
+        simpa [Real.norm_eq_abs] using norm_fst_le z
+      have hw' : dist w c ≤ ‖z‖ := by
+        have : dist w c ≤ dist y c := by
+          rcases le_total c y with hcy | hyc
+          · rw [Set.uIcc_of_le hcy] at hw
+            simp only [Real.dist_eq]
+            rw [abs_of_nonneg (sub_nonneg.mpr hw.1),
+              abs_of_nonneg (sub_nonneg.mpr hcy)]
+            linarith [hw.2]
+          · rw [Set.uIcc_of_ge hyc] at hw
+            simp only [Real.dist_eq]
+            rw [abs_of_nonpos (sub_nonpos.mpr hw.2),
+              abs_of_nonpos (sub_nonpos.mpr hyc)]
+            linarith [hw.1]
+        calc
+          dist w c ≤ dist y c := this
+          _ = ‖z.2‖ := by simp [y, Real.norm_eq_abs]
+          _ ≤ ‖z‖ := norm_snd_le z
+      exact max_lt (lt_of_le_of_lt hx hzδ) (lt_of_le_of_lt hw' hzδ)
+    have hmvt := (convex_uIcc c y).norm_image_sub_le_of_norm_hasDerivWithin_le
+      (fun w hw => (hkderiv w).hasDerivWithinAt)
+      (fun w hw => hclose w hw) Set.left_mem_uIcc Set.right_mem_uIcc
+    convert hmvt using 1 <;> simp [k, x, y, Real.norm_eq_abs] <;> ring
+  change ‖f ((t, c) + z) - f (t, c) -
+    (a • ContinuousLinearMap.fst ℝ ℝ ℝ + b • ContinuousLinearMap.snd ℝ ℝ ℝ) z‖ ≤
+      ε * ‖z‖
+  have hsplit : f ((t, c) + z) - f (t, c) - (a * z.1 + b * z.2) =
+      (f (x, y) - f (x, c) - b * z.2) +
+      (f (t + z.1, c) - f (t, c) - a * z.1) := by
+    change f (t + z.1, c + z.2) - f (t, c) - (a * z.1 + b * z.2) = _
+    simp only [x, y]
+    ring
+  change ‖f ((t, c) + z) - f (t, c) - (a * z.1 + b * z.2)‖ ≤ ε * ‖z‖
+  rw [hsplit]
+  calc
+    ‖(f (x, y) - f (x, c) - b * z.2) +
+      (f (t + z.1, c) - f (t, c) - a * z.1)‖ ≤
+        ‖f (x, y) - f (x, c) - b * z.2‖ +
+          ‖f (t + z.1, c) - f (t, c) - a * z.1‖ := norm_add_le _ _
+    _ ≤ (ε / 2) * ‖z.2‖ + (ε / 2) * ‖z.1‖ := add_le_add hvertical htime
+    _ ≤ ε * ‖z‖ := by
+      nlinarith [norm_fst_le z, norm_snd_le z]
+
+/-- Joint continuity of the coupling partial derivative of the logarithmic moment. -/
+private lemma couplingPartial_continuous : Continuous (fun p : ℝ × ℝ =>
+    (N : ℝ) * tiltedCenteredOverlapSq
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) p.1 p.2) := by
+  let G : ℝ × ℝ → Ω → ℝ := fun p ω => (N : ℝ) *
+    tiltedCenteredOverlapSqDet (N := N) (q := q)
+      (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) p.1 ω) p.2
+  let B : ℝ := ∑ σs : ReplicaSpace N 2,
+    (N : ℝ) * centeredOverlapSq N q σs
+  have hHt_meas (r : ℝ) : Measurable (H_t
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) r) := by
+    have hU := sk.hU.repr_measurable.const_smul (Real.sqrt r)
+    have hV := sim.hV.repr_measurable.const_smul (Real.sqrt (1 - r))
+    simpa [H_t, H_gauss] using (hU.add hV).add measurable_const
+  have hG_meas (p : ℝ × ℝ) : AEStronglyMeasurable (G p) ℙ := by
+    apply Measurable.aestronglyMeasurable
+    dsimp only [G, tiltedCenteredOverlapSqDet]
+    apply measurable_const.mul
+    apply Measurable.div
+    · unfold gibbs_average_n_det
+      apply Finset.measurable_sum
+      intro σs _
+      apply measurable_const.mul
+      apply Finset.measurable_prod
+      intro l _
+      exact (SpinGlass.contDiff_gibbs_pmf (N := N) (σ := σs l)).continuous.measurable.comp
+        (hHt_meas p.1)
+    · unfold tiltedReplicaPartitionDet gibbs_average_n_det
+      apply Finset.measurable_sum
+      intro σs _
+      apply measurable_const.mul
+      apply Finset.measurable_prod
+      intro l _
+      exact (SpinGlass.contDiff_gibbs_pmf (N := N) (σ := σs l)).continuous.measurable.comp
+        (hHt_meas p.1)
+  have hbound (p : ℝ × ℝ) (ω : Ω) : ‖G p ω‖ ≤ B := by
+    simpa [G, B] using norm_tiltedLog_deriv_le
+      (N := N) (q := q)
+      (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) p.1 ω)
+      p.2
+  have hG_cont (ω : Ω) : Continuous (fun p => G p ω) := by
+    have hHt : Continuous (fun p : ℝ × ℝ => H_t
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) p.1 ω) := by
+      simp only [H_t, H_gauss]
+      fun_prop
+    dsimp only [G, tiltedCenteredOverlapSqDet]
+    apply Continuous.mul continuous_const
+    apply Continuous.div
+    · unfold gibbs_average_n_det
+      apply continuous_finset_sum
+      intro σs _
+      apply Continuous.mul
+      · fun_prop
+      · apply continuous_finset_prod
+        intro l _
+        exact (SpinGlass.contDiff_gibbs_pmf (N := N) (σ := σs l)).continuous.comp hHt
+    · unfold tiltedReplicaPartitionDet gibbs_average_n_det
+      apply continuous_finset_sum
+      intro σs _
+      apply Continuous.mul
+      · fun_prop
+      apply continuous_finset_prod
+      intro l _
+      exact (SpinGlass.contDiff_gibbs_pmf (N := N) (σ := σs l)).continuous.comp hHt
+    · intro p
+      exact (tiltedReplicaPartitionDet_pos
+        (N := N) (q := q)
+        (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) p.1 ω)
+        p.2).ne'
+  have hint : Continuous (fun p => ∫ ω, G p ω ∂ℙ) := by
+    rw [continuous_iff_continuousAt]
+    intro p
+    apply MeasureTheory.continuousAt_of_dominated
+    · exact Filter.Eventually.of_forall hG_meas
+    · exact Filter.Eventually.of_forall fun r => ae_of_all _ fun ω => hbound r ω
+    · exact integrable_const B
+    · exact ae_of_all _ fun ω => (hG_cont ω).continuousAt
+  have heq : (fun p => ∫ ω, G p ω ∂ℙ) = fun p : ℝ × ℝ =>
+      (N : ℝ) * tiltedCenteredOverlapSq
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) p.1 p.2 := by
+    funext p
+    simp only [G, tiltedCenteredOverlapSq, MeasureTheory.integral_const_mul]
+  rwa [heq] at hint
+
+/-- The logarithmic moment is jointly differentiable in time and coupling away from the time
+endpoints. -/
+lemma logQuadraticMoment_differentiableAt_two_variables
+    (hN : 0 < N) (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
+    {t coupling : ℝ} (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
+    DifferentiableAt ℝ (fun p : ℝ × ℝ => logQuadraticMoment
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) p.1 p.2)
+      (t, coupling) := by
+  obtain ⟨dt, htime⟩ := logQuadraticMoment_hasDerivAt_time
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+    hN hIndep ht (coupling := coupling)
+  let g : ℝ × ℝ → ℝ := fun p => (N : ℝ) * tiltedCenteredOverlapSq
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) p.1 p.2
+  have hcoupling (p : ℝ × ℝ) : HasDerivAt
+      (fun y => logQuadraticMoment
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) p.1 y)
+      (g p) p.2 := by
+    simpa [g] using logQuadraticMoment_hasDerivAt_coupling_formula
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) p.1 p.2
+  exact (hasFDerivAt_prod_of_continuous_snd
+    (f := fun p : ℝ × ℝ => logQuadraticMoment
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) p.1 p.2)
+    (g := g) htime hcoupling (by
+      simpa [g] using (couplingPartial_continuous
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)).continuousAt)
+    rfl).differentiableAt
+
 /-- Chain rule and PDE inequality along the characteristic.
 
 Proof route: obtain `HasDerivAt` in both variables, note that the coupling path has derivative
@@ -2033,7 +2230,80 @@ lemma characteristicQuadraticMoment_differential_inequality
         characteristicQuadraticMoment
           (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
           coupling u s := by
-  sorry
+  let c : ℝ := characteristicCoupling β coupling u s
+  let L : ℝ × ℝ → ℝ := fun p => logQuadraticMoment
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) p.1 p.2
+  have hs01 : s ∈ Set.Ioo (0 : ℝ) 1 := ⟨hs.1, lt_of_lt_of_le hs.2 hu.2⟩
+  have hcge : coupling ≤ c := characteristicCoupling_ge
+    (β := β) (coupling := coupling) (u := u) (s := s) ⟨le_of_lt hs.1, le_of_lt hs.2⟩
+  have hc : 0 < c := lt_of_lt_of_le hcoupling hcge
+  obtain ⟨dt, hdt⟩ := logQuadraticMoment_hasDerivAt_time
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+    hN hIndep hs01 (coupling := c)
+  have hdc := logQuadraticMoment_hasDerivAt_coupling_formula
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s c
+  have hL : DifferentiableAt ℝ L (s, c) := by
+    simpa [L] using logQuadraticMoment_differentiableAt_two_variables
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+      hN hIndep hs01 (coupling := c)
+  have hpath : HasDerivAt
+      (fun r : ℝ => (r, characteristicCoupling β coupling u r))
+      (1, -(β ^ 2 / 2)) s := by
+    apply (hasDerivAt_id s).prodMk
+    unfold characteristicCoupling
+    convert (hasDerivAt_const s coupling).add
+      (((hasDerivAt_const s u).sub (hasDerivAt_id s)).const_mul (β ^ 2 / 2)) using 1
+    ring
+  have hdiag := hL.hasFDerivAt.comp_hasDerivAt s hpath
+  have htimeComp := hL.hasFDerivAt.comp_hasDerivAt s
+    ((hasDerivAt_id s).prodMk (hasDerivAt_const s c))
+  have hcouplingComp := hL.hasFDerivAt.comp_hasDerivAt c
+    ((hasDerivAt_const c s).prodMk (hasDerivAt_id c))
+  have htimeEval : fderiv ℝ L (s, c) (1, 0) = dt := by
+    exact htimeComp.unique (by simpa [L, Function.comp_def] using hdt)
+  have hcouplingEval : fderiv ℝ L (s, c) (0, 1) =
+      (N : ℝ) * tiltedCenteredOverlapSq
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s c := by
+    exact hcouplingComp.unique (by simpa [L, Function.comp_def] using hdc)
+  let dc : ℝ := (N : ℝ) * tiltedCenteredOverlapSq
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s c
+  let d : ℝ := dt - (β ^ 2 / 2) * dc
+  have hdiag' : HasDerivAt
+      (characteristicQuadraticMoment
+        (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+        coupling u) d s := by
+    have heval : fderiv ℝ L (s, c) (1, -(β ^ 2 / 2)) = d := by
+      rw [show (1, -(β ^ 2 / 2)) =
+          ((1 : ℝ), (0 : ℝ)) + (-(β ^ 2 / 2)) • ((0 : ℝ), (1 : ℝ)) by
+        ext <;> simp]
+      rw [map_add, map_smul, htimeEval, hcouplingEval]
+      simp only [smul_eq_mul, dc, d]
+      ring
+    rw [heval] at hdiag
+    simpa [L, c, characteristicQuadraticMoment, Function.comp_def] using hdiag
+  refine ⟨d, hdiag', ?_⟩
+  have hpde := logQuadraticMoment_differential_inequality
+    (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+    hN hIndep hs01 hc
+  have hdtDeriv : deriv (fun r => logQuadraticMoment
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) r c) s = dt := hdt.deriv
+  have hdcDeriv : deriv (fun z => logQuadraticMoment
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s z) c = dc := by
+    simpa [dc] using hdc.deriv
+  rw [hdtDeriv, hdcDeriv] at hpde
+  have hmoment : 0 ≤ logQuadraticMoment
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s c :=
+    logQuadraticMoment_nonneg
+      (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+      (le_of_lt hc)
+  have hcoef : β ^ 2 / (2 * c) ≤ β ^ 2 / (2 * coupling) := by
+    rw [div_le_div_iff₀ (by positivity : 0 < 2 * c)
+      (by positivity : 0 < 2 * coupling)]
+    nlinarith [sq_nonneg β]
+  dsimp only [d]
+  refine hpde.trans ?_
+  simpa [characteristicQuadraticMoment, c] using
+    mul_le_mul_of_nonneg_right hcoef hmoment
 
 /-- Continuity on the closed characteristic, including both endpoints.
 
