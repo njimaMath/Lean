@@ -10,7 +10,7 @@ import Mathlib.Analysis.Convex.Integral
 import Mathlib.MeasureTheory.Integral.Prod
 
 open MeasureTheory ProbabilityTheory Real BigOperators
-open scoped ENNReal NNReal Topology
+open scoped ENNReal NNReal Topology ContDiff
 
 set_option maxHeartbeats 800000
 
@@ -3142,7 +3142,7 @@ lemma coupledFreeEnergy_hasDerivAt_time_before_ibp
   have hraw :=
     integral_coupledFreeEnergyDet_hasDerivAt_beforeIBP
       (N := N) (β := β) (h := h) (q := q)
-      (sk := sk) (sim := sim) ht
+      (sk := sk) (sim := sim) (Λ := Λ) ht
 
   have hfun :
       (fun s =>
