@@ -12,6 +12,8 @@ import Mathlib.MeasureTheory.Integral.Prod
 open MeasureTheory ProbabilityTheory Real BigOperators
 open scoped ENNReal NNReal Topology
 
+set_option maxHeartbeats 800000
+
 namespace SpinGlass
 namespace GeneralizedLatala
 
@@ -1726,6 +1728,1401 @@ lemma coupledFreeEnergy_hasDerivAt_coupling_formula (t Λ : ℝ) :
       (interpolatedPressure
         (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t)
 
+/-- Evaluation of a Hamiltonian direction on two replicas. -/
+private noncomputable def pairEval_beforeIBP
+    (u : EnergySpace N) : ReplicaFun N 2 :=
+  fun σs => u (σs 0) + u (σs 1)
+
+/-- Expectation under the normalized quadratically tilted two-replica law. -/
+private noncomputable def tiltedReplicaAverageDet_beforeIBP
+    (H : EnergySpace N) (coupling : ℝ)
+    (f : ReplicaFun N 2) : ℝ :=
+  gibbs_average_n_det (N := N) (n := 2) H
+      (fun σs =>
+        f σs *
+          Real.exp
+            (coupling * (N : ℝ) * centeredOverlapSq N q σs)) /
+    tiltedReplicaPartitionDet (N := N) (q := q) H coupling
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+private lemma fderiv_tiltedReplicaPartitionDet_apply_beforeIBP
+    (H u : EnergySpace N) (coupling : ℝ) :
+    fderiv ℝ
+        (fun K : EnergySpace N =>
+          tiltedReplicaPartitionDet (N := N) (q := q) K coupling)
+        H u =
+      2 * (∑ τ : Config N, gibbs_pmf N H τ * u τ) *
+          tiltedReplicaPartitionDet (N := N) (q := q) H coupling -
+        gibbs_average_n_det (N := N) (n := 2) H
+          (fun σs =>
+            pairEval_beforeIBP (N := N) u σs *
+              Real.exp
+                (coupling * (N : ℝ) *
+                  centeredOverlapSq N q σs)) := by
+  unfold gibbs_average_n_det pairEval_beforeIBP
+  unfold gibbs_pmf tiltedReplicaPartitionDet
+  rw [fderiv_gibbs_average_n_det_apply]
+  unfold gibbs_average_n_det gibbs_pmf
+  simp +decide [
+    Fin.sum_univ_two,
+    mul_sub,
+    sub_mul,
+    mul_assoc,
+    mul_comm,
+    mul_left_comm,
+    Finset.mul_sum _ _ _,
+    Finset.sum_mul
+  ]
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+private lemma fderiv_coupledFreeEnergyDet_apply_beforeIBP
+    (H u : EnergySpace N) (Λ : ℝ) :
+    fderiv ℝ
+        (fun K : EnergySpace N =>
+          coupledFreeEnergyDet (N := N) (q := q) K Λ)
+        H u =
+      -(1 / (2 * (N : ℝ))) *
+        tiltedReplicaAverageDet_beforeIBP
+          (N := N) (q := q) H (Λ / 2)
+          (pairEval_beforeIBP (N := N) u) := by
+  erw [fderiv_add] <;>
+    norm_num [fderiv_free_energy_density_apply]
+  · erw [fderiv_mul, fderiv.log] <;>
+      norm_num [fderiv_tiltedReplicaPartitionDet_apply_beforeIBP]
+    · unfold tiltedReplicaAverageDet_beforeIBP
+      ring
+      rw [
+        mul_inv_cancel_right₀
+          (ne_of_gt
+            (tiltedReplicaPartitionDet_pos
+              (N := N) (q := q) H (Λ * (1 / 2))))
+      ]
+      ring
+    · have hdiff :
+          ∀ σs : ReplicaSpace N 2,
+            DifferentiableAt ℝ
+              (fun K : EnergySpace N =>
+                Real.exp
+                    (Λ / 2 * (N : ℝ) *
+                      centeredOverlapSq N q σs) *
+                  ∏ l,
+                    Real.exp (-K.ofLp (σs l)) / Z N K)
+              H := by
+        intro σs
+        have hpmf :
+            ∀ l : Fin 2,
+              DifferentiableAt ℝ
+                (fun K : EnergySpace N =>
+                  Real.exp (-K.ofLp (σs l)) / Z N K)
+                H :=
+          fun l => differentiableAt_gibbs_pmf N H (σs l)
+        fun_prop
+      exact DifferentiableAt.fun_sum fun i _ => hdiff i
+    · exact
+        ne_of_gt
+          (tiltedReplicaPartitionDet_pos
+            (N := N) (q := q) H (Λ / 2))
+    · refine DifferentiableAt.log ?_ ?_
+      · unfold tiltedReplicaPartitionDet gibbs_average_n_det
+        unfold gibbs_pmf
+        norm_num [
+          Real.exp_ne_zero,
+          Finset.prod_eq_zero_iff,
+          Real.differentiableAt_exp,
+          differentiableAt_pi
+        ]
+        have hdiff :
+            ∀ x : ReplicaSpace N 2,
+              DifferentiableAt ℝ
+                (fun K : EnergySpace N =>
+                  Real.exp (-K.ofLp (x 0)) *
+                      Real.exp (-K.ofLp (x 1)) /
+                    Z N K ^ 2)
+                H := by
+          intro x
+          apply_rules [
+            DifferentiableAt.div,
+            DifferentiableAt.mul,
+            DifferentiableAt.exp,
+            differentiableAt_id,
+            differentiableAt_const
+          ]
+          · fun_prop
+          · fun_prop
+          · apply_rules [
+              DifferentiableAt.inv,
+              DifferentiableAt.pow,
+              differentiableAt_id
+            ]
+            · unfold Z
+              fun_prop
+            · exact
+                ne_of_gt
+                  (sq_pos_of_pos
+                    (Z_pos (N := N) H))
+        fun_prop
+      · exact
+          ne_of_gt
+            (tiltedReplicaPartitionDet_pos
+              (N := N) (q := q) H (Λ / 2))
+  · apply_rules [
+      DifferentiableAt.mul,
+      DifferentiableAt.log
+    ] <;> norm_num
+    · unfold Z
+      fun_prop
+    · exact
+        ne_of_gt
+          (Finset.sum_pos
+            (fun _ _ => Real.exp_pos _)
+            Finset.univ_nonempty)
+  · apply_rules [
+      DifferentiableAt.mul,
+      DifferentiableAt.log
+    ] <;>
+      norm_num [tiltedReplicaPartitionDet_pos]
+    · unfold tiltedReplicaPartitionDet
+      unfold gibbs_average_n_det
+      norm_num [gibbs_average_n, gibbs_pmf]
+      have hdiff :
+          DifferentiableAt ℝ
+            (fun x : EnergySpace N =>
+              ∑ σ : Config N, Real.exp (-x σ))
+            H := by
+        fun_prop
+      simp_all +decide [
+        ← mul_div_assoc,
+        ← Finset.sum_div _ _ _
+      ]
+      refine DifferentiableAt.mul ?_ ?_
+      · fun_prop
+      · exact
+          DifferentiableAt.inv
+            (hdiff.pow 2)
+            (ne_of_gt
+              (sq_pos_of_pos
+                (Finset.sum_pos
+                  (fun _ _ => Real.exp_pos _)
+                  Finset.univ_nonempty)))
+    · exact
+        ne_of_gt
+          (tiltedReplicaPartitionDet_pos
+            (N := N) (q := q) H (Λ / 2))
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+private lemma abs_pairEval_beforeIBP_le
+    (u : EnergySpace N) (σs : ReplicaSpace N 2) :
+    |pairEval_beforeIBP (N := N) u σs| ≤ 2 * ‖u‖ := by
+  unfold pairEval_beforeIBP
+  calc
+    |u (σs 0) + u (σs 1)|
+        ≤ |u (σs 0)| + |u (σs 1)| := abs_add_le _ _
+    _ ≤ ‖u‖ + ‖u‖ := by
+      exact add_le_add
+        (abs_apply_le_norm (N := N) u (σs 0))
+        (abs_apply_le_norm (N := N) u (σs 1))
+    _ = 2 * ‖u‖ := by ring
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+private lemma abs_tiltedReplicaAverageDet_pairEval_beforeIBP_le
+    (H : EnergySpace N) (coupling : ℝ) (u : EnergySpace N) :
+    |tiltedReplicaAverageDet_beforeIBP
+        (N := N) (q := q) H coupling
+        (pairEval_beforeIBP (N := N) u)|
+      ≤ 2 * ‖u‖ := by
+  classical
+  let W : ReplicaSpace N 2 → ℝ := fun σs =>
+    Real.exp
+        (coupling * (N : ℝ) *
+          centeredOverlapSq N q σs) *
+      ∏ l, gibbs_pmf N H (σs l)
+
+  have hW (σs : ReplicaSpace N 2) : 0 ≤ W σs := by
+    exact mul_nonneg
+      (Real.exp_nonneg _)
+      (Finset.prod_nonneg fun l _ =>
+        gibbs_pmf_nonneg
+          (N := N) (H := H) (σ := σs l))
+
+  have hsum :
+      0 < ∑ σs : ReplicaSpace N 2, W σs := by
+    simpa [
+      W,
+      tiltedReplicaPartitionDet,
+      gibbs_average_n_det,
+      mul_assoc
+    ] using
+      tiltedReplicaPartitionDet_pos
+        (N := N) (q := q) H coupling
+
+  have hform :
+      tiltedReplicaAverageDet_beforeIBP
+          (N := N) (q := q) H coupling
+          (pairEval_beforeIBP (N := N) u) =
+        (∑ σs : ReplicaSpace N 2,
+            pairEval_beforeIBP (N := N) u σs * W σs) /
+          (∑ σs : ReplicaSpace N 2, W σs) := by
+    simp [
+      tiltedReplicaAverageDet_beforeIBP,
+      tiltedReplicaPartitionDet,
+      gibbs_average_n_det,
+      W,
+      mul_assoc
+    ]
+
+  rw [hform, abs_div, abs_of_pos hsum]
+  apply (div_le_iff₀ hsum).2
+  calc
+    |∑ σs : ReplicaSpace N 2,
+        pairEval_beforeIBP (N := N) u σs * W σs|
+        ≤
+      ∑ σs : ReplicaSpace N 2,
+        |pairEval_beforeIBP (N := N) u σs * W σs| := by
+          simpa using
+            (Finset.abs_sum_le_sum_abs
+              (s := Finset.univ)
+              (f := fun σs : ReplicaSpace N 2 =>
+                pairEval_beforeIBP (N := N) u σs * W σs))
+    _ =
+      ∑ σs : ReplicaSpace N 2,
+        |pairEval_beforeIBP (N := N) u σs| * W σs := by
+          apply Finset.sum_congr rfl
+          intro σs _
+          rw [abs_mul, abs_of_nonneg (hW σs)]
+    _ ≤
+      ∑ σs : ReplicaSpace N 2,
+        (2 * ‖u‖) * W σs := by
+          apply Finset.sum_le_sum
+          intro σs _
+          exact mul_le_mul_of_nonneg_right
+            (abs_pairEval_beforeIBP_le
+              (N := N) u σs)
+            (hW σs)
+    _ =
+      (2 * ‖u‖) *
+        ∑ σs : ReplicaSpace N 2, W σs := by
+          rw [Finset.mul_sum]
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+private lemma opNorm_fderiv_coupledFreeEnergyDet_le_beforeIBP
+    (H : EnergySpace N) (Λ : ℝ) :
+    ‖fderiv ℝ
+        (fun K : EnergySpace N =>
+          coupledFreeEnergyDet (N := N) (q := q) K Λ)
+        H‖
+      ≤ 1 / (N : ℝ) := by
+  have hNr : 0 < (N : ℝ) := by
+    exact_mod_cast Nat.pos_of_ne_zero (NeZero.ne N)
+
+  have hcoef :
+      0 ≤ 1 / (2 * (N : ℝ)) := by
+    positivity
+
+  refine ContinuousLinearMap.opNorm_le_bound
+    _
+    (by positivity)
+    ?_
+
+  intro u
+  rw [
+    fderiv_coupledFreeEnergyDet_apply_beforeIBP
+      (N := N) (q := q)
+  ]
+
+  have havg :=
+    abs_tiltedReplicaAverageDet_pairEval_beforeIBP_le
+      (N := N) (q := q)
+      H (Λ / 2) u
+
+  calc
+    ‖-(1 / (2 * (N : ℝ))) *
+        tiltedReplicaAverageDet_beforeIBP
+          (N := N) (q := q) H (Λ / 2)
+          (pairEval_beforeIBP (N := N) u)‖
+        =
+      (1 / (2 * (N : ℝ))) *
+        |tiltedReplicaAverageDet_beforeIBP
+          (N := N) (q := q) H (Λ / 2)
+          (pairEval_beforeIBP (N := N) u)| := by
+            simp [
+              Real.norm_eq_abs,
+              abs_mul,
+              abs_of_nonneg hcoef
+            ]
+    _ ≤
+      (1 / (2 * (N : ℝ))) * (2 * ‖u‖) :=
+        mul_le_mul_of_nonneg_left havg hcoef
+    _ =
+      (1 / (N : ℝ)) * ‖u‖ := by
+        field_simp [ne_of_gt hNr]
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+private lemma contDiff_tiltedReplicaPartitionDet_beforeIBP
+    (coupling : ℝ) :
+    ContDiff ℝ (∞)
+      (fun H : EnergySpace N =>
+        tiltedReplicaPartitionDet
+          (N := N) (q := q) H coupling) := by
+  unfold tiltedReplicaPartitionDet gibbs_average_n_det
+  apply ContDiff.sum
+  intro σs _
+  apply ContDiff.mul
+  · exact contDiff_const
+  · have hpmf :
+        ∀ l : Fin 2,
+          ContDiff ℝ (∞)
+            (fun H : EnergySpace N =>
+              gibbs_pmf N H (σs l)) :=
+      fun l =>
+        contDiff_gibbs_pmf
+          (N := N) (σ := σs l)
+    fun_prop
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+private lemma contDiff_coupledFreeEnergyDet_beforeIBP
+    (Λ : ℝ) :
+    ContDiff ℝ (∞)
+      (fun H : EnergySpace N =>
+        coupledFreeEnergyDet
+          (N := N) (q := q) H Λ) := by
+  have hpart :=
+    contDiff_tiltedReplicaPartitionDet_beforeIBP
+      (N := N) (q := q) (Λ / 2)
+
+  have hlog :
+      ContDiff ℝ (∞)
+        (fun H : EnergySpace N =>
+          Real.log
+            (tiltedReplicaPartitionDet
+              (N := N) (q := q) H (Λ / 2))) :=
+    hpart.log fun H =>
+      ne_of_gt
+        (tiltedReplicaPartitionDet_pos
+          (N := N) (q := q) H (Λ / 2))
+
+  have hscaled :
+      ContDiff ℝ (∞)
+        (fun H : EnergySpace N =>
+          (1 / (2 * (N : ℝ))) *
+            Real.log
+              (tiltedReplicaPartitionDet
+                (N := N) (q := q) H (Λ / 2))) := by
+    simpa [smul_eq_mul] using
+      (ContDiff.const_smul
+        (𝕜 := ℝ) (n := (∞)) (R := ℝ)
+        (c := 1 / (2 * (N : ℝ))) hlog)
+
+  simpa [coupledFreeEnergyDet] using
+    (contDiff_free_energy_density (N := N)).add hscaled
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+private lemma tiltedLog_hasDerivAt_coupling_beforeIBP
+    (H : EnergySpace N) (coupling : ℝ) :
+    HasDerivAt
+      (fun c =>
+        Real.log
+          (tiltedReplicaPartitionDet
+            (N := N) (q := q) H c))
+      ((N : ℝ) *
+        tiltedCenteredOverlapSqDet
+          (N := N) (q := q) H coupling)
+      coupling := by
+  classical
+  let A : ReplicaSpace N 2 → ℝ := fun σs =>
+    (N : ℝ) * centeredOverlapSq N q σs
+  let W : ReplicaSpace N 2 → ℝ := fun σs =>
+    ∏ l, gibbs_pmf N H (σs l)
+
+  have hterm (σs : ReplicaSpace N 2) :
+      HasDerivAt
+        (fun c : ℝ =>
+          Real.exp (c * A σs) * W σs)
+        (A σs *
+          Real.exp (coupling * A σs) *
+          W σs)
+        coupling := by
+    have hi :
+        HasDerivAt
+          (fun c : ℝ => c * A σs)
+          (A σs)
+          coupling := by
+      simpa using
+        (hasDerivAt_id coupling).mul_const (A σs)
+    simpa [
+      Function.comp_def,
+      mul_comm,
+      mul_left_comm
+    ] using
+      ((Real.hasDerivAt_exp _).comp coupling hi).mul_const
+        (W σs)
+
+  have hpart :
+      HasDerivAt
+        (fun c =>
+          tiltedReplicaPartitionDet
+            (N := N) (q := q) H c)
+        (∑ σs : ReplicaSpace N 2,
+          A σs *
+            Real.exp (coupling * A σs) *
+            W σs)
+        coupling := by
+    simpa [
+      tiltedReplicaPartitionDet,
+      gibbs_average_n_det,
+      A,
+      W,
+      mul_assoc
+    ] using
+      (HasDerivAt.fun_sum
+        (u := Finset.univ)
+        (A := fun σs =>
+          fun c : ℝ =>
+            Real.exp (c * A σs) * W σs)
+        (A' := fun σs =>
+          A σs *
+            Real.exp (coupling * A σs) *
+            W σs)
+        (x := coupling)
+        (fun σs _ => hterm σs))
+
+  have hlog :=
+    (Real.hasDerivAt_log
+      (ne_of_gt
+        (tiltedReplicaPartitionDet_pos
+          (N := N) (q := q) H coupling))).comp
+      coupling hpart
+
+  simpa [
+    Function.comp_def,
+    tiltedCenteredOverlapSqDet,
+    tiltedReplicaPartitionDet,
+    gibbs_average_n_det,
+    A,
+    W,
+    div_eq_mul_inv,
+    Finset.mul_sum,
+    mul_comm,
+    mul_left_comm,
+    mul_assoc
+  ] using hlog
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+private lemma norm_tiltedLog_deriv_le_beforeIBP
+    (H : EnergySpace N) (coupling : ℝ) :
+    ‖(N : ℝ) *
+        tiltedCenteredOverlapSqDet
+          (N := N) (q := q) H coupling‖
+      ≤
+    ∑ σs : ReplicaSpace N 2,
+      (N : ℝ) * centeredOverlapSq N q σs := by
+  classical
+  let A : ReplicaSpace N 2 → ℝ := fun σs =>
+    (N : ℝ) * centeredOverlapSq N q σs
+  let P : ReplicaSpace N 2 → ℝ := fun σs =>
+    Real.exp (coupling * A σs) *
+      ∏ l, gibbs_pmf N H (σs l)
+
+  have hA (σs : ReplicaSpace N 2) :
+      0 ≤ A σs :=
+    mul_nonneg
+      (Nat.cast_nonneg N)
+      (sq_nonneg _)
+
+  have hP (σs : ReplicaSpace N 2) :
+      0 ≤ P σs :=
+    mul_nonneg
+      (Real.exp_nonneg _)
+      (Finset.prod_nonneg fun l _ =>
+        gibbs_pmf_nonneg
+          (N := N) (H := H) (σ := σs l))
+
+  have hsum :
+      0 < ∑ σs : ReplicaSpace N 2, P σs := by
+    simpa [
+      P,
+      A,
+      tiltedReplicaPartitionDet,
+      gibbs_average_n_det,
+      mul_comm,
+      mul_left_comm,
+      mul_assoc
+    ] using
+      tiltedReplicaPartitionDet_pos
+        (N := N) (q := q) H coupling
+
+  have hnonneg :
+      0 ≤
+        (N : ℝ) *
+          tiltedCenteredOverlapSqDet
+            (N := N) (q := q) H coupling := by
+    apply mul_nonneg (Nat.cast_nonneg N)
+    unfold tiltedCenteredOverlapSqDet gibbs_average_n_det
+    exact div_nonneg
+      (Finset.sum_nonneg fun σs _ =>
+        mul_nonneg
+          (mul_nonneg
+            (sq_nonneg _)
+            (Real.exp_nonneg _))
+          (Finset.prod_nonneg fun l _ =>
+            gibbs_pmf_nonneg
+              (N := N) (H := H) (σ := σs l)))
+      (le_of_lt
+        (tiltedReplicaPartitionDet_pos
+          (N := N) (q := q) H coupling))
+
+  rw [Real.norm_eq_abs, abs_of_nonneg hnonneg]
+
+  have hratio (σs : ReplicaSpace N 2) :
+      P σs / (∑ τ, P τ) ≤ 1 :=
+    (div_le_one hsum).2
+      (Finset.single_le_sum
+        (fun τ _ => hP τ)
+        (Finset.mem_univ σs))
+
+  have hle :
+      (∑ σs : ReplicaSpace N 2,
+        A σs * (P σs / ∑ τ, P τ))
+        ≤
+      ∑ σs : ReplicaSpace N 2, A σs := by
+    apply Finset.sum_le_sum
+    intro σs _
+    simpa using
+      mul_le_mul_of_nonneg_left
+        (hratio σs)
+        (hA σs)
+
+  simpa [
+    tiltedCenteredOverlapSqDet,
+    tiltedReplicaPartitionDet,
+    gibbs_average_n_det,
+    A,
+    P,
+    div_eq_mul_inv,
+    Finset.mul_sum,
+    mul_comm,
+    mul_left_comm,
+    mul_assoc
+  ] using hle
+
+private lemma measurable_H_t_beforeIBP (s : ℝ) :
+    Measurable
+      (H_t
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) s) := by
+  have hU :=
+    sk.hU.repr_measurable.const_smul
+      (Real.sqrt s)
+  have hV :=
+    sim.hV.repr_measurable.const_smul
+      (Real.sqrt (1 - s))
+  simpa [H_t, H_gauss] using
+    (hU.add hV).add measurable_const
+
+private lemma measurable_dH_t_beforeIBP (s : ℝ) :
+    Measurable
+      (fun w =>
+        dH_t
+          (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) s w) := by
+  have hU :=
+    sk.hU.repr_measurable.const_smul
+      (1 / (2 * Real.sqrt s))
+  have hV :=
+    sim.hV.repr_measurable.const_smul
+      (1 / (2 * Real.sqrt (1 - s)))
+  simpa [dH_t, sub_eq_add_neg, neg_smul] using
+    hU.add hV.neg
+
+private lemma integrable_freeEnergy_H_t_beforeIBP
+    (s : ℝ) :
+    Integrable
+      (fun w =>
+        free_energy_density (N := N)
+          (H_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) s w))
+      ℙ := by
+  let C : ℝ :=
+    (SpinGlass.hasModerateGrowth_free_energy_density N).C
+  let aU : ℝ := |Real.sqrt s|
+  let aV : ℝ := |Real.sqrt (1 - s)|
+
+  let boundFun : Ω → ℝ := fun w =>
+    C *
+      (1 +
+        aU * ‖sk.U w‖ +
+        aV * ‖sim.V w‖ +
+        ‖H_field (N := N) (h := h)‖)
+
+  have hmeas :
+      AEStronglyMeasurable
+        (fun w =>
+          free_energy_density (N := N)
+            (H_t
+              (N := N) (β := β) (h := h) (q := q)
+              (sk := sk) (sim := sim) s w))
+        ℙ :=
+    ((contDiff_free_energy_density (N := N)).continuous.measurable.comp
+      (measurable_H_t_beforeIBP
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) s)).aestronglyMeasurable
+
+  have hU_int :
+      Integrable (fun w => ‖sk.U w‖) ℙ :=
+    PhysLean.Probability.GaussianIBP.integrable_norm_of_gaussian
+      (g := sk.U) sk.hU
+
+  have hV_int :
+      Integrable (fun w => ‖sim.V w‖) ℙ :=
+    PhysLean.Probability.GaussianIBP.integrable_norm_of_gaussian
+      (g := sim.V) sim.hV
+
+  have hbound_int :
+      Integrable boundFun ℙ := by
+    dsimp only [boundFun]
+    apply Integrable.const_mul
+    exact
+      ((((integrable_const (1 : ℝ)).add
+          (hU_int.const_mul aU)).add
+          (hV_int.const_mul aV)).add
+          (integrable_const _))
+
+  refine hbound_int.mono' hmeas ?_
+  filter_upwards with w
+
+  have hnorm :
+      ‖H_t
+          (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) s w‖
+        ≤
+      aU * ‖sk.U w‖ +
+        aV * ‖sim.V w‖ +
+        ‖H_field (N := N) (h := h)‖ := by
+    calc
+      ‖H_t
+          (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) s w‖
+          ≤
+        ‖(Real.sqrt s) • sk.U w‖ +
+          ‖(Real.sqrt (1 - s)) • sim.V w‖ +
+          ‖H_field (N := N) (h := h)‖ := by
+            s…22 tokens truncated…(Real.sqrt s) • sk.U w +
+                  (Real.sqrt (1 - s)) • sim.V w)
+                (H_field (N := N) (h := h))).trans
+                (by
+                  gcongr
+                  exact norm_add_le
+                    ((Real.sqrt s) • sk.U w)
+                    ((Real.sqrt (1 - s)) • sim.V w))
+      _ =
+        aU * ‖sk.U w‖ +
+          aV * ‖sim.V w‖ +
+          ‖H_field (N := N) (h := h)‖ := by
+            simp [
+              aU,
+              aV,
+              norm_smul,
+              Real.norm_eq_abs
+            ]
+
+  have hgrowth :=
+    (SpinGlass.hasModerateGrowth_free_energy_density N).F_bound
+      (H_t
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) s w)
+
+  have hm :
+      (SpinGlass.hasModerateGrowth_free_energy_density N).m = 1 := by
+    rfl
+
+  rw [hm, pow_one] at hgrowth
+  rw [Real.norm_eq_abs]
+
+  have hinside :
+      1 +
+          ‖H_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) s w‖
+        ≤
+      1 +
+        aU * ‖sk.U w‖ +
+        aV * ‖sim.V w‖ +
+        ‖H_field (N := N) (h := h)‖ := by
+    linarith
+
+  have hmul :=
+    mul_le_mul_of_nonneg_left hinside
+      (le_of_lt
+        (SpinGlass.hasModerateGrowth_free_energy_density N).Cpos)
+
+  exact hgrowth.trans
+    (by simpa only [C, boundFun] using hmul)
+
+private lemma integrable_tiltedLog_H_t_beforeIBP
+    (s coupling : ℝ) :
+    Integrable
+      (fun w =>
+        Real.log
+          (tiltedReplicaPartitionDet
+            (N := N) (q := q)
+            (H_t
+              (N := N) (β := β) (h := h) (q := q)
+              (sk := sk) (sim := sim) s w)
+            coupling))
+      ℙ := by
+  let B : ℝ :=
+    ∑ σs : ReplicaSpace N 2,
+      (N : ℝ) * centeredOverlapSq N q σs
+
+  have hlog_cont :
+      Continuous
+        (fun H : EnergySpace N =>
+          Real.log
+            (tiltedReplicaPartitionDet
+              (N := N) (q := q) H coupling)) := by
+    exact
+      ((contDiff_tiltedReplicaPartitionDet_beforeIBP
+          (N := N) (q := q) coupling).log
+        (fun H =>
+          ne_of_gt
+            (tiltedReplicaPartitionDet_pos
+              (N := N) (q := q) H coupling))).continuous
+
+  have hmeas :
+      AEStronglyMeasurable
+        (fun w =>
+          Real.log
+            (tiltedReplicaPartitionDet
+              (N := N) (q := q)
+              (H_t
+                (N := N) (β := β) (h := h) (q := q)
+                (sk := sk) (sim := sim) s w)
+              coupling))
+        ℙ :=
+    (hlog_cont.measurable.comp
+      (measurable_H_t_beforeIBP
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) s)).aestronglyMeasurable
+
+  apply Integrable.of_bound hmeas (B * ‖coupling‖)
+  filter_upwards with w
+
+  let H :=
+    H_t
+      (N := N) (β := β) (h := h) (q := q)
+      (sk := sk) (sim := sim) s w
+
+  have hzero :
+      Real.log
+          (tiltedReplicaPartitionDet
+            (N := N) (q := q) H 0)
+        = 0 := by
+    rw [show
+      tiltedReplicaPartitionDet
+          (N := N) (q := q) H 0
+        = 1 by
+      unfold tiltedReplicaPartitionDet gibbs_average_n_det
+      simp only [zero_mul, Real.exp_zero, one_mul]
+      exact
+        sum_prod_gibbs_pmf_eq_one
+          (N := N) (n := 2) H]
+    exact Real.log_one
+
+  have hm :=
+    convex_univ.norm_image_sub_le_of_norm_hasDerivWithin_le
+      (f := fun c =>
+        Real.log
+          (tiltedReplicaPartitionDet
+            (N := N) (q := q) H c))
+      (f' := fun c =>
+        (N : ℝ) *
+          tiltedCenteredOverlapSqDet
+            (N := N) (q := q) H c)
+      (C := B)
+      (x := 0)
+      (y := coupling)
+      (fun c _ =>
+        (tiltedLog_hasDerivAt_coupling_beforeIBP
+          (N := N) (q := q) H c).hasDerivWithinAt)
+      (fun c _ =>
+        norm_tiltedLog_deriv_le_beforeIBP
+          (N := N) (q := q) H c)
+      (by simp)
+      (by simp)
+
+  simpa [H, hzero] using hm
+
+private lemma coupledFreeEnergy_eq_integral_det_beforeIBP
+    (s Λ : ℝ) :
+    coupledFreeEnergy
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) s Λ
+      =
+    ∫ w,
+      coupledFreeEnergyDet
+        (N := N) (q := q)
+        (H_t
+          (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) s w)
+        Λ
+      ∂ℙ := by
+  have hfree :=
+    integrable_freeEnergy_H_t_beforeIBP
+      (N := N) (β := β) (h := h) (q := q)
+      (sk := sk) (sim := sim) s
+
+  have hlog :=
+    integrable_tiltedLog_H_t_beforeIBP
+      (N := N) (β := β) (h := h) (q := q)
+      (sk := sk) (sim := sim) s (Λ / 2)
+
+  change
+    (∫ w,
+      free_energy_density (N := N)
+        (H_t
+          (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) s w)
+      ∂ℙ) +
+      (1 / (2 * (N : ℝ))) *
+        (∫ w,
+          Real.log
+            (tiltedReplicaPartitionDet
+              (N := N) (q := q)
+              (H_t
+                (N := N) (β := β) (h := h) (q := q)
+                (sk := sk) (sim := sim) s w)
+              (Λ / 2))
+          ∂ℙ)
+      =
+    ∫ w,
+      free_energy_density (N := N)
+          (H_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) s w) +
+        (1 / (2 * (N : ℝ))) *
+          Real.log
+            (tiltedReplicaPartitionDet
+              (N := N) (q := q)
+              (H_t
+                (N := N) (β := β) (h := h) (q := q)
+                (sk := sk) (sim := sim) s w)
+              (Λ / 2))
+      ∂ℙ
+
+  rw [← integral_const_mul]
+  rw [← integral_add hfree (hlog.const_mul _)]
+
+private lemma integral_coupledFreeEnergyDet_hasDerivAt_beforeIBP
+    {t Λ : ℝ} (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
+    HasDerivAt
+      (fun s =>
+        ∫ w,
+          coupledFreeEnergyDet
+            (N := N) (q := q)
+            (H_t
+              (N := N) (β := β) (h := h) (q := q)
+              (sk := sk) (sim := sim) s w)
+            Λ
+          ∂ℙ)
+      (∫ w,
+        fderiv ℝ
+          (fun H : EnergySpace N =>
+            coupledFreeEnergyDet
+              (N := N) (q := q) H Λ)
+          (H_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) t w)
+          (dH_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) t w)
+        ∂ℙ)
+      t := by
+  classical
+
+  have ht0 : 0 < t := ht.1
+  have ht1 : t < 1 := ht.2
+  have h1t0 : 0 < 1 - t := by
+    linarith
+
+  let ε : ℝ := min t (1 - t) / 2
+
+  have hε_pos : 0 < ε := by
+    have hmin : 0 < min t (1 - t) :=
+      lt_min ht0 h1t0
+    dsimp only [ε]
+    linarith
+
+  have hball_Ioo :
+      ∀ x ∈ Metric.ball t ε,
+        x ∈ Set.Ioo (0 : ℝ) 1 := by
+    intro x hx
+
+    have hx' : |x - t| < ε := by
+      simpa [
+        Metric.mem_ball,
+        Real.dist_eq,
+        abs_sub_comm
+      ] using hx
+
+    have hxleft : x - t < ε :=
+      (abs_sub_lt_iff.1 hx').1
+    have hxright : t - x < ε :=
+      (abs_sub_lt_iff.1 hx').2
+
+    have hε_le_t : ε ≤ t / 2 := by
+      have hmin : min t (1 - t) ≤ t :=
+        min_le_left _ _
+      dsimp only [ε]
+      linarith
+
+    have hε_le_1t : ε ≤ (1 - t) / 2 := by
+      have hmin : min t (1 - t) ≤ 1 - t :=
+        min_le_right _ _
+      dsimp only [ε]
+      linarith
+
+    constructor
+    · have hxlower : t - ε < x := by
+        linarith
+      have : 0 < t - ε := by
+        linarith
+      exact lt_trans this hxlower
+    · have hxupper : x < t + ε := by
+        linarith
+      have : t + ε < 1 := by
+        linarith
+      exact lt_trans hxupper this
+
+  let F : ℝ → Ω → ℝ := fun s w =>
+    coupledFreeEnergyDet
+      (N := N) (q := q)
+      (H_t
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) s w)
+      Λ
+
+  let F' : ℝ → Ω → ℝ := fun s w =>
+    fderiv ℝ
+      (fun H : EnergySpace N =>
+        coupledFreeEnergyDet
+          (N := N) (q := q) H Λ)
+      (H_t
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) s w)
+      (dH_t
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) s w)
+
+  have hΦ :
+      ContDiff ℝ (∞)
+        (fun H : EnergySpace N =>
+          coupledFreeEnergyDet
+            (N := N) (q := q) H Λ) :=
+    contDiff_coupledFreeEnergyDet_beforeIBP
+      (N := N) (q := q) Λ
+
+  have hF_meas :
+      ∀ᶠ s in nhds t,
+        AEStronglyMeasurable (F s) ℙ := by
+    refine Filter.Eventually.of_forall ?_
+    intro s
+    exact
+      (hΦ.continuous.measurable.comp
+        (measurable_H_t_beforeIBP
+          (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) s)).aestronglyMeasurable
+
+  have hF_int :
+      Integrable (F t) ℙ := by
+    have hfree :=
+      integrable_freeEnergy_H_t_beforeIBP
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) t
+
+    have hlog :=
+      integrable_tiltedLog_H_t_beforeIBP
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) t (Λ / 2)
+
+    simpa [F, coupledFreeEnergyDet] using
+      hfree.add
+        (hlog.const_mul (1 / (2 * (N : ℝ))))
+
+  let Cf : ℝ := 1 / (N : ℝ)
+  let cU : ℝ := 1 / (2 * Real.sqrt (t / 2))
+  let cV : ℝ :=
+    1 / (2 * Real.sqrt ((1 - t) / 2))
+
+  let bound : Ω → ℝ := fun w =>
+    Cf *
+      (cU * ‖sk.U w‖ +
+        cV * ‖sim.V w‖)
+
+  have hCf_nonneg : 0 ≤ Cf := by
+    positivity
+  have hcU_nonneg : 0 ≤ cU := by
+    positivity
+  have hcV_nonneg : 0 ≤ cV := by
+    positivity
+
+  have hbound_int :
+      Integrable bound ℙ := by
+    have hU_int :
+        Integrable (fun w => ‖sk.U w‖) ℙ :=
+      PhysLean.Probability.GaussianIBP.integrable_norm_of_gaussian
+        (g := sk.U) sk.hU
+
+    have hV_int :
+        Integrable (fun w => ‖sim.V w‖) ℙ :=
+      PhysLean.Probability.GaussianIBP.integrable_norm_of_gaussian
+        (g := sim.V) sim.hV
+
+    have h1 :
+        Integrable
+          (fun w => cU * ‖sk.U w‖)
+          ℙ :=
+      hU_int.const_mul cU
+
+    have h2 :
+        Integrable
+          (fun w => cV * ‖sim.V w‖)
+          ℙ :=
+      hV_int.const_mul cV
+
+    have hsum :
+        Integrable
+          (fun w =>
+            cU * ‖sk.U w‖ +
+              cV * ‖sim.V w‖)
+          ℙ :=
+      h1.add h2
+
+    simpa [bound, Cf, mul_add, mul_assoc] using
+      hsum.const_mul Cf
+
+  have hF'_meas :
+      AEStronglyMeasurable (F' t) ℙ := by
+    have hHt_meas :=
+      measurable_H_t_beforeIBP
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) t
+
+    have hdHt_meas :=
+      measurable_dH_t_beforeIBP
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) t
+
+    have hfderiv_cont :
+        Continuous
+          (fun p : EnergySpace N × EnergySpace N =>
+            fderiv ℝ
+              (fun H : EnergySpace N =>
+                coupledFreeEnergyDet
+                  (N := N) (q := q) H Λ)
+              p.1 p.2) := by
+      have hcont :
+          Continuous
+            (fun H : EnergySpace N =>
+              fderiv ℝ
+                (fun K : EnergySpace N =>
+                  coupledFreeEnergyDet
+                    (N := N) (q := q) K Λ)
+                H) :=
+        hΦ.continuous_fderiv (by simp)
+
+      exact
+        ((hcont.comp continuous_fst).clm_apply continuous_snd)
+
+    have hpair :
+        Measurable
+          (fun w =>
+            (H_t
+                (N := N) (β := β) (h := h) (q := q)
+                (sk := sk) (sim := sim) t w,
+              dH_t
+                (N := N) (β := β) (h := h) (q := q)
+                (sk := sk) (sim := sim) t w)) :=
+      hHt_meas.prodMk hdHt_meas
+
+    exact
+      (hfderiv_cont.measurable.comp hpair).aestronglyMeasurable
+
+  have h_bound :
+      ∀ᵐ w ∂ℙ,
+        ∀ x ∈ Metric.ball t ε,
+          ‖F' x w‖ ≤ bound w := by
+    refine ae_of_all _ ?_
+    intro w x hx
+
+    have hxIoo :
+        x ∈ Set.Ioo (0 : ℝ) 1 :=
+      hball_Ioo x hx
+
+    have hCoeffU :
+        |1 / (2 * Real.sqrt x)| ≤ cU := by
+      have hx_lower : t / 2 ≤ x := by
+        have hx' : |x - t| < ε := by
+          simpa [
+            Metric.mem_ball,
+            Real.dist_eq,
+            abs_sub_comm
+          ] using hx
+        have hxright : t - x < ε :=
+          (abs_sub_lt_iff.1 hx').2
+
+        have hε_le_t : ε ≤ t / 2 := by
+          have hmin : min t (1 - t) ≤ t :=
+            min_le_left _ _
+          dsimp only [ε]
+          linarith
+
+        linarith
+
+      have hsqrt_le :
+          Real.sqrt (t / 2) ≤ Real.sqrt x :=
+        Real.sqrt_le_sqrt hx_lower
+
+      have hpos :
+          0 < 2 * Real.sqrt (t / 2) := by
+        have : 0 < Real.sqrt (t / 2) :=
+          Real.sqrt_pos.2 (by linarith)
+        linarith
+
+      have hle :
+          2 * Real.sqrt (t / 2) ≤
+            2 * Real.sqrt x := by
+        linarith
+
+      have hdiv :
+          1 / (2 * Real.sqrt x) ≤
+            1 / (2 * Real.sqrt (t / 2)) := by
+        simpa [one_div] using
+          one_div_le_one_div_of_le hpos hle
+
+      have hnonneg :
+          0 ≤ 1 / (2 * Real.sqrt x) := by
+        positivity
+
+      simpa [
+        cU,
+        abs_of_nonneg hnonneg,
+        abs_of_nonneg (Real.sqrt_nonneg x)
+      ] using hdiv
+
+    have hCoeffV :
+        |1 / (2 * Real.sqrt (1 - x))| ≤ cV := by
+      have h1x_lower :
+          (1 - t) / 2 ≤ 1 - x := by
+        have hx' : |x - t| < ε := by
+          simpa [
+            Metric.mem_ball,
+            Real.dist_eq,
+            abs_sub_comm
+          ] using hx
+
+        have hxleft : x - t < ε :=
+          (abs_sub_lt_iff.1 hx').1
+
+        have hε_le_1t :
+            ε ≤ (1 - t) / 2 := by
+          have hmin :
+              min t (1 - t) ≤ 1 - t :=
+            min_le_right _ _
+          dsimp only [ε]
+          linarith
+
+        linarith
+
+      have hsqrt_le :
+          Real.sqrt ((1 - t) / 2) ≤
+            Real.sqrt (1 - x) :=
+        Real.sqrt_le_sqrt h1x_lower
+
+      have hpos :
+          0 <
+            2 * Real.sqrt ((1 - t) / 2) := by
+        have :
+            0 <
+              Real.sqrt ((1 - t) / 2) :=
+          Real.sqrt_pos.2 (by linarith)
+        linarith
+
+      have hle :
+          2 * Real.sqrt ((1 - t) / 2) ≤
+            2 * Real.sqrt (1 - x) := by
+        linarith
+
+      have hdiv :
+          1 / (2 * Real.sqrt (1 - x)) ≤
+            1 /
+              (2 * Real.sqrt ((1 - t) / 2)) := by
+        simpa [one_div] using
+          one_div_le_one_div_of_le hpos hle
+
+      have hnonneg :
+          0 ≤
+            1 / (2 * Real.sqrt (1 - x)) := by
+        positivity
+
+      simpa [
+        cV,
+        abs_of_nonneg hnonneg,
+        abs_of_nonneg (Real.sqrt_nonneg (1 - x))
+      ] using hdiv
+
+    have hdH_norm :
+        ‖dH_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) x w‖
+          ≤
+        cU * ‖sk.U w‖ +
+          cV * ‖sim.V w‖ := by
+      have htri :
+          ‖dH_t
+              (N := N) (β := β) (h := h) (q := q)
+              (sk := sk) (sim := sim) x w‖
+            ≤
+          |1 / (2 * Real.sqrt x)| * ‖sk.U w‖ +
+            |1 / (2 * Real.sqrt (1 - x))| *
+              ‖sim.V w‖ := by
+        simpa [
+          dH_t,
+          sub_eq_add_neg,
+          norm_smul,
+          abs_mul
+        ] using
+          (norm_add_le
+            ((1 / (2 * Real.sqrt x)) • sk.U w)
+            (-(1 / (2 * Real.sqrt (1 - x))) • sim.V w))
+
+      exact htri.trans
+        (by
+          gcongr)
+
+    have hop :
+        ‖fderiv ℝ
+            (fun H : EnergySpace N =>
+              coupledFreeEnergyDet
+                (N := N) (q := q) H Λ)
+            (H_t
+              (N := N) (β := β) (h := h) (q := q)
+              (sk := sk) (sim := sim) x w)‖
+          ≤ Cf := by
+      simpa [Cf] using
+        opNorm_fderiv_coupledFreeEnergyDet_le_beforeIBP
+          (N := N) (q := q)
+          (H_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) x w)
+          Λ
+
+    have happ :
+        ‖F' x w‖
+          ≤
+        Cf *
+          ‖dH_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) x w‖ := by
+      have hle :=
+        ContinuousLinearMap.le_opNorm
+          (fderiv ℝ
+            (fun H : EnergySpace N =>
+              coupledFreeEnergyDet
+                (N := N) (q := q) H Λ)
+            (H_t
+              (N := N) (β := β) (h := h) (q := q)
+              (sk := sk) (sim := sim) x w))
+          (dH_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) x w)
+
+      have hmul :=
+        mul_le_mul_of_nonneg_right hop
+          (norm_nonneg
+            (dH_t
+              (N := N) (β := β) (h := h) (q := q)
+              (sk := sk) (sim := sim) x w))
+
+      simpa [F'] using hle.trans hmul
+
+    have :
+        ‖F' x w‖
+          ≤
+        Cf *
+          (cU * ‖sk.U w‖ +
+            cV * ‖sim.V w‖) :=
+      happ.trans
+        (mul_le_mul_of_nonneg_left
+          hdH_norm hCf_nonneg)
+
+    simpa [bound] using this
+
+  have h_diff :
+      ∀ᵐ w ∂ℙ,
+        ∀ x ∈ Metric.ball t ε,
+          HasDerivAt
+            (fun s => F s w)
+            (F' x w)
+            x := by
+    refine ae_of_all _ ?_
+    intro w x hx
+
+    have hxIoo :
+        x ∈ Set.Ioo (0 : ℝ) 1 :=
+      hball_Ioo x hx
+
+    have hHt_diff :
+        HasDerivAt
+          (fun s =>
+            H_t
+              (N := N) (β := β) (h := h) (q := q)
+              (sk := sk) (sim := sim) s w)
+          (dH_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) x w)
+          x :=
+      hasDerivAt_H_t
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) x hxIoo w
+
+    have houter :
+        HasFDerivAt
+          (fun H : EnergySpace N =>
+            coupledFreeEnergyDet
+              (N := N) (q := q) H Λ)
+          (fderiv ℝ
+            (fun H : EnergySpace N =>
+              coupledFreeEnergyDet
+                (N := N) (q := q) H Λ)
+            (H_t
+              (N := N) (β := β) (h := h) (q := q)
+              (sk := sk) (sim := sim) x w))
+          (H_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) x w) :=
+      (hΦ.differentiable (by simp)).differentiableAt.hasFDerivAt
+
+    simpa [F, F'] using
+      houter.comp_hasDerivAt x hHt_diff
+
+  have hmain :=
+    (hasDerivAt_integral_of_dominated_loc_of_deriv_le
+      (μ := (ℙ : Measure Ω))
+      (F := F)
+      (F' := F')
+      (x₀ := t)
+      (bound := bound)
+      (s := Metric.ball t ε)
+      (hs := Metric.ball_mem_nhds t hε_pos)
+      hF_meas
+      hF_int
+      hF'_meas
+      h_bound
+      hbound_int
+      h_diff).2
+
+  simpa [F] using hmain
+
 /-- Differentiate the coupled smart path before Gaussian integration by parts.
 
 This isolates differentiation under the disorder integral from the covariance calculation.
@@ -1742,7 +3139,686 @@ lemma coupledFreeEnergy_hasDerivAt_time_before_ibp
           (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω)
           (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω)
         ∂ℙ) t := by
+  have hraw :=
+    integral_coupledFreeEnergyDet_hasDerivAt_beforeIBP
+      (N := N) (β := β) (h := h) (q := q)
+      (sk := sk) (sim := sim) ht
+
+  have hfun :
+      (fun s =>
+        coupledFreeEnergy
+          (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) s Λ)
+        =
+      (fun s =>
+        ∫ w,
+          coupledFreeEnergyDet
+            (N := N) (q := q)
+            (H_t
+              (N := N) (β := β) (h := h) (q := q)
+              (sk := sk) (sim := sim) s w)
+            Λ
+          ∂ℙ) := by
+    funext s
+    exact
+      coupledFreeEnergy_eq_integral_det_beforeIBP
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) s Λ
+
+  rw [hfun]
+  exact hraw
+
+/-- Evaluation of a Hamiltonian direction on the two replicas. -/
+noncomputable def pairEval
+    (u : EnergySpace N) : ReplicaFun N 2 :=
+  fun σs => u (σs 0) + u (σs 1)
+
+/-- Expectation under the normalized quadratically tilted two-replica Gibbs law. -/
+noncomputable def tiltedReplicaAverageDet
+    (H : EnergySpace N) (coupling : ℝ)
+    (f : ReplicaFun N 2) : ℝ :=
+  gibbs_average_n_det (N := N) (n := 2) H
+      (fun σs =>
+        f σs *
+          Real.exp
+            (coupling * (N : ℝ) * centeredOverlapSq N q σs)) /
+    tiltedReplicaPartitionDet (N := N) (q := q) H coupling
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+lemma tiltedReplicaAverageDet_one
+    (H : EnergySpace N) (coupling : ℝ) :
+    tiltedReplicaAverageDet
+        (N := N) (q := q) H coupling (fun _ => 1) = 1 := by
+  unfold tiltedReplicaAverageDet tiltedReplicaPartitionDet
+  simp only [one_mul]
+  exact div_self
+    (ne_of_gt
+      (tiltedReplicaPartitionDet_pos
+        (N := N) (q := q) H coupling))
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+lemma tiltedReplicaAverageDet_centeredOverlapSq
+    (H : EnergySpace N) (coupling : ℝ) :
+    tiltedReplicaAverageDet
+        (N := N) (q := q) H coupling
+        (centeredOverlapSq N q) =
+      tiltedCenteredOverlapSqDet
+        (N := N) (q := q) H coupling := by
+  rfl
+
+/-- Explicit Hessian of the normalized coupled two-replica free energy.
+
+The formula is the covariance of `pairEval u` and `pairEval v` under the tilted law,
+with normalization `1 / (2N)`.
+-/
+noncomputable def coupledHessianDet
+    (H : EnergySpace N) (coupling : ℝ)
+    (u v : EnergySpace N) : ℝ :=
+  (1 / (2 * (N : ℝ))) *
+    (tiltedReplicaAverageDet
+        (N := N) (q := q) H coupling
+        (fun σs =>
+          pairEval (N := N) u σs * pairEval (N := N) v σs) -
+      tiltedReplicaAverageDet
+        (N := N) (q := q) H coupling
+        (pairEval (N := N) u) *
+      tiltedReplicaAverageDet
+        (N := N) (q := q) H coupling
+        (pairEval (N := N) v))
+
+/-! ## Calculus layer
+
+These are the first lemmas to prove. They use finite sums, the quotient rule,
+`fderiv_gibbs_average_n_det_apply`, and positivity of
+`tiltedReplicaPartitionDet`.
+-/
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+lemma fderiv_tiltedReplicaPartitionDet_apply_workspace
+    (H u : EnergySpace N) (coupling : ℝ) :
+    fderiv ℝ
+        (fun K : EnergySpace N =>
+          tiltedReplicaPartitionDet (N := N) (q := q) K coupling)
+        H u =
+      2 * (∑ τ : Config N, gibbs_pmf N H τ * u τ) *
+          tiltedReplicaPartitionDet (N := N) (q := q) H coupling -
+        gibbs_average_n_det (N := N) (n := 2) H
+          (fun σs =>
+            pairEval (N := N) u σs *
+              Real.exp (coupling * (N : ℝ) * centeredOverlapSq N q σs)) := by
+  unfold gibbs_average_n_det pairEval;
+  unfold gibbs_pmf tiltedReplicaPartitionDet;
+  rw [ fderiv_gibbs_average_n_det_apply ];
+  unfold gibbs_average_n_det gibbs_pmf;
+  simp +decide [ Fin.sum_univ_two, mul_sub, sub_mul, mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _, Finset.sum_mul ]
+
+/-
+First Hamiltonian derivative of the deterministic coupled free energy.
+-/
+lemma fderiv_coupledFreeEnergyDet_apply_workspace
+    (H u : EnergySpace N) (Λ : ℝ) :
+    fderiv ℝ
+        (fun K : EnergySpace N =>
+          coupledFreeEnergyDet (N := N) (q := q) K Λ)
+        H u =
+      -(1 / (2 * (N : ℝ))) *
+        tiltedReplicaAverageDet
+          (N := N) (q := q) H (Λ / 2)
+          (pairEval (N := N) u) := by
+  /-
+  Suggested proof:
+
+  * unfold `coupledFreeEnergyDet`;
+  * differentiate `free_energy_density` using
+    `fderiv_free_energy_density_apply`;
+  * differentiate the logarithm of the tilted partition function;
+  * use `fderiv_gibbs_average_n_det_apply` for its Hamiltonian derivative;
+  * collect the two ordinary Gibbs-average terms, which cancel;
+  * divide by the positive tilted partition function.
+  -/
+  erw [ fderiv_add ] <;> norm_num [ fderiv_free_energy_density_apply ];
+  · erw [ fderiv_mul, fderiv.log ] <;> norm_num [ fderiv_tiltedReplicaPartitionDet_apply_workspace ];
+    · unfold tiltedReplicaAverageDet; ring;
+      rw [ mul_inv_cancel_right₀ ( ne_of_gt ( tiltedReplicaPartitionDet_pos _ _ _ _ ) ) ] ; ring;
+    · -- The sum of differentiable functions is differentiable.
+      have h_diff : ∀ σs : ReplicaSpace N 2, DifferentiableAt ℝ (fun K : EnergySpace N => Real.exp (Λ / 2 * N * centeredOverlapSq N q σs) * ∏ l, Real.exp (-K.ofLp (σs l)) / Z N K) H := by
+        intro σs;
+        have h_diff : ∀ l : Fin 2, DifferentiableAt ℝ (fun K : EnergySpace N => Real.exp (-K.ofLp (σs l)) / Z N K) H := by
+          exact fun l => differentiableAt_gibbs_pmf N H (σs l)
+        fun_prop
+      exact DifferentiableAt.fun_sum fun i _ => h_diff i
+    · exact ne_of_gt (tiltedReplicaPartitionDet_pos N q H (Λ / 2));
+    · refine' DifferentiableAt.log _ _;
+      · unfold tiltedReplicaPartitionDet gibbs_average_n_det;
+        unfold gibbs_pmf; norm_num [ Real.exp_ne_zero, Finset.prod_eq_zero_iff, Real.differentiableAt_exp, differentiableAt_pi ] ;
+        have h_diff : ∀ x : ReplicaSpace N 2, DifferentiableAt ℝ (fun K : EnergySpace N => Real.exp (-K.ofLp (x 0)) * Real.exp (-K.ofLp (x 1)) / Z N K ^ 2) H := by
+          intro x;
+          apply_rules [ DifferentiableAt.div, DifferentiableAt.mul, DifferentiableAt.exp, differentiableAt_id, differentiableAt_const ];
+          · fun_prop;
+          · fun_prop;
+          · apply_rules [ DifferentiableAt.inv, DifferentiableAt.pow, differentiableAt_id ];
+            · unfold Z;
+              fun_prop;
+            · exact ne_of_gt ( sq_pos_of_pos ( Z_pos N H ) );
+        fun_prop;
+      · exact ne_of_gt ( tiltedReplicaPartitionDet_pos N q H ( Λ / 2 ) );
+  · apply_rules [ DifferentiableAt.mul, DifferentiableAt.log ] <;> norm_num;
+    · unfold Z ;
+      fun_prop;
+    · exact ne_of_gt ( Finset.sum_pos ( fun _ _ => Real.exp_pos _ ) Finset.univ_nonempty );
+  · apply_rules [ DifferentiableAt.mul, DifferentiableAt.log ] <;> norm_num [ tiltedReplicaPartitionDet_pos ];
+    · unfold tiltedReplicaPartitionDet;
+      unfold gibbs_average_n_det; norm_num [ gibbs_average_n, gibbs_pmf ] ;
+      have h_diff : DifferentiableAt ℝ (fun x : EnergySpace N => (∑ σ : Config N, Real.exp (-x σ))) H := by
+        fun_prop;
+      simp_all +decide [ ← mul_div_assoc, ← Finset.sum_div _ _ _ ];
+      refine' DifferentiableAt.mul _ _;
+      · fun_prop;
+      · exact DifferentiableAt.inv ( h_diff.pow 2 ) ( ne_of_gt ( sq_pos_of_pos ( Finset.sum_pos ( fun _ _ => Real.exp_pos _ ) ( Finset.univ_nonempty ) ) ) );
+    · exact ne_of_gt (tiltedReplicaPartitionDet_pos N q H (Λ / 2))
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+lemma differentiableAt_tiltedReplicaAverageDet_workspace
+    (H : EnergySpace N) (coupling : ℝ) (f : ReplicaFun N 2) :
+    DifferentiableAt ℝ
+      (fun K : EnergySpace N =>
+        tiltedReplicaAverageDet (N := N) (q := q) K coupling f) H := by
+  refine' DifferentiableAt.congr_of_eventuallyEq _ _;
+  exact fun K => (∑ σs : ReplicaSpace N 2, (∏ l : Fin 2, gibbs_pmf N K (σs l)) * f σs * Real.exp (coupling * (N : ℝ) * centeredOverlapSq N q σs)) / (∑ σs : ReplicaSpace N 2, (∏ l : Fin 2, gibbs_pmf N K (σs l)) * Real.exp (coupling * (N : ℝ) * centeredOverlapSq N q σs));
+  · refine' DifferentiableAt.mul _ _;
+    · have h_diff : ∀ σs : ReplicaSpace N 2, DifferentiableAt ℝ (fun K : EnergySpace N => ∏ l : Fin 2, gibbs_pmf N K (σs l)) H := by
+        exact fun σs => differentiableAt_prod_gibbs_pmf N 2 H σs;
+      fun_prop;
+    · refine' DifferentiableAt.inv _ _;
+      · have h_diff : ∀ σ : Config N, DifferentiableAt ℝ (fun K : EnergySpace N => gibbs_pmf N K σ) H := by
+          exact fun σ => differentiableAt_gibbs_pmf N H σ;
+        fun_prop (disch := norm_num);
+      · refine' ne_of_gt ( lt_of_lt_of_le _ ( Finset.single_le_sum ( fun x _ => _ ) ( Finset.mem_univ ( fun _ => fun _ => Bool.true ) ) ) );
+        · exact mul_pos ( Finset.prod_pos fun _ _ => gibbs_pmf_pos _ _ _ ) ( Real.exp_pos _ );
+        · exact mul_nonneg ( Finset.prod_nonneg fun _ _ => div_nonneg ( Real.exp_nonneg _ ) ( Finset.sum_nonneg fun _ _ => Real.exp_nonneg _ ) ) ( Real.exp_nonneg _ );
+  · filter_upwards [ ] with K ; unfold tiltedReplicaAverageDet gibbs_average_n_det tiltedReplicaPartitionDet ; simp +decide [ Finset.prod_mul_distrib, mul_assoc ] ;
+    unfold gibbs_average_n_det; simp +decide [ mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _ ] ;
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+lemma fderiv_tiltedReplicaAverageDet_apply_workspace
+    (H u v : EnergySpace N) (coupling : ℝ) :
+    fderiv ℝ
+        (fun K : EnergySpace N =>
+          tiltedReplicaAverageDet (N := N) (q := q) K coupling
+            (pairEval (N := N) u))
+        H v =
+      - (tiltedReplicaAverageDet (N := N) (q := q) H coupling
+            (fun σs => pairEval (N := N) u σs * pairEval (N := N) v σs) -
+          tiltedReplicaAverageDet (N := N) (q := q) H coupling
+            (pairEval (N := N) u) *
+          tiltedReplicaAverageDet (N := N) (q := q) H coupling
+            (pairEval (N := N) v)) := by
+  unfold tiltedReplicaAverageDet;
+  erw [ fderiv_mul ];
+  · erw [ fderiv_comp _ ( show DifferentiableAt ℝ ( fun x => x⁻¹ ) _ from differentiableAt_inv _ ) ];
+    · simp +decide [ div_eq_mul_inv, mul_assoc, mul_comm, mul_left_comm, fderiv_tiltedReplicaPartitionDet_apply_workspace, fderiv_gibbs_average_n_det_apply ];
+      unfold gibbs_average_n_det; ring;
+      unfold pairEval; simp +decide [ Finset.sum_add_distrib, mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _, Finset.sum_mul _ _ _ ] ; ring;
+      by_cases h : tiltedReplicaPartitionDet N q H coupling = 0 <;> simp_all +decide [ sq, mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _ ] ; ring;
+      simp +decide [ Finset.sum_add_distrib, mul_assoc, mul_comm, mul_left_comm, Finset.mul_sum _ _ _ ] ; ring;
+    · apply_rules [ ContDiff.differentiable ];
+      apply_rules [ ContDiff.sum, ContDiff.mul, ContDiff.exp, contDiff_const, contDiff_id ];
+      any_goals exact ⊤;
+      · intro i hi; apply_rules [ ContDiff.mul, ContDiff.exp, contDiff_const, contDiff_id ] ;
+        · fun_prop;
+        · refine' ContDiff.inv _ _;
+          · refine' ContDiff.sum fun σ _ => ContDiff.exp _;
+            fun_prop;
+          · exact fun x => ne_of_gt <| Finset.sum_pos ( fun _ _ => Real.exp_pos _ ) Finset.univ_nonempty;
+        · fun_prop;
+        · refine' ContDiff.inv _ _;
+          · refine' ContDiff.sum fun σ _ => ContDiff.exp _;
+            fun_prop;
+          · exact fun x => ne_of_gt <| Finset.sum_pos ( fun _ _ => Real.exp_pos _ ) Finset.univ_nonempty;
+      · norm_num;
+    · refine' ne_of_gt ( _ );
+      exact tiltedReplicaPartitionDet_pos _ _ _ _;
+  · unfold gibbs_average_n_det;
+    simp +decide [ gibbs_pmf ];
+    have h_diff : DifferentiableAt ℝ (fun K : EnergySpace N => Z N K) H := by
+      unfold Z ;
+      fun_prop (disch := norm_num);
+    have h_diff : ∀ x : ReplicaSpace N 2, DifferentiableAt ℝ (fun K : EnergySpace N => Real.exp (-K.ofLp (x 0)) * Real.exp (-K.ofLp (x 1)) / Z N K ^ 2) H := by
+      intro x;
+      refine' DifferentiableAt.mul _ _;
+      · fun_prop;
+      · exact DifferentiableAt.inv ( h_diff.pow 2 ) ( by exact ne_of_gt ( sq_pos_of_pos ( Z_pos ( N := N ) H ) ) );
+    fun_prop;
+  · apply DifferentiableAt.inv;
+    · unfold tiltedReplicaPartitionDet;
+      unfold gibbs_average_n_det;
+      unfold gibbs_pmf; norm_num [ Finset.prod_mul_distrib, Real.exp_ne_zero ] ;
+      have h_diff : ∀ σ : Config N, DifferentiableAt ℝ (fun K : EnergySpace N => Real.exp (-K.ofLp σ)) H := by
+        fun_prop (disch := solve_by_elim);
+      have h_diff : DifferentiableAt ℝ (fun K : EnergySpace N => Z N K) H := by
+        convert DifferentiableAt.sum fun σ _ => h_diff σ using 1;
+        swap;
+        exacts [ Finset.univ, funext fun K => by simp +decide [ Z ] ];
+      have h_diff : ∀ x : ReplicaSpace N 2, DifferentiableAt ℝ (fun K : EnergySpace N => Real.exp (-K.ofLp (x 0)) * Real.exp (-K.ofLp (x 1)) / Z N K ^ 2) H := by
+        intro x;
+        apply_rules [ DifferentiableAt.div, DifferentiableAt.mul, DifferentiableAt.exp, differentiableAt_id, differentiableAt_const ];
+        exact DifferentiableAt.inv ( h_diff.pow 2 ) ( pow_ne_zero _ <| ne_of_gt <| Z_pos N H );
+      fun_prop;
+    · refine' ne_of_gt ( _ );
+      exact tiltedReplicaPartitionDet_pos _ _ _ _
+
+/-
+Second Hamiltonian derivative of the deterministic coupled free energy.
+-/
+lemma fderiv_coupledFirstVariation_apply_workspace
+    (H u v : EnergySpace N) (Λ : ℝ) :
+    fderiv ℝ
+        (fun K : EnergySpace N =>
+          fderiv ℝ
+            (fun L : EnergySpace N =>
+              coupledFreeEnergyDet (N := N) (q := q) L Λ)
+            K u)
+        H v =
+      coupledHessianDet
+        (N := N) (q := q) H (Λ / 2) u v := by
+  /-
+  Rewrite the inner derivative with
+  `fderiv_coupledFreeEnergyDet_apply_workspace` and differentiate the
+  normalized tilted expectation. The quotient rule gives exactly the
+  tilted covariance in `coupledHessianDet`.
+  -/
+  have h_deriv : (fderiv ℝ (fun K => (fderiv ℝ (fun L => coupledFreeEnergyDet N q L Λ) K) u) H) v = -(1 / (2 * (N : ℝ))) * (fderiv ℝ (fun K => tiltedReplicaAverageDet N q K (Λ / 2) (pairEval N u)) H) v := by
+    rw [ show ( fun K => ( fderiv ℝ ( fun L => coupledFreeEnergyDet N q L Λ ) K ) u ) = fun K => - ( 1 / ( 2 * N ) ) * tiltedReplicaAverageDet N q K ( Λ / 2 ) ( pairEval N u ) from funext fun K => fderiv_coupledFreeEnergyDet_apply_workspace N q K u Λ ];
+    rw [ fderiv_const_mul ] ; norm_num [ differentiableAt_tiltedReplicaAverageDet_workspace ];
+    exact differentiableAt_tiltedReplicaAverageDet_workspace N q H (Λ / 2) (pairEval N u)
+  rw [ h_deriv, fderiv_tiltedReplicaAverageDet_apply_workspace ] ; unfold coupledHessianDet ; ring
+
+/-! ## Gaussian-IBP trace layer -/
+
+/-- Joint Gaussian IBP for the smart-path derivative, expressed as a canonical
+configuration-basis covariance trace.
+
+This should be proved with `UV`, `isGaussianHilbert_UV`, and
+`gaussian_integration_by_parts_hilbert_cov_op`, following the existing proof of
+`pressure_derivative_ibp_trace` and the scratch development in
+`.tmp_gaussian_interp.lean`.
+-/
+lemma coupledFreeEnergy_time_ibp_trace_workspace
+    (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
+    {t Λ : ℝ} (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
+    (∫ w,
+        fderiv ℝ
+          (fun H : EnergySpace N =>
+            coupledFreeEnergyDet (N := N) (q := q) H Λ)
+          (H_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) t w)
+          (dH_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) t w)
+        ∂ℙ) =
+      (1 / 2) *
+        ∫ w,
+          (∑ σ : Config N, ∑ τ : Config N,
+            (sk_cov_kernel N β σ τ -
+              simple_cov_kernel N β (fun x => q * x) σ τ) *
+              coupledHessianDet
+                (N := N) (q := q)
+                (H_t
+                  (N := N) (β := β) (h := h) (q := q)
+                  (sk := sk) (sim := sim) t w)
+                (Λ / 2)
+                (std_basis N σ) (std_basis N τ))
+          ∂ℙ := by
+  /-
+  Recommended structure:
+
+  1. set `a = sqrt t`, `b = sqrt (1-t)`,
+     `a' = 1/(2*sqrt t)`, `b' = -1/(2*sqrt (1-t))`;
+  2. package `(sk.U, sim.V)` using `isGaussianHilbert_UV hIndep`;
+  3. apply Gaussian IBP to the first variation of `coupledFreeEnergyDet`;
+  4. rewrite the derivative using
+     `fderiv_coupledFirstVariation_apply_workspace`;
+  5. split the product-Hilbert eigenbasis trace into the U and V blocks;
+  6. change each eigenbasis trace to the canonical `std_basis` trace;
+  7. use `sk.cov_eq` and `sim.cov_eq`;
+  8. simplify `a*a' = 1/2` and `b*b' = -1/2`.
+  -/
   sorry
+
+/-! ## Finite replica algebra -/
+
+lemma covKernelDiff_eq_centered_sq_workspace
+    (σ τ : Config N) :
+    sk_cov_kernel N β σ τ -
+        simple_cov_kernel N β (fun x => q * x) σ τ =
+      ((N : ℝ) * β ^ 2 / 2) *
+        ((overlap N σ τ - q) ^ 2 - q ^ 2) := by
+  simp [sk_cov_kernel, simple_cov_kernel]
+  ring
+
+lemma sum_crossPairCenteredOverlapSq_workspace
+    (σs : ReplicaSpace N 4) :
+    (centeredOverlap
+        (N := N) (q := q)
+        (0 : Fin 4) (2 : Fin 4) σs) ^ 2 +
+      (centeredOverlap
+        (N := N) (q := q)
+        (0 : Fin 4) (3 : Fin 4) σs) ^ 2 +
+      (centeredOverlap
+        (N := N) (q := q)
+        (1 : Fin 4) (2 : Fin 4) σs) ^ 2 +
+      (centeredOverlap
+        (N := N) (q := q)
+        (1 : Fin 4) (3 : Fin 4) σs) ^ 2 =
+      4 * crossPairCenteredOverlapSq
+        (N := N) (q := q) σs := by
+  unfold crossPairCenteredOverlapSq
+  ring
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+lemma sum_pairEval_std_basis_product_workspace
+    (D : Config N → Config N → ℝ) (σs : ReplicaSpace N 2) :
+    (∑ σ : Config N, ∑ τ : Config N,
+      D σ τ * pairEval N (std_basis N σ) σs *
+        pairEval N (std_basis N τ) σs) =
+      D (σs 0) (σs 0) + D (σs 0) (σs 1) +
+        D (σs 1) (σs 0) + D (σs 1) (σs 1) := by
+  simp only [pairEval, std_basis]
+  ring_nf
+  simp_rw [Finset.sum_add_distrib]
+  simp
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+lemma sum_pairEval_std_basis_cross_workspace
+    (D : Config N → Config N → ℝ)
+    (σs ρs : ReplicaSpace N 2) :
+    (∑ σ : Config N, ∑ τ : Config N,
+      D σ τ * pairEval N (std_basis N σ) σs *
+        pairEval N (std_basis N τ) ρs) =
+      D (σs 0) (ρs 0) + D (σs 0) (ρs 1) +
+        D (σs 1) (ρs 0) + D (σs 1) (ρs 1) := by
+  simp only [pairEval, std_basis]
+  ring_nf
+  simp_rw [Finset.sum_add_distrib]
+  simp
+
+/-- Pointwise finite-volume trace identity.
+
+This is the main algebraic goal. Unfold `coupledHessianDet`; the first tilted
+expectation gives `(1-q)^2 + tilted Q₁₂²`, while the product of tilted means is
+represented by four replicas and gives `2 * coupledCrossMomentDet` after all
+normalizations are collected.
+-/
+lemma coupled_trace_algebra_workspace
+    (hN : 0 < N)
+    (H : EnergySpace N) (coupling : ℝ) :
+    (1 / 2) *
+        (∑ σ : Config N, ∑ τ : Config N,
+          (sk_cov_kernel N β σ τ -
+            simple_cov_kernel N β (fun x => q * x) σ τ) *
+            coupledHessianDet
+              (N := N) (q := q) H coupling
+              (std_basis N σ) (std_basis N τ)) =
+      (β ^ 2 / 4) *
+        ((1 - q) ^ 2 +
+          tiltedCenteredOverlapSqDet
+            (N := N) (q := q) H coupling -
+          2 * coupledCrossMomentDet
+            (N := N) (q := q) H coupling) := by
+  /-
+  Useful ingredients:
+
+  * `covKernelDiff_eq_centered_sq_workspace`;
+  * `overlap_self hN`;
+  * `sum_gibbs_pmf` and `sum_prod_gibbs_pmf_eq_one`;
+  * `tiltedReplicaPartitionDet_pos`;
+  * an explicit equivalence
+    `ReplicaSpace N 4 ≃ ReplicaSpace N 2 × ReplicaSpace N 2`;
+  * `sum_crossPairCenteredOverlapSq_workspace`.
+  -/
+  sorry
+
+/-! ## Integrability of the normalized finite-state observables -/
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+lemma fourReplicaTiltWeight_sum_workspace
+    (H : EnergySpace N) (coupling : ℝ) :
+    (∑ σs : ReplicaSpace N 4,
+      Real.exp (coupling * (N : ℝ) *
+        ((centeredOverlap (N := N) (q := q) (0 : Fin 4) (1 : Fin 4) σs) ^ 2 +
+          (centeredOverlap (N := N) (q := q) (2 : Fin 4) (3 : Fin 4) σs) ^ 2)) *
+        ∏ l, gibbs_pmf N H (σs l)) =
+      (tiltedReplicaPartitionDet (N := N) (q := q) H coupling) ^ 2 := by
+  rw [ sq, tiltedReplicaPartitionDet ];
+  unfold gibbs_average_n_det;
+  simp +decide only [Fin.prod_univ_two, Finset.sum_mul];
+  simp +decide only [Finset.mul_sum _ _ _];
+  rw [ ← Finset.sum_product' ];
+  refine' Finset.sum_bij ( fun x _ => ( fun i => x ( if i = 0 then 0 else 1 ), fun i => x ( if i = 0 then 2 else 3 ) ) ) _ _ _ _ <;> simp +decide;
+  · simp +decide [ funext_iff, Fin.forall_fin_succ ];
+    tauto;
+  · exact fun a b => ⟨ fun i => if i = 0 then a 0 else if i = 1 then a 1 else if i = 2 then b 0 else b 1, by ext i; fin_cases i <;> rfl, by ext i; fin_cases i <;> rfl ⟩;
+  · simp +decide [ Fin.prod_univ_four, centeredOverlapSq ];
+    simp +decide [ centeredOverlap, overlap ] ; intros ; ring;
+    simpa only [ mul_assoc, ← Real.exp_add ] using by ring;
+
+lemma measurable_H_t_workspace (t : ℝ) :
+    Measurable
+      (H_t (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) t) := by
+  have hU : Measurable sk.U := sk.hU.repr_measurable
+  have hV : Measurable sim.V := sim.hV.repr_measurable
+  simpa [H_t, H_gauss] using
+    ((hU.const_smul (Real.sqrt t)).add
+      (hV.const_smul (Real.sqrt (1 - t)))).add measurable_const
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+lemma measurable_coupledCrossMomentDet_workspace (coupling : ℝ) :
+    Measurable
+      (fun H : EnergySpace N =>
+        coupledCrossMomentDet (N := N) (q := q) H coupling) := by
+  refine' Measurable.mul _ _;
+  · apply_rules [ Finset.measurable_sum, Finset.measurable_prod ];
+    refine' fun σ _ => Measurable.mul _ _;
+    · fun_prop;
+    · exact Finset.measurable_prod _ fun _ _ => ( contDiff_gibbs_pmf N ( σ _ ) |> ContDiff.continuous |> Continuous.measurable );
+  · refine' Measurable.inv ( Measurable.pow_const _ _ );
+    refine' Finset.measurable_sum _ fun σs _ => _;
+    refine' Measurable.mul _ _;
+    · exact measurable_const;
+    · exact Finset.measurable_prod _ fun _ _ => ( contDiff_gibbs_pmf ( N := N ) ( σ := σs _ ) |> ContDiff.continuous |> Continuous.measurable )
+
+lemma integrable_tiltedCenteredOverlapSqDet_Ht_workspace
+    (t coupling : ℝ) :
+    Integrable
+      (fun ω =>
+        tiltedCenteredOverlapSqDet
+          (N := N) (q := q)
+          (H_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) t ω)
+          coupling) ℙ := by
+  /-
+  The tilted quantity is a normalized expectation of a fixed observable on a
+  finite state space. Bound it by
+
+    `∑ σs : ReplicaSpace N 2, |centeredOverlapSq N q σs|`.
+  -/
+  refine' MeasureTheory.Integrable.mono' _ _ _;
+  refine' fun ω => ( ∑ σs : ReplicaSpace N 2, ( N : ℝ ) * centeredOverlapSq N q σs );
+  · norm_num;
+  · have h_measurable : Measurable (fun H : EnergySpace N => tiltedCenteredOverlapSqDet (N := N) (q := q) H coupling) := by
+      refine' Measurable.div _ _;
+      · refine' Finset.measurable_sum _ fun σs _ => _;
+        refine' Measurable.mul _ _;
+        · fun_prop;
+        · refine' Finset.measurable_prod _ fun i _ => _;
+          refine' Measurable.div _ _;
+          · fun_prop;
+          · refine' Finset.measurable_sum _ fun σ _ => _;
+            fun_prop;
+      · refine' Finset.measurable_sum _ fun σs _ => _;
+        refine' Measurable.mul _ _;
+        · exact measurable_const;
+        · refine' Finset.measurable_prod _ fun i _ => _;
+          refine' Measurable.div _ _;
+          · fun_prop;
+          · exact Finset.measurable_sum _ fun _ _ => Real.continuous_exp.measurable.comp ( measurable_neg.comp ( by measurability ) );
+    have h_measurable : Measurable (fun ω => H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω) := by
+      apply_rules [ Measurable.add, Measurable.smul, measurable_const ];
+      · exact sk.hU.repr_measurable;
+      · convert sim.hV.repr_measurable using 1;
+    exact Measurable.aestronglyMeasurable ( by measurability );
+  · refine' Filter.Eventually.of_forall fun ω => _;
+    rw [ tiltedCenteredOverlapSqDet ];
+    rw [ gibbs_average_n_det, tiltedReplicaPartitionDet ];
+    rw [ gibbs_average_n_det ];
+    rw [ Real.norm_of_nonneg ( div_nonneg ( Finset.sum_nonneg fun _ _ => mul_nonneg ( mul_nonneg ( by exact sq_nonneg _ ) ( Real.exp_nonneg _ ) ) ( Finset.prod_nonneg fun _ _ => by exact div_nonneg ( Real.exp_nonneg _ ) ( Finset.sum_nonneg fun _ _ => Real.exp_nonneg _ ) ) ) ( Finset.sum_nonneg fun _ _ => mul_nonneg ( Real.exp_nonneg _ ) ( Finset.prod_nonneg fun _ _ => by exact div_nonneg ( Real.exp_nonneg _ ) ( Finset.sum_nonneg fun _ _ => Real.exp_nonneg _ ) ) ) ) ];
+    rw [ div_le_iff₀ ];
+    · rw [ Finset.sum_mul _ _ _ ];
+      refine' Finset.sum_le_sum fun i _ => _;
+      refine' le_trans _ ( mul_le_mul_of_nonneg_left ( Finset.single_le_sum ( fun a _ => mul_nonneg ( Real.exp_nonneg _ ) ( Finset.prod_nonneg fun b _ => _ ) ) ( Finset.mem_univ i ) ) _ );
+      · rw [ mul_assoc ];
+        gcongr;
+        · exact mul_nonneg ( Real.exp_nonneg _ ) ( Finset.prod_nonneg fun _ _ => div_nonneg ( Real.exp_nonneg _ ) ( Finset.sum_nonneg fun _ _ => Real.exp_nonneg _ ) );
+        · exact le_mul_of_one_le_left ( sq_nonneg _ ) ( mod_cast NeZero.pos N );
+      · exact div_nonneg ( Real.exp_nonneg _ ) ( Finset.sum_nonneg fun _ _ => Real.exp_nonneg _ );
+      · exact mul_nonneg ( Nat.cast_nonneg _ ) ( sq_nonneg _ );
+    · refine' Finset.sum_pos _ _ <;> simp +decide [ gibbs_pmf ];
+      exact fun _ => mul_pos ( Real.exp_pos _ ) ( div_pos ( mul_pos ( Real.exp_pos _ ) ( Real.exp_pos _ ) ) ( sq_pos_of_pos ( Z_pos _ _ ) ) )
+
+lemma integrable_coupledCrossMomentDet_Ht_workspace
+    (t coupling : ℝ) :
+    Integrable
+      (fun ω =>
+        coupledCrossMomentDet
+          (N := N) (q := q)
+          (H_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) t ω)
+          coupling) ℙ := by
+  /-
+  Again use the normalized finite four-replica law and bound by the finite sum
+  of `|crossPairCenteredOverlapSq|`.
+  -/
+  refine' MeasureTheory.Integrable.mono' _ _ _;
+  refine' fun ω => ∑ σs : ReplicaSpace N 4, |crossPairCenteredOverlapSq N q σs|;
+  · norm_num;
+  · exact Measurable.aestronglyMeasurable ( by exact Measurable.comp ( measurable_coupledCrossMomentDet_workspace N q coupling ) ( measurable_H_t_workspace N β h q sk sim t ) );
+  · refine' Filter.Eventually.of_forall fun ω => _;
+    unfold coupledCrossMomentDet gibbs_average_n_det;
+    rw [ norm_div ];
+    refine' div_le_of_le_mul₀ _ _ _;
+    · positivity;
+    · exact Finset.sum_nonneg fun _ _ => abs_nonneg _;
+    · refine' le_trans ( norm_sum_le _ _ ) _;
+      rw [ Finset.sum_mul _ _ _ ];
+      refine' Finset.sum_le_sum fun σs _ => _;
+      rw [ ← fourReplicaTiltWeight_sum_workspace ];
+      refine' le_trans _ ( mul_le_mul_of_nonneg_left ( le_abs_self _ ) ( abs_nonneg _ ) );
+      refine' le_trans _ ( mul_le_mul_of_nonneg_left ( Finset.single_le_sum ( fun σs _ => _ ) ( Finset.mem_univ σs ) ) ( abs_nonneg _ ) );
+      · simp +decide [ abs_mul, abs_of_nonneg, Real.exp_nonneg, gibbs_pmf_nonneg ];
+        rw [ mul_assoc ];
+      · exact mul_nonneg ( Real.exp_nonneg _ ) ( Finset.prod_nonneg fun _ _ => div_nonneg ( Real.exp_nonneg _ ) ( Finset.sum_nonneg fun _ _ => Real.exp_nonneg _ ) )
+
+/-! ## Evaluate the raw differentiated integral -/
+
+lemma coupledFreeEnergy_time_derivative_ibp_formula_workspace
+    (hN : 0 < N)
+    (hIndep : IndepFun sk.U sim.V (ℙ : Measure Ω))
+    {t Λ : ℝ} (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
+    (∫ ω,
+        fderiv ℝ
+          (fun H : EnergySpace N =>
+            coupledFreeEnergyDet (N := N) (q := q) H Λ)
+          (H_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) t ω)
+          (dH_t
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) t ω)
+        ∂ℙ) =
+      (β ^ 2 / 4) *
+        ((1 - q) ^ 2 +
+          tiltedCenteredOverlapSq
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) t (Λ / 2) -
+          2 * coupledCrossMoment
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) t (Λ / 2)) := by
+  let T : Ω → ℝ := fun ω =>
+    tiltedCenteredOverlapSqDet
+      (N := N) (q := q)
+      (H_t
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) t ω)
+      (Λ / 2)
+  let X : Ω → ℝ := fun ω =>
+    coupledCrossMomentDet
+      (N := N) (q := q)
+      (H_t
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) t ω)
+      (Λ / 2)
+
+  have hT : Integrable T ℙ := by
+    simpa only [T] using
+      integrable_tiltedCenteredOverlapSqDet_Ht_workspace
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) t (Λ / 2)
+
+  have hX : Integrable X ℙ := by
+    simpa only [X] using
+      integrable_coupledCrossMomentDet_Ht_workspace
+        (N := N) (β := β) (h := h) (q := q)
+        (sk := sk) (sim := sim) t (Λ / 2)
+
+  have hconst : Integrable (fun _ : Ω => (1 - q) ^ 2) ℙ :=
+    integrable_const _
+
+  have hsum : Integrable (fun ω => (1 - q) ^ 2 + T ω) ℙ :=
+    hconst.add hT
+
+  have htwiceX : Integrable (fun ω => 2 * X ω) ℙ :=
+    hX.const_mul 2
+
+  rw [coupledFreeEnergy_time_ibp_trace_workspace
+    (N := N) (β := β) (h := h) (q := q)
+    (sk := sk) (sim := sim) hIndep ht]
+
+  rw [← integral_const_mul]
+
+  rw [integral_congr_ae
+    (ae_of_all _ fun ω =>
+      coupled_trace_algebra_workspace
+        (N := N) (β := β) (q := q) hN
+        (H_t
+          (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) t ω)
+        (Λ / 2))]
+
+  rw [integral_const_mul]
+  rw [integral_sub hsum htwiceX]
+  rw [integral_add hconst hT]
+  rw [integral_const]
+  rw [integral_const_mul]
+
+  simp only [probReal_univ, one_smul]
+
+  change
+    (β ^ 2 / 4) *
+        ((1 - q) ^ 2 + (∫ ω, T ω ∂ℙ) - 2 * (∫ ω, X ω ∂ℙ)) =
+      (β ^ 2 / 4) *
+        ((1 - q) ^ 2 +
+          tiltedCenteredOverlapSq
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) t (Λ / 2) -
+          2 * coupledCrossMoment
+            (N := N) (β := β) (h := h) (q := q)
+            (sk := sk) (sim := sim) t (Λ / 2))
+
+  simp only [T, X, tiltedCenteredOverlapSq, coupledCrossMoment]
 
 /-- Gaussian IBP formula for the time derivative of the coupled free energy.
 
@@ -1777,7 +3853,13 @@ lemma coupledFreeEnergy_hasDerivAt_time_ibp
           2 * coupledCrossMoment
             (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
             t (Λ / 2))) t := by
-  sorry
+  rw [← coupledFreeEnergy_time_derivative_ibp_formula_workspace
+    (N := N) (β := β) (h := h) (q := q)
+    (sk := sk) (sim := sim) hN hIndep ht]
+
+  exact coupledFreeEnergy_hasDerivAt_time_before_ibp
+    (N := N) (β := β) (h := h) (q := q)
+    (sk := sk) (sim := sim) ht
 
 /-- The logarithmic quadratic moment is differentiable in the smart-path variable away from
 the endpoints.
