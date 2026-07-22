@@ -3890,6 +3890,8 @@ lemma coupledFreeEnergy_time_ibp_trace_workspace
     (N := N) (q := q) sim.V sim.hV
     (a • sk.U w + b • sim.V w + field) Λ]
   simp_rw [sk.cov_eq, sim.cov_eq]
+  simp_rw [sub_mul]
+  simp only [Finset.sum_sub_distrib]
   ring
 
 /-! ## Finite replica algebra -/
