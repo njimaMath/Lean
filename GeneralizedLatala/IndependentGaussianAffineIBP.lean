@@ -7,7 +7,9 @@ open scoped ENNReal NNReal
 namespace SpinGlass
 namespace GeneralizedLatala
 
-variable {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
+universe uΩ uι
+
+variable {Ω : Type uΩ} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
 
 /-!
 A self-contained proof of `independent_gaussian_affine_ibp`.
@@ -21,9 +23,10 @@ configuration basis using `sk.cov_eq` and `sim.cov_eq`.
 section GenericHelpers
 
 variable {N : ℕ}
-variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+variable {E : Type*} [NormedAddCommGroup E]
 
 private lemma affineIBP_fderiv_firstVariation_affine
+    [NormedSpace ℝ E]
     (A : E →L[ℝ] EnergySpace N) (field v : EnergySpace N) (x y : E) :
     fderiv ℝ
         (fun z : E =>
@@ -148,6 +151,7 @@ private lemma affineIBP_abs_hessian_free_energy_le
 
 private noncomputable def
     affineIBP_hasModerateGrowth_firstVariation_affine
+    [NormedSpace ℝ E]
     (A : E →L[ℝ] EnergySpace N)
     (field v : EnergySpace N) :
     PhysLean.Probability.GaussianIBP.HasModerateGrowth
@@ -307,8 +311,8 @@ private lemma affineIBP_gaussian_ibp_gradient_linear
             Fi i (g w) := by
     rw [show g w =
         ∑ i : hg.ι,
-          (PhysLean.Probability.GaussianIBP.coord
-            hg.w g i w) • hg.w i by
+          ((PhysLean.Probability.GaussianIBP.coord
+            hg.w g i w : ℝ) • hg.w i) by
       simpa [
         PhysLean.Probability.GaussianIBP.coord,
         hg.w.repr_apply_apply,
@@ -323,14 +327,16 @@ private lemma affineIBP_gaussian_ibp_gradient_linear
     intro i
     exact
       PhysLean.Probability.GaussianIBP.integrable_coord_mul_F
-        hg (hFi_diff i) (hFi_growth i) i
+        hg (by simpa only [Fi] using hFi_diff i)
+          (by simpa only [Fi] using hFi_growth i) i
   have hRint : ∀ i : hg.ι, Integrable
       (fun w =>
         fderiv ℝ (Fi i) (g w) (hg.w i)) ℙ := by
     intro i
     exact
       PhysLean.Probability.GaussianIBP.integrable_fderiv_apply
-        hg (hFi_diff i) (hFi_growth i) (hg.w i)
+        hg (by simpa only [Fi] using hFi_diff i)
+          (by simpa only [Fi] using hFi_growth i) (hg.w i)
   calc
     (∫ w,
       fderiv ℝ F
@@ -351,7 +357,8 @@ private lemma affineIBP_gaussian_ibp_gradient_linear
       intro i _
       exact
         PhysLean.Probability.GaussianIBP.ProbabilityTheory.coord_IBP
-          hg (hFi_diff i) (hFi_growth i) i
+          hg (by simpa only [Fi] using hFi_diff i)
+            (by simpa only [Fi] using hFi_growth i) i
     _ = ∫ w, ∑ i : hg.ι, (hg.τ i : ℝ) *
           fderiv ℝ (Fi i)
             (g w) (hg.w i) ∂ℙ := by
@@ -367,8 +374,8 @@ end GenericHelpers
 section JointDisorder
 
 variable (N : ℕ) [NeZero N] (β h q : ℝ)
-variable (sk : SKDisorder (Ω := Ω) N β h)
-variable (sim : SimpleDisorder (Ω := Ω) N β q)
+variable (sk : SKDisorder.{uΩ, uι} (Ω := Ω) N β h)
+variable (sim : SimpleDisorder.{uΩ, uι} (Ω := Ω) N β q)
 
 private noncomputable def affineIBP_jointAffineCLM
     (a b : ℝ) :
@@ -536,18 +543,71 @@ private lemma affineIBP_joint_trace_split
     OrthonormalBasis.prod_apply,
     Fintype.sum_sum_type
   ]
-  simp only [
-    hessian_free_energy,
-    smul_eq_mul,
-    PiLp.smul_apply
-  ]
-  ring
+  simp only [Sum.elim_inl, Sum.elim_inr]
+  simp only [LinearMap.inl_apply, LinearMap.inr_apply, Function.comp_apply]
+  have map_add' : ∀ (x y : WithLp 2 (EnergySpace N × EnergySpace N)),
+      a • (x + y).ofLp.1 + b • (x + y).ofLp.2 = a • x.ofLp.1 + b • x.ofLp.2 + (a • y.ofLp.1 + b • y.ofLp.2) := by
+    intro x y
+    simp [Prod.fst_add, Prod.snd_add]
+    abel
+  have map_smul' : ∀ (m : ℝ) (x : WithLp 2 (EnergySpace N × EnergySpace N)),
+      a • (m • x).ofLp.1 + b • (m • x).ofLp.2 = (RingHom.id ℝ) m • (a • x.ofLp.1 + b • x.ofLp.2) := by
+    intro m x
+    simp only [smul_add, RingHom.id_apply]
+    simp only [smul_comm m a, smul_comm m b]
+    rfl
+  -- Simplify CLM applications on basis elements
+  have hCLM_U : ∀ x : sk.hU.ι,
+      affineIBP_jointAffineCLM (N := N) a b (WithLp.toLp 2 (sk.hU.w x, 0)) = a • sk.hU.w x := by
+    intro x
+    simp [affineIBP_jointAffineCLM]
+  have hCLM_V : ∀ x : sim.hV.ι,
+      affineIBP_jointAffineCLM (N := N) a b (WithLp.toLp 2 (0, sim.hV.w x)) = b • sim.hV.w x := by
+    intro x
+    simp [affineIBP_jointAffineCLM]
+  have hCLM_U' : ∀ x : sk.hU.ι,
+      affineIBP_jointAffineCLM (N := N) a' b' (WithLp.toLp 2 (sk.hU.w x, 0)) = a' • sk.hU.w x := by
+    intro x
+    simp [affineIBP_jointAffineCLM]
+  have hCLM_V' : ∀ x : sim.hV.ι,
+      affineIBP_jointAffineCLM (N := N) a' b' (WithLp.toLp 2 (0, sim.hV.w x)) = b' • sim.hV.w x := by
+    intro x
+    simp [affineIBP_jointAffineCLM]
+  simp only [affineIBP_jointAffineCLM] at *
+  simp_rw [hCLM_U, hCLM_V, hCLM_U', hCLM_V']
+  -- Use bilinearity: hessian_free_energy N H (a • u) (a' • v) = a * a' * hessian_free_energy N H u v
+  have bilin : ∀ (a a' : ℝ) (u v : EnergySpace N),
+      hessian_free_energy N H (a • u) (a' • v) = a * a' * hessian_free_energy N H u v := by
+    intro a a' u v
+    show (1 / (N : ℝ)) * (∑ σ, gibbs_pmf N H σ * (a • u) σ * (a' • v) σ -
+        (∑ σ, gibbs_pmf N H σ * (a • u) σ) * (∑ τ, gibbs_pmf N H τ * (a' • v) τ)) =
+        a * a' * ((1 / (N : ℝ)) * (∑ σ, gibbs_pmf N H σ * u σ * v σ -
+        (∑ σ, gibbs_pmf N H σ * u σ) * (∑ τ, gibbs_pmf N H τ * v τ)))
+    have h1 : ∀ x, (a • u).ofLp x = a * u.ofLp x := fun x => rfl
+    have h2 : ∀ x, (a' • v).ofLp x = a' * v.ofLp x := fun x => rfl
+    simp [h1, h2]
+    ring_nf
+    have eq1 : ∀ x, gibbs_pmf N H x * a * u.ofLp x * a' * v.ofLp x = a * a' * (gibbs_pmf N H x * u.ofLp x * v.ofLp x) := by intro x; ring
+    have eq2 : ∀ x, a * gibbs_pmf N H x * u.ofLp x = a * (gibbs_pmf N H x * u.ofLp x) := by intro x; ring
+    have eq3 : ∀ x, a' * gibbs_pmf N H x * v.ofLp x = a' * (gibbs_pmf N H x * v.ofLp x) := by intro x; ring
+    simp_rw [eq1, eq2, eq3]
+    rw [← Finset.mul_sum]
+    rw [← Finset.mul_sum]
+    rw [← Finset.mul_sum]
+    ring
+  simp_rw [bilin]
+  ring_nf
+  have eq1 : ∀ x, ↑(sk.hU.τ x) * a * a' * hessian_free_energy N H (sk.hU.w x) (sk.hU.w x) = a * a' * (↑(sk.hU.τ x) * hessian_free_energy N H (sk.hU.w x) (sk.hU.w x)) := by intro x; ring
+  have eq2 : ∀ x, ↑(sim.hV.τ x) * b * b' * hessian_free_energy N H (sim.hV.w x) (sim.hV.w x) = b * b' * (↑(sim.hV.τ x) * hessian_free_energy N H (sim.hV.w x) (sim.hV.w x)) := by intro x; ring
+  simp_rw [eq1, eq2]
+  rw [← Finset.mul_sum]
+  rw [← Finset.mul_sum]
 
 private lemma
     affineIBP_gaussian_hessian_trace_eq_std_basis
     {Ω' : Type*}
     [MeasureSpace Ω']
-    [IsProbabilityMeasure (ℙ' : Measure Ω')]
+    [IsProbabilityMeasure (volume : Measure Ω')]
     (g : Ω' → EnergySpace N)
     (hg :
       PhysLean.Probability.GaussianIBP.IsGaussianHilbert g)
@@ -562,23 +622,141 @@ private lemma
             (std_basis N τ) *
           hessian_free_energy N H
             (std_basis N σ) (std_basis N τ) := by
-  classical
-  simp only [
-    hessian_free_energy,
-    PhysLean.Probability.GaussianIBP.covOp_apply,
-    inner_std_basis_apply,
-    map_sum,
-    map_smul,
-    smul_eq_mul,
-    Finset.mul_sum,
-    Finset.sum_mul,
-    Finset.sum_sub_distrib
-  ]
-  simp only [
-    real_inner_comm,
-    hg.w.repr_apply_apply
-  ]
-  ring
+  -- Expand covOp using covOp_apply
+  simp_rw [PhysLean.Probability.GaussianIBP.covOp_apply]
+  -- Simplify inner product with sum
+  have hinner : ∀ σ τ : Config N,
+      inner (𝕜 := ℝ) (∑ i : hg.ι, ((hg.τ i : ℝ) * inner (𝕜 := ℝ) (std_basis N σ) (hg.w i)) • hg.w i) (std_basis N τ)
+    = ∑ i : hg.ι, (hg.τ i : ℝ) * inner (𝕜 := ℝ) (std_basis N σ) (hg.w i) * inner (𝕜 := ℝ) (hg.w i) (std_basis N τ) := by
+    intro σ τ
+    rw [sum_inner]
+    refine Finset.sum_congr rfl fun i _ => ?_
+    rw [inner_smul_left]
+    simp
+  -- Rewrite RHS using hinner
+  simp_rw [hinner]
+  -- Rearrange the sums
+  rw [Finset.sum_comm]
+  simp_rw [Finset.sum_mul]
+  -- Swap sums: ∑ x, ∑ x_1, ∑ i → ∑ i, ∑ x, ∑ x_1
+  symm
+  rw [Finset.sum_comm]
+  -- Now we have ∑ x_1, ∑ x, ∑ i where inner term has std_basis N x (the outer one)
+  -- Need to swap the inner ∑ x, ∑ i to ∑ i, ∑ x
+  have h1 : ∀ y ∈ Finset.univ, ∑ x, ∑ i, ↑(hg.τ i) * inner ℝ (std_basis N y) (hg.w i) * inner ℝ (hg.w i) (std_basis N x) * hessian_free_energy N H (std_basis N y) (std_basis N x) =
+            ∑ i, ∑ x, ↑(hg.τ i) * inner ℝ (std_basis N y) (hg.w i) * inner ℝ (hg.w i) (std_basis N x) * hessian_free_energy N H (std_basis N y) (std_basis N x) := by
+    intro y _; exact Finset.sum_comm
+  rw [Finset.sum_congr rfl h1]
+  -- Now swap outer ∑ x, ∑ i to ∑ i, ∑ x
+  rw [Finset.sum_comm]
+  -- Pull out τ factor using congruence
+  refine Finset.sum_congr rfl fun y _ => ?_
+  simp [mul_assoc]
+  -- Now use completeness of standard basis
+  have hcomplete : ∀ v : EnergySpace N, ∑ x : Config N, inner ℝ (std_basis N x) v • std_basis N x = v := by
+    intro v
+    ext i
+    simp [inner_std_basis_apply]
+    have hstd : ∀ σ τ : Config N, (std_basis N σ).ofLp τ = if σ = τ then 1 else 0 := by
+      intro σ τ
+      simp [std_basis]
+    simp [hstd]
+  -- Use bilinearity of hessian and completeness
+  have hinner_eq : ∀ v : EnergySpace N, ∀ σ : Config N, inner ℝ (std_basis N σ) v = v σ := by
+    intro v σ
+    exact inner_std_basis_apply N σ v
+  have hinner_eq_symm : ∀ v : EnergySpace N, ∀ σ : Config N, inner ℝ v (std_basis N σ) = v σ := by
+    intro v σ
+    rw [real_inner_comm]
+    exact hinner_eq v σ
+  simp_rw [hinner_eq, hinner_eq_symm]
+  -- Factor out tau and rearrange
+  ring_nf
+  -- Helper: hessian_free_energy is bilinear
+  have hlin1 : ∀ (H : EnergySpace N) (u v w : EnergySpace N) (a b : ℝ),
+    hessian_free_energy N H (a • u + b • v) w = a * hessian_free_energy N H u w + b * hessian_free_energy N H v w := by
+    intro H u v w a b
+    simp [hessian_free_energy, PiLp.add_apply, PiLp.smul_apply]
+    ring_nf
+    simp [Finset.mul_sum, Finset.sum_add_distrib, mul_add, mul_assoc, mul_comm, mul_left_comm]
+    ring_nf
+  have hsym : ∀ (H u v : EnergySpace N), hessian_free_energy N H u v = hessian_free_energy N H v u := by
+    intro H u v
+    rw [hessian_free_energy, hessian_free_energy]
+    have : (fun x => gibbs_pmf N H x * u.ofLp x * v.ofLp x) = (fun x => gibbs_pmf N H x * v.ofLp x * u.ofLp x) := by
+      ext x; ring
+    simp_all [mul_comm, mul_assoc, mul_left_comm]
+  have hlin2 : ∀ (H : EnergySpace N) (u v w : EnergySpace N) (a b : ℝ),
+    hessian_free_energy N H u (a • v + b • w) = a * hessian_free_energy N H u v + b * hessian_free_energy N H u w := by
+    intro H u v w a b
+    rw [hsym, hlin1]
+    rw [← hsym H v u, ← hsym H w u]
+  -- Use completeness: hg.w y = ∑ x, (hg.w y).ofLp x • std_basis N x
+  have hcomplete_y : hg.w y = ∑ x : Config N, (hg.w y).ofLp x • std_basis N x := by
+    have h := hcomplete (hg.w y)
+    simp_rw [hinner_eq (hg.w y)] at h
+    exact h.symm
+  -- Helper: apply .ofLp to a linear combination of standard basis vectors
+  have hofLp_sum : ∀ (c : Config N → ℝ) (y : Config N),
+      (∑ x : Config N, c x • std_basis N x).ofLp y = c y := by
+    intro c y
+    have hstd : ∀ σ τ : Config N, (std_basis N σ).ofLp τ = if σ = τ then (1 : ℝ) else 0 := by
+      intro σ τ
+      simp [std_basis]
+    calc (∑ x : Config N, c x • std_basis N x).ofLp y
+        = ∑ x : Config N, c x * (std_basis N x).ofLp y := by
+          simp
+      _ = ∑ x : Config N, c x * (if x = y then 1 else 0) := by
+          simp [hstd]
+      _ = c y := by simp
+  -- Expand a finite sum in the first argument
+  have hlin1_finset : ∀ (H : EnergySpace N) (s : Finset (Config N))
+      (c : Config N → ℝ) (w : Config N → EnergySpace N) (u : EnergySpace N),
+    hessian_free_energy N H (∑ x ∈ s, c x • w x) u = ∑ x ∈ s, c x * hessian_free_energy N H (w x) u := by
+    intro H s c w u
+    induction s using Finset.induction_on with
+    | empty => simp [hessian_free_energy]
+    | insert a s ha ih =>
+      simp only [Finset.sum_insert ha]
+      have := @hlin1 H (w a) (∑ x ∈ s, c x • w x) u (c a) 1
+      simp at this
+      rw [this, ih]
+  -- Expand a finite sum in the second argument
+  have hlin2_finset : ∀ (H : EnergySpace N) (s : Finset (Config N))
+      (c : Config N → ℝ) (w : Config N → EnergySpace N) (u : EnergySpace N),
+    hessian_free_energy N H u (∑ x ∈ s, c x • w x) = ∑ x ∈ s, c x * hessian_free_energy N H u (w x) := by
+    intro H s c w u
+    induction s using Finset.induction_on with
+    | empty => simp [hessian_free_energy]
+    | insert a s ha ih =>
+      simp only [Finset.sum_insert ha]
+      have := @hlin2 H u (∑ x ∈ s, c x • w x) (w a) 1 (c a)
+      simp at this
+      rw [add_comm, this, ih]
+      ring
+  -- Expand hessian_free_energy N H (hg.w y) (hg.w y) using bilinearity
+  have hexpand : hessian_free_energy N H (hg.w y) (hg.w y) =
+    ∑ x : Config N, ∑ x_1 : Config N, (hg.w y).ofLp x * (hg.w y).ofLp x_1 *
+      hessian_free_energy N H (std_basis N x) (std_basis N x_1) := by
+    rw [hcomplete_y, hcomplete_y]
+    rw [hlin1_finset]
+    simp_rw [hlin2_finset]
+    simp_rw [hofLp_sum]
+    simp_rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro x _
+    apply Finset.sum_congr rfl
+    intro _ _
+    ring
+  simp_rw [hexpand]
+  calc ∑ x : Config N, ∑ x_1 : Config N, ↑(hg.τ y) * (hg.w y).ofLp x * (hg.w y).ofLp x_1 *
+        hessian_free_energy N H (std_basis N x) (std_basis N x_1)
+      = ∑ x : Config N, ↑(hg.τ y) * ∑ x_1 : Config N, (hg.w y).ofLp x * (hg.w y).ofLp x_1 *
+          hessian_free_energy N H (std_basis N x) (std_basis N x_1) := by
+          congr 1; ext x; rw [Finset.mul_sum]; congr 1; ext x_1; ring
+      _ = ↑(hg.τ y) * ∑ x : Config N, ∑ x_1 : Config N, (hg.w y).ofLp x * (hg.w y).ofLp x_1 *
+          hessian_free_energy N H (std_basis N x) (std_basis N x_1) := by
+          rw [Finset.mul_sum]
 
 private lemma affineIBP_measurable_hessian_std_basis
     (σ τ : Config N) :
