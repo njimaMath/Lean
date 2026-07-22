@@ -2059,7 +2059,7 @@ private lemma opNorm_fderiv_coupledFreeEnergyDet_le_beforeIBP
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma contDiff_tiltedReplicaPartitionDet_beforeIBP
     (coupling : ℝ) :
-    ContDiff ℝ (⊤ : WithTop ℕ∞)
+    ContDiff ℝ (↑(⊤ : ℕ∞) : WithTop ℕ∞)
       (fun H : EnergySpace N =>
         tiltedReplicaPartitionDet
           (N := N) (q := q) H coupling) := by
@@ -2070,7 +2070,7 @@ private lemma contDiff_tiltedReplicaPartitionDet_beforeIBP
   · exact contDiff_const
   · have hpmf :
         ∀ l : Fin 2,
-          ContDiff ℝ (⊤ : WithTop ℕ∞)
+          ContDiff ℝ (↑(⊤ : ℕ∞) : WithTop ℕ∞)
             (fun H : EnergySpace N =>
               gibbs_pmf N H (σs l)) :=
       fun l =>
@@ -2081,7 +2081,7 @@ private lemma contDiff_tiltedReplicaPartitionDet_beforeIBP
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma contDiff_coupledFreeEnergyDet_beforeIBP
     (Λ : ℝ) :
-    ContDiff ℝ (⊤ : WithTop ℕ∞)
+    ContDiff ℝ (↑(⊤ : ℕ∞) : WithTop ℕ∞)
       (fun H : EnergySpace N =>
         coupledFreeEnergyDet
           (N := N) (q := q) H Λ) := by
@@ -2090,7 +2090,7 @@ private lemma contDiff_coupledFreeEnergyDet_beforeIBP
       (N := N) (q := q) (Λ / 2)
 
   have hlog :
-      ContDiff ℝ (⊤ : WithTop ℕ∞)
+      ContDiff ℝ (↑(⊤ : ℕ∞) : WithTop ℕ∞)
         (fun H : EnergySpace N =>
           Real.log
             (tiltedReplicaPartitionDet
@@ -2101,7 +2101,7 @@ private lemma contDiff_coupledFreeEnergyDet_beforeIBP
           (N := N) (q := q) H (Λ / 2))
 
   have hscaled :
-      ContDiff ℝ (⊤ : WithTop ℕ∞)
+      ContDiff ℝ (↑(⊤ : ℕ∞) : WithTop ℕ∞)
         (fun H : EnergySpace N =>
           (1 / (2 * (N : ℝ))) *
             Real.log
@@ -2109,7 +2109,7 @@ private lemma contDiff_coupledFreeEnergyDet_beforeIBP
                 (N := N) (q := q) H (Λ / 2))) := by
     simpa [smul_eq_mul] using
       (ContDiff.const_smul
-        (𝕜 := ℝ) (n := (⊤ : WithTop ℕ∞)) (R := ℝ)
+        (𝕜 := ℝ) (n := (↑(⊤ : ℕ∞) : WithTop ℕ∞)) (R := ℝ)
         (c := 1 / (2 * (N : ℝ))) hlog)
 
   simpa [coupledFreeEnergyDet] using
@@ -2716,7 +2716,7 @@ private lemma integral_coupledFreeEnergyDet_hasDerivAt_beforeIBP
         (sk := sk) (sim := sim) s w)
 
   have hΦ :
-      ContDiff ℝ (⊤ : WithTop ℕ∞)
+      ContDiff ℝ (↑(⊤ : ℕ∞) : WithTop ℕ∞)
         (fun H : EnergySpace N =>
           coupledFreeEnergyDet
             (N := N) (q := q) H Λ) :=
