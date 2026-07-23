@@ -3896,6 +3896,27 @@ lemma coupledFreeEnergy_time_ibp_trace_workspace
 
 /-! ## Finite replica algebra -/
 
+private lemma weighted_sum_sub_constant
+    {ι : Type*} [Fintype ι] (c a : ℝ) (f weight : ι → ℝ) :
+    (∑ i, c * (f i - a) * weight i) =
+      c * (∑ i, f i * weight i) - c * a * ∑ i, weight i := by
+  calc
+    (∑ i, c * (f i - a) * weight i) =
+        ∑ i, (c * f i * weight i - c * a * weight i) := by
+      apply Finset.sum_congr rfl
+      intro i _
+      ring
+    _ = _ := by
+      rw [Finset.sum_sub_distrib]
+      refine congrArg₂ (· - ·) ?_ ?_
+      · calc
+          (∑ i, c * f i * weight i) = ∑ i, c * (f i * weight i) := by
+            apply Finset.sum_congr rfl
+            intro i _
+            ring
+          _ = _ := (Finset.mul_sum _ _ _).symm
+      · exact (Finset.mul_sum _ _ _).symm
+
 lemma covKernelDiff_eq_centered_sq_workspace
     (σ τ : Config N) :
     sk_cov_kernel N β σ τ -
@@ -4510,8 +4531,8 @@ lemma coupled_trace_algebra_workspace
           rw [hcross]
           field_simp [hZ0]
           rw [← hweight_sq]
-          simp only [mul_sub, Finset.sum_sub_distrib, Finset.mul_sum, Finset.sum_mul]
-          rw [Finset.sum_sub_distrib]
+          rw [weighted_sum_sub_constant]
+          ring
 
     have hcore :
         (∑ σ : Config N, ∑ τ : Config N,
