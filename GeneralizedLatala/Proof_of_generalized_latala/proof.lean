@@ -1,8 +1,8 @@
 import SpinGlass.Replicas
 import SpinGlass.GuerraBound
 import SpinGlass.KS_inequality
-import IndependentEndpoint
-import IndependentGaussianAffineIBP
+import Proof_of_generalized_latala.IndependentEndpoint
+import Proof_of_generalized_latala.IndependentGaussianAffineIBP
 import Mathlib.Analysis.SpecialFunctions.Artanh
 import Mathlib.Analysis.Convex.SpecificFunctions.Basic
 import Mathlib.Analysis.Convex.Jensen
