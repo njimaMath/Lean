@@ -9,10 +9,28 @@ require mathlib from git
 @[default_target]
 lean_lib NjimaLean
 
--- Auxiliary library so that files under `perceptronFixed/` can `import` each other.
+-- Perceptron sources live under `Research/perceptronFixed/`.
+-- Building this target uses mathlib from the root project's `.lake/packages`.
 lean_lib PerceptronFixed where
-  srcDir := "."
+  srcDir := "Research"
   globs := #[.submodules `perceptronFixed]
+
+
+lean_lib PerceptronFixed2 where
+  srcDir := "research_public/perceptronFixed/Lean"
+  globs := #[
+    .one `mainresult_perceptron,
+    .submodules `conditionalGaussianMoments,
+    .submodules `decreasing_g,
+    .submodules `derivative_of_B,
+    .submodules `GIP,
+    .submodules `Millo,
+    .submodules `negative_F_bound,
+    .submodules `PerceptronFixed,
+    .submodules `Prop_A_P,
+    .submodules `rational_function_bound,
+    .submodules `Theorem1,
+    .submodules `uniform_bound_of_g]
 
 -- Library for percolation theory files
 lean_lib percolation where
@@ -34,12 +52,14 @@ lean_lib SYK where
   srcDir := "."
   globs := #[.submodules `SYK]
 
-
+-- Public generalized Latała formalization.
 lean_lib GeneralizedLatala where
-  srcDir := "GeneralizedLatala"
-  globs := #[.submodules `Proof_of_generalized_latala,
-    .one `mainesult_generalized_latala]
-
+  srcDir := "research_public/generalizedLatala"
+  globs := #[
+    .submodules `SpinGlass,
+    .submodules `Proof_of_generalized_latala,
+    .one `mainresult_latala
+  ]
 
 @[default_target]
 lean_exe njimaLean where
