@@ -4,7 +4,7 @@ open Lake DSL
 package NjimaLean where
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4" @ "v4.28.0"
+  "https://github.com/leanprover-community/mathlib4" @ "v4.32.1"
 
 @[default_target]
 lean_lib NjimaLean
@@ -59,6 +59,16 @@ lean_lib GeneralizedLatala where
     .submodules `SpinGlass,
     .submodules `Proof_of_generalized_latala,
     .one `mainresult_latala
+  ]
+
+-- Quantitative strict-AT formalization.  This is a separate library because
+-- it has its own `SpinGlass` module tree and is developed independently from
+-- the public generalized Latała argument above.
+lean_lib LatalaMeetsAT where
+  srcDir := "research_public/latalaMeetsAT"
+  globs := #[
+    .submodules `Lemmas,
+    .one `Latala_AT
   ]
 
 @[default_target]
