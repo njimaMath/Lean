@@ -25,7 +25,7 @@ Each section repeats the same cycle.
 * Exercises that reuse the same pattern in slightly different contexts.
 
 0.4 Two proof modes, both used intentionally
-
+a
 * API mode: use Mathlib lemmas and structures as intended; the proof is short and stable.
 * Definition mode: unfold key definitions and run an epsilon style argument; used sparingly to build understanding and to teach debugging.
 
