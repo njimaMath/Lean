@@ -39,8 +39,7 @@ example {β h : ℝ} (hβ : 0 < β) (hh : 0 < h) :
     · filter_upwards [] with z
       rw [Real.norm_eq_abs, abs_pow]
       exact pow_le_one₀ (abs_nonneg _) (le_of_lt (Real.abs_tanh_lt_one _))
-  change 1 - 2 * rsQ β h + (∫ z, Real.tanh (X z) ^ 4 ∂gaussianReal 0 1) =
-    ∫ z, Real.cosh (X z)⁻¹ ^ 4 ∂gaussianReal 0 1
+  fold X
   calc
     _ = 1 - 2 * (∫ z, Real.tanh (X z) ^ 2 ∂gaussianReal 0 1) +
         (∫ z, Real.tanh (X z) ^ 4 ∂gaussianReal 0 1) := by rw [hq]
