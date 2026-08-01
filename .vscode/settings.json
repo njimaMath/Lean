@@ -1,4 +1,8 @@
 {
+  "lean4.serverArgs": [
+    "-j",
+    "1"
+  ],
   "files.watcherExclude": {
     "**/.lake/**": true
   }

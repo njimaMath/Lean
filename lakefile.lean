@@ -71,6 +71,18 @@ lean_lib LatalaMeetsAT where
     .one `Latala_AT
   ]
 
+-- Finite-dimensional Gaussian concentration used by the strict-AT proof.
+-- These files intentionally live in their own module root: both public spin
+-- glass developments already claim a `SpinGlass` module tree.
+lean_lib ATGaussianConcentration where
+  srcDir := "research_public/latalaMeetsAT/SpinGlass/Gaussian_concentration"
+  globs := #[
+    .one `GaussianConcentrationAux,
+    .one `GaussianCovSmooth,
+    .one `GaussianCovMollify,
+    .one `gaussian_concentration
+  ]
+
 @[default_target]
 lean_exe njimaLean where
   root := `Main
