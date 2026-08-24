@@ -1,0 +1,149 @@
+
+Goal:
+Formalize Gaussian concentration for an L-Lipschitz function
+f : (Fin n -> ℝ) -> ℝ
+under the standard product Gaussian measure γ_n.
+
+Target theorem shape:
+```
+theorem gaussian_concentration_one_sided
+    {n : ℕ} {f : (Fin n -> ℝ) -> ℝ} {L t : ℝ}
+    (hL : LipschitzWith (ENNReal.ofReal L) f)
+    (hLpos : 0 < L)
+    (ht : 0 ≤ t) :
+    γ n {x | f x - ∫ y, f y ∂(γ n) ≥ t}
+      ≤ ENNReal.ofReal (Real.exp (-(t^2) / (2 * L^2)))
+```
+
+Mathlib has Gaussian material for real Gaussian measures and abstract Gaussian facts, so I would base the file on `Mathlib.Probability.Distributions.Gaussian.Real` and maybe `Gaussian.Fernique` if you want integrability support. ([leanprover-community.github.io](https://leanprover-community.github.io/mathlib4_docs/Mathlib/Probability/Distributions/Gaussian/Basic.html?utm_source=openai))
+
+File skeleton:
+```
+import Mathlib.Probability.Distributions.Gaussian.Real
+import Mathlib.MeasureTheory.Function.LpSpace
+import Mathlib.Analysis.NormedSpace.EuclideanSpace
+import Mathlib.Analysis.SpecialFunctions.Exp
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+
+noncomputable section
+
+open scoped BigOperators ENNReal
+open MeasureTheory ProbabilityTheory Real
+
+namespace GaussianConcentration
+```
+
+Core definitions:
+```
+abbrev E (n : ℕ) := Fin n -> ℝ
+
+def γ1 : Measure ℝ :=
+  ProbabilityTheory.gaussianReal 0 1
+
+def γ (n : ℕ) : Measure (E n) :=
+  Measure.pi fun _ : Fin n => γ1
+```
+
+Basic infrastructure lemmas:
+```
+instance instProbGamma1 : IsProbabilityMeasure γ1 := by
+  -- use existing Gaussian probability instance
+
+instance instProbGamma (n : ℕ) : IsProbabilityMeasure (γ n) := by
+  -- product of probability measures
+
+lemma measurable_of_lipschitz
+    {n : ℕ} {f : E n -> ℝ} {K : ℝ≥0∞}
+    (hf : LipschitzWith K f) :
+    Measurable f := by
+  -- Lipschitz functions are continuous, hence measurable
+
+lemma integrable_of_lipschitz_gaussian
+    {n : ℕ} {f : E n -> ℝ} {K : ℝ≥0∞}
+    (hf : LipschitzWith K f) :
+    Integrable f (γ n) := by
+  -- reduce to |f x| ≤ |f 0| + K * ‖x‖
+  -- use Gaussian first moment or Fernique-type integrability
+```
+
+Main analytic engine:
+```
+theorem gaussian_logSobolev
+    {n : ℕ} {g : E n -> ℝ}
+    (hg_smooth : SmoothEnough g) :
+    Entropy (γ n) (fun x => Real.exp (g x))
+      ≤ (1 / 2) * ∫ x, Real.exp (g x) * ‖gradient g x‖^2 ∂(γ n) := by
+  -- hardest part
+  -- prove from one-dimensional Gaussian integration by parts
+  -- tensorize over Fin n
+```
+
+Recommended shortcut for first version:
+```
+axiom gaussian_logSobolev_axiom
+    {n : ℕ} {g : E n -> ℝ} :
+    LocallyLipschitz g ->
+    Entropy (γ n) (fun x => Real.exp (g x))
+      ≤ (1 / 2) * ∫ x, Real.exp (g x) * localLipBound g x ^ 2 ∂(γ n)
+```
+
+Herbst lemma:
+```
+theorem herbst_mgf_bound
+    {n : ℕ} {f : E n -> ℝ} {L λ : ℝ}
+    (hL : LipschitzWith (ENNReal.ofReal L) f)
+    (hLpos : 0 ≤ L)
+    (hλ : 0 ≤ λ) :
+    ∫ x, Real.exp (λ * (f x - ∫ y, f y ∂(γ n))) ∂(γ n)
+      ≤ Real.exp ((λ^2 * L^2) / 2) := by
+  -- apply Gaussian log-Sobolev to g = λ • f
+  -- use ‖∇f‖ ≤ L
+  -- solve the standard Herbst differential inequality
+```
+
+Chernoff bound:
+```
+theorem chernoff_from_mgf
+    {Ω : Type*} [MeasurableSpace Ω]
+    {μ : Measure Ω} [IsProbabilityMeasure μ]
+    {X : Ω -> ℝ} {σ t : ℝ}
+    (ht : 0 ≤ t)
+    (hmgf : ∀ λ ≥ 0,
+      ∫ ω, Real.exp (λ * X ω) ∂μ ≤ Real.exp (λ^2 * σ^2 / 2)) :
+    μ {ω | X ω ≥ t}
+      ≤ ENNReal.ofReal (Real.exp (-(t^2) / (2 * σ^2))) := by
+  -- Markov inequality on exp (λX)
+  -- optimize λ = t / σ^2
+```
+
+Final theorem:
+```
+theorem gaussian_concentration_one_sided
+    {n : ℕ} {f : E n -> ℝ} {L t : ℝ}
+    (hL : LipschitzWith (ENNReal.ofReal L) f)
+    (hLpos : 0 < L)
+    (ht : 0 ≤ t) :
+    γ n {x | f x - ∫ y, f y ∂(γ n) ≥ t}
+      ≤ ENNReal.ofReal (Real.exp (-(t^2) / (2 * L^2))) := by
+  apply chernoff_from_mgf ht
+  intro λ hλ
+  exact herbst_mgf_bound hL (le_of_lt hLpos) hλ
+```
+
+Two-sided corollary:
+```
+theorem gaussian_concentration_two_sided
+    {n : ℕ} {f : E n -> ℝ} {L t : ℝ}
+    (hL : LipschitzWith (ENNReal.ofReal L) f)
+    (hLpos : 0 < L)
+    (ht : 0 ≤ t) :
+    γ n {x | |f x - ∫ y, f y ∂(γ n)| ≥ t}
+      ≤ ENNReal.ofReal (2 * Real.exp (-(t^2) / (2 * L^2))) := by
+  -- split into upper and lower tails
+  -- apply one-sided theorem to f and -f
+```
+
+Practical advice:
+Start by proving everything after `herbst_mgf_bound`. Then keep `herbst_mgf_bound` as an axiom or theorem placeholder. The real formalization bottleneck is Gaussian log-Sobolev plus the differentiability or approximation theory for Lipschitz functions.
+
+---
