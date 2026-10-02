@@ -11,6 +11,11 @@ build/
 **/*.so
 **/*.dll
 **/*.dylib
+.out
+.log
+.aux
+.fdb_latexmk
+.synctex.gz
 
 # OS junk
 .DS_Store
@@ -24,3 +29,8 @@ SYK/
 
 # nested local repos
 research_public/
+
+Research/TAP_ANNEALED
+
+# nested local repos
+SpinGlass/

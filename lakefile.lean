@@ -3,18 +3,16 @@ open Lake DSL
 
 package NjimaLean where
 
+require VersoBlueprint from git
+  "https://github.com/leanprover/verso-blueprint" @ "v4.32.0"
+
+-- Keep Mathlib last so its compatible transitive revisions take precedence.
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4" @ "v4.32.1"
+  "https://github.com/leanprover-community/mathlib4" @ "v4.32.2"
 
-@[default_target]
-lean_lib NjimaLean
-
--- Perceptron sources live under `Research/perceptronFixed/`.
--- Building this target uses mathlib from the root project's `.lake/packages`.
-lean_lib PerceptronFixed where
+lean_lib DisjointPaths where
   srcDir := "Research"
-  globs := #[.submodules `perceptronFixed]
-
+  roots := #[`Disjoint_paths.Main_Disjoint]
 
 lean_lib PerceptronFixed2 where
   srcDir := "research_public/perceptronFixed/Lean"
@@ -32,57 +30,57 @@ lean_lib PerceptronFixed2 where
     .submodules `Theorem1,
     .submodules `uniform_bound_of_g]
 
--- Library for percolation theory files
 lean_lib percolation where
   srcDir := "."
   globs := #[.submodules `percolation]
 
--- Library for Kingman Subadditive Ergodic theorem
 lean_lib KignmanSubadditiveErgodic where
-  srcDir := "."
+  srcDir := "Research"
   globs := #[.submodules `KignmanSubadditiveErgodic]
 
--- Library for oriented animal files
 lean_lib oriented_animal where
-  srcDir := "."
+  srcDir := "Research"
   globs := #[.submodules `oriented_animal]
 
--- The SYK formalization, including the model and concentration theorem.
+-- The SYK shared infrastructure and Blueprint chapters.
 lean_lib SYK where
   srcDir := "."
-  globs := #[.submodules `SYK]
+  globs := #[
+    .submodules `SYK.Probability.GaussianConcentration,
+    .one `SYK.Blueprint,
+    .submodules `SYK.Chapters]
+
+-- The shared finite-dimensional SYK model.
+lean_lib Model where
+  srcDir := "."
+  globs := #[.submodules `SYK.Model]
+
+-- The SYK log-partition concentration application.
+lean_lib SuperConcentration where
+  srcDir := "."
+  globs := #[.submodules `SYK.SuperConcentration]
+
+-- The SYK central-limit-theorem development.
+lean_lib CLT where
+  srcDir := "."
+  globs := #[.submodules `SYK.CLT]
 
 -- Public generalized Latała formalization.
 lean_lib GeneralizedLatala where
   srcDir := "research_public/generalizedLatala"
   globs := #[
     .submodules `SpinGlass,
-    .submodules `Proof_of_generalized_latala,
+    .submodules `GeneralizedLatala,
     .one `mainresult_latala
   ]
 
--- Quantitative strict-AT formalization.  This is a separate library because
--- it has its own `SpinGlass` module tree and is developed independently from
--- the public generalized Latała argument above.
-lean_lib LatalaMeetsAT where
-  srcDir := "research_public/latalaMeetsAT"
-  globs := #[
-    .submodules `Lemmas,
-    .one `Latala_AT
-  ]
+-- RSAT sources use the root project's shared mathlib in `.lake/packages`.
+lean_lib RSAT where
+  srcDir := "research_public/RSAT"
+  globs := #[.submodules `Lemmas]
 
--- Finite-dimensional Gaussian concentration used by the strict-AT proof.
--- These files intentionally live in their own module root: both public spin
--- glass developments already claim a `SpinGlass` module tree.
-lean_lib ATGaussianConcentration where
-  srcDir := "research_public/latalaMeetsAT/SpinGlass/Gaussian_concentration"
-  globs := #[
-    .one `GaussianConcentrationAux,
-    .one `GaussianCovSmooth,
-    .one `GaussianCovMollify,
-    .one `gaussian_concentration
-  ]
-
+-- Give the public endpoint its own module name, separate from the root Main.
 @[default_target]
-lean_exe njimaLean where
-  root := `Main
+lean_lib RSATMain where
+  srcDir := "research_public"
+  roots := #[`RSAT.Main]

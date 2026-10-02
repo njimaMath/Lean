@@ -1,0 +1,49 @@
+name = "NjimaLean"
+version = "0.1.0"
+keywords = ["math"]
+defaultTargets = ["RSATMain"]
+
+[leanOptions]
+pp.unicode.fun = true # pretty-prints `fun a ↦ b`
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+maxSynthPendingDepth = 3
+experimental.module = true
+
+[[require]]
+name = "mathlib"
+git = "https://github.com/leanprover-community/mathlib4"
+rev = "v4.32.2"
+
+[[lean_lib]]
+name = "RSAT"
+srcDir = "research_public/RSAT"
+globs = ["Lemmas.+"]
+
+[[lean_lib]]
+name = "RSATMain"
+srcDir = "research_public"
+roots = ["RSAT.Main"]
+
+[[lean_lib]]
+name = "SYK"
+
+[[lean_lib]]
+name = "Annealed_FE"
+globs = ["SYK.Annealed_FE.+"]
+
+[[lean_lib]]
+name = "CLT"
+globs = ["SYK.CLT.+"]
+
+[[lean_lib]]
+name = "SuperConcentration"
+globs = ["SYK.SuperConcentration.+"]
+
+[[lean_lib]]
+name = "Model"
+globs = ["SYK.Model.+"]
+
+[[lean_lib]]
+name = "Universality"
+globs = ["SYK.Universality.+"]
