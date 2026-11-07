@@ -23,7 +23,7 @@ def proj {n : ℕ} (i : Fin (n + 3)) (x : Fin (n + 3) → ℤ) : Fin (n + 2) →
 lemma coord_eq_of_proj_eq {n : ℕ} {i : Fin (n + 3)} {x y : Fin (n + 3) → ℤ}
     (h : proj i x = proj i y) {j : Fin (n + 3)} (hj : j ≠ i) : x j = y j := by
   rcases Fin.exists_succAbove_eq hj with ⟨k, rfl⟩
-  simpa [proj] using congrFun h k
+  simpa only [proj, Fin.removeNth_apply] using congrFun h k
 
 theorem exists_large_projection_strong {n : ℕ} (s : Finset (Fin (n + 3) → ℤ)) :
     ∃ i : Fin (n + 3), ((s.image (proj i)).card : ℝ) ≥ (s.card : ℝ) ^ (2 / 3 : ℝ) := by

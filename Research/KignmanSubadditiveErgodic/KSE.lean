@@ -130,7 +130,7 @@ lemma integral_subadditive_raw
   have hTm : MeasurePreserving (T^[m]) μ μ := by
     simpa using hT.iterate m
   have hFn_shift : Integrable (fun x => F n ((T^[m]) x)) μ := by
-    simpa [Function.comp] using hTm.integrable_comp_of_integrable (g := F n) (hInt n)
+    simpa [Function.comp] using! hTm.integrable_comp_of_integrable (g := F n) (hInt n)
   have hInt_sum : Integrable (fun x => F m x + F n ((T^[m]) x)) μ :=
     (hInt m).add hFn_shift
   have hle :
@@ -265,7 +265,7 @@ lemma kingmanLimit_aestronglyMeasurable
     (hMeas : IsMeasurableProcess (μ := μ) F)
     (hT : MeasurePreserving T μ μ) :
     AEStronglyMeasurable (kingmanLimitFunction (μ := μ) (T := T) F) μ := by
-  simpa [kingmanLimitFunction] using
+  simpa [kingmanLimitFunction] using!
     (aestronglyMeasurable_const :
       AEStronglyMeasurable (fun _ : α => kingmanConstant (μ := μ) F) μ)
 
@@ -360,7 +360,7 @@ lemma ae_eq_const_of_invariant
     ∃ c : ℝ, g =ᵐ[μ] fun _ => c := by
   classical
   have hPre : PreErgodic T μ := by
-    refine ⟨?_⟩
+    apply PreErgodic.of_preimage_eq hT.quasiMeasurePreserving
     intro s hs hTs
     rcases hErg s hs hTs with hs0 | hs1
     · -- `s` is a.e. empty
@@ -368,14 +368,14 @@ lemma ae_eq_const_of_invariant
       exact Or.inl (ae_eq_empty.2 hs0)
     · -- `s` is a.e. full
       refine (eventuallyConst_set'.2 ?_)
-      have hscompl0 : μ sᶜ = 0 := (prob_compl_eq_zero_iff hs).2 hs1
+      have hscompl0 : μ sᶜ = 0 := (prob_compl_eq_zero_iff (μ := μ) hs).2 hs1
       exact Or.inr (ae_eq_univ.2 hscompl0)
   have hErg' : Ergodic T μ := by
     refine { toMeasurePreserving := hT, toPreErgodic := hPre }
   rcases Ergodic.ae_eq_const_of_ae_eq_comp_ae (f := T) (μ := μ) hErg' hg_meas hg_inv with
     ⟨c, hc⟩
   refine ⟨c, ?_⟩
-  simpa [Function.const] using hc
+  simpa [Function.const] using! hc
 
 /-- Under ergodicity, Kingman's limit function is a.e. constant. -/
 lemma kingmanLimit_ae_eq_const

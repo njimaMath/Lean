@@ -966,7 +966,7 @@ lemma prob_eq_probPoly_of_lt (A : Set (Ω ι)) {p : ℝ} (hp0 : 0 < p) (hp1 : p 
         (Measure.pi_singleton (μ := fun _ : ι => bernoulliMeasure (p := p₀) (hp := hp₀)) ω)
     have hb (b : Bool) :
         bernoulliMeasure (p := p₀) (hp := hp₀) {b} = (cond b p₀ (1 - p₀) : ℝ≥0∞) := by
-      simpa [bernoulliMeasure, PMF.bernoulli_apply, Bool.apply_cond, ENNReal.coe_sub] using
+      cases b <;> simpa [bernoulliMeasure, PMF.bernoulli_apply, Bool.apply_cond, ENNReal.coe_sub] using
         (PMF.toMeasure_apply_singleton (p := PMF.bernoulli p₀ hp₀) b (MeasurableSet.singleton b))
     simpa [hb] using hpi
   have hne_top :
@@ -1012,7 +1012,7 @@ lemma prob_eq_probPoly_of_lt (A : Set (Ω ι)) {p : ℝ} (hp0 : 0 < p) (hp1 : p 
     -- Put everything together.
     have : (μ {ω}).toReal = ∏ e ∈ (Finset.univ : Finset ι), ((cond (ω e) p₀ (1 - p₀) : ℝ≥0∞).toReal) := by
       simpa [hstart] using Eq.trans hstart htoRealProd
-    simpa [weight, hfactor] using this
+    simpa only [weight, hfactor] using this
   -- Finish by rewriting `prob` and summing over configurations in `A`.
   have hsum_filter :
       (∑ ω ∈ (Finset.univ.filter fun ω : Ω ι => ω ∈ A), weight (ι := ι) p ω) = probPoly (ι := ι) p A := by
